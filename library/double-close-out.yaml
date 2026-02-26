@@ -1,0 +1,99 @@
+name: Double Close-Out
+description: Defensive close-out drill with recovery and 1v1 finish
+court_type: half_court
+court_standard: fiba
+duration: 15m
+intensity: 2
+category: defense
+tags:
+  - close-out
+  - 1v1
+  - defense
+
+sequences:
+  - label: Setup
+    instructions:
+      - D starts under the basket on the baseline
+      - A1 and A2 are on the wings (45° spots)
+      - Coach (C) is at the top of the key with the ball
+    players:
+      - id: d1
+        label: D
+        role: defender
+        position: [0.5, 0.12]
+      - id: a1
+        label: A1
+        role: attacker
+        position: [0.2, 0.5]
+      - id: a2
+        label: A2
+        role: attacker
+        position: [0.8, 0.5]
+      - id: c1
+        label: C
+        role: coach
+        position: [0.5, 0.75]
+    actions: []
+    accessories: []
+
+  - label: "Close-out A1"
+    instructions:
+      - Coach passes to A1
+      - D sprints to close out on A1
+      - A1 catches and faces up (no dribble yet)
+    players:
+      - id: d1
+        label: D
+        role: defender
+        position: [0.25, 0.48]
+      - id: a1
+        label: A1
+        role: attacker
+        position: [0.2, 0.5]
+      - id: a2
+        label: A2
+        role: attacker
+        position: [0.8, 0.5]
+      - id: c1
+        label: C
+        role: coach
+        position: [0.5, 0.75]
+    actions:
+      - type: pass
+        from: c1
+        to: a1
+      - type: close_out
+        from: d1
+        to: a1
+    accessories: []
+
+  - label: "Recovery + 1v1 A2"
+    instructions:
+      - A1 passes to A2
+      - D recovers and sprints to close out on A2
+      - A2 plays 1v1 against D (2 dribbles max)
+    players:
+      - id: d1
+        label: D
+        role: defender
+        position: [0.75, 0.48]
+      - id: a1
+        label: A1
+        role: attacker
+        position: [0.2, 0.5]
+      - id: a2
+        label: A2
+        role: attacker
+        position: [0.8, 0.5]
+      - id: c1
+        label: C
+        role: coach
+        position: [0.5, 0.75]
+    actions:
+      - type: pass
+        from: a1
+        to: a2
+      - type: close_out
+        from: d1
+        to: a2
+    accessories: []
