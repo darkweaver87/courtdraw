@@ -1,0 +1,161 @@
+# Features
+
+## Court Standards
+
+The app supports two court standards with all official markings.
+
+### FIBA
+
+Source: FIBA Official Basketball Rules — court diagram.
+
+- Dimensions: 28m × 15m
+- Three-point arc: 6.75m from basket center
+- Free-throw line: 5.80m from backboard
+- Restricted area (paint): 4.90m wide (rectangular since 2010)
+- Center circle: 3.60m diameter
+- No-charge semicircle: 1.25m radius
+- Backboard: 1.80m × 1.05m, basket 3.05m high
+
+### NBA
+
+Source: NBA Official Rule Book — court diagram.
+
+- Dimensions: 94ft × 50ft (28.65m × 15.24m)
+- Three-point arc: 23ft 9in (7.24m), 22ft (6.71m) at corners
+- Free-throw line: 15ft (4.57m) from backboard
+- Restricted area (paint): 16ft (4.88m) wide
+- Center circle: 12ft (3.66m) diameter
+- Restricted area arc: 4ft (1.22m) radius
+- Backboard: 6ft × 3.5ft (1.83m × 1.07m), basket 10ft (3.05m) high
+
+### Court Rendering
+
+- All markings drawn with white lines on green background
+- Orientation: vertical (baskets at top and bottom)
+- Half-court: only one basket end
+- Elements shared between standards: sidelines, baselines, midcourt line (full), center circle (full), free-throw line, free-throw circle, paint/lane, three-point arc, no-charge zone, basket (backboard + rim)
+
+## Player Roles
+
+| Role | ID | Label | Color |
+|---|---|---|---|
+| Attacker | `attacker` | A | Red `#e63946` |
+| Defender | `defender` | D | Navy `#1d3557` |
+| Coach | `coach` | C | Orange `#f4a261` |
+| Point Guard | `point_guard` | 1 | Red `#e63946` |
+| Shooting Guard | `shooting_guard` | 2 | Red `#e63946` |
+| Small Forward | `small_forward` | 3 | Red `#e63946` |
+| Power Forward | `power_forward` | 4 | Red `#e63946` |
+| Center | `center` | 5 | Red `#e63946` |
+
+Position roles (point_guard through center) display their number as label and use the attack color.
+
+Queued players (waiting in line) render as smaller, greyed-out circles.
+
+## Actions
+
+| Action | ID | Visual Rendering |
+|---|---|---|
+| Pass | `pass` | Dashed arrow, orange `#f4a261` |
+| Dribble | `dribble` | Zigzag line with arrow, orange `#f4a261` |
+| Sprint / Run | `sprint` | Solid arrow, red `#e63946` |
+| Layup | `shot_layup` | Arrow to basket + layup symbol |
+| Push-up shot | `shot_pushup` | Arrow to basket + push shot symbol |
+| Jump shot | `shot_jumpshot` | Arrow to basket + jump shot symbol |
+| Screen / Pick | `screen` | Thick short horizontal bar at position |
+| Cut | `cut` | Curved arrow, red `#e63946` |
+| Close-out | `close_out` | Solid arrow, blue `#2a6fdb` |
+| Contest | `contest` | Hand-up symbol at position |
+| Reverse | `reverse` | U-turn arrow |
+
+## Accessories (MVP)
+
+| Accessory | ID | Icon file |
+|---|---|---|
+| Cone / Plot | `cone` | `assets/icons/cone.svg` |
+| Agility Ladder | `agility_ladder` | `assets/icons/agility-ladder.svg` |
+| Chair | `chair` | `assets/icons/chair.svg` |
+
+Icons are PNG or SVG files in `assets/icons/`. They can be replaced for custom styling without changing code.
+
+## Animation
+
+### How It Works
+
+1. An exercise has N sequences (keyframes)
+2. Each sequence defines positions for all elements
+3. The animation engine interpolates positions between sequence N and N+1
+4. Actions (arrows, zigzags) are drawn progressively during transitions
+
+### Playback Controls
+
+- **Play / Pause**: start or stop the animation
+- **Previous / Next**: step one sequence at a time
+- **Speed**: 0.5x, 1x, 2x
+
+### Interpolation Rules
+
+- Player positions: linear interpolation of (x, y) between sequences
+- Players not present in the next sequence: fade out
+- Players new in the next sequence: fade in
+- Actions: arrow stroke draws progressively from `from` to `to`
+- Accessories: static (don't interpolate, appear/disappear)
+
+## Import / Export
+
+### Import from Community Library
+
+- Browse exercises from `library/` directory (shipped with the repo)
+- Importing copies the YAML file to `~/.courtdraw/exercises/`
+- The user can then modify their local copy
+
+### Export
+
+- Any exercise from `~/.courtdraw/exercises/` can be contributed back to the repo via a standard git workflow (copy YAML to `library/`, open PR)
+
+## PDF Generation
+
+### Layout (starting point, to be refined)
+
+**Page 1:**
+- Header bar: session title + subtitle + age group
+- Legend: player/arrow symbol explanations
+- Two-column layout with exercises
+
+**Per exercise block:**
+- Section header: exercise name, intensity dots, duration
+- Court diagram: rendering of sequence 1 (starting positions)
+- Instructions: concatenated from all sequences
+- Variants: listed as sub-items
+
+**Final page(s):**
+- Summary table (block number, exercise name, intensity, duration)
+- Coach notes
+- Philosophy section
+- Total duration
+
+Layout overflows to additional pages automatically.
+
+## Color Palette
+
+| Element | Hex | Usage |
+|---|---|---|
+| Attack / sprint | `#e63946` | Attacker players, sprint arrows, intensity labels |
+| Defense | `#1d3557` | Defender players, section headers |
+| Defense arrow | `#2a6fdb` | Close-out, defensive movement arrows |
+| Coach / dribble / pass | `#f4a261` | Coach, dribble zigzag, pass arrows |
+| Neutral / queue | `#888888` | Queued players, low-intensity |
+| Court background | `#3a7d3a` | Court surface |
+| Court lines | `#ffffff` | All court markings |
+| Max intensity | `#c1121f` | Header bar, max intensity indicators |
+| Special (King, etc.) | `#ffb703` | Special roles in specific drills |
+| Light background | `#f1faee` | Cards, philosophy box |
+
+## Tags & Filtering
+
+- Tags are free-text strings assigned to exercises
+- The exercise library panel in the session composer supports:
+  - Text search (matches name, description, tags)
+  - Category dropdown filter
+  - Clickable tag chips to filter by tag
+  - Filters combine with AND logic

@@ -1,0 +1,74 @@
+# Development Roadmap
+
+## Phase 1 — Foundations
+
+Goal: app launches, displays a court, loads an exercise from YAML.
+
+1. Go module + Gio setup, basic window with tab layout
+2. Data models in `internal/model/` (Exercise, Sequence, Player, Action, Accessory, Session)
+3. YAML store in `internal/store/` (read/write exercises and sessions from `~/.courtdraw/`)
+4. Court rendering in `internal/court/` (FIBA + NBA, half + full, all official markings)
+5. Element rendering on court canvas (players, actions, accessories)
+
+Deliverable: app opens, reads a YAML exercise, renders it on the court.
+
+## Phase 2 — Exercise Editor
+
+Goal: the coach can create and edit exercises visually.
+
+6. Tool palette (left panel) — player, action, accessory tools
+7. Drag & drop on court canvas — create and move elements
+8. Properties panel (right panel) — edit selected element
+9. Sequence timeline — add/switch/reorder sequences
+10. Instructions panel (bottom) — edit per-sequence instructions
+11. Exercise metadata editing (name, court type, duration, intensity, category, tags)
+12. File operations: new, open, save, duplicate
+
+Deliverable: full exercise editor with Inkscape-style layout.
+
+## Phase 3 — Animation
+
+Goal: exercises animate in the editor.
+
+13. Interpolation engine in `internal/anim/` — compute positions between sequences
+14. Playback controls — play/pause, prev/next, speed
+15. Arrow/action progressive drawing during animation
+16. Player fade-in/fade-out for appearing/disappearing elements
+
+Deliverable: press Play, watch the exercise animate on the court.
+
+## Phase 4 — Session Composer
+
+Goal: build sessions from exercises, generate PDF.
+
+17. Session composer tab — exercise library panel + session list panel
+18. Exercise library browser with search/filter by tags/category
+19. Add exercises to session (click or drag), reorder via drag & drop
+20. Variant support (sub-items under parent exercises)
+21. Session metadata editing (title, subtitle, age group, notes, philosophy)
+22. Session file operations: new, open, save
+
+Deliverable: compose a session by picking and ordering exercises.
+
+## Phase 5 — PDF Generation
+
+Goal: export session as printable PDF.
+
+23. PDF renderer in `internal/pdf/` — court diagrams, text layout
+24. Multi-page layout with header, two columns, summary table
+25. Instructions concatenation across sequences
+26. PDF save/share via native OS dialog
+
+Deliverable: generate a session sheet PDF.
+
+## Phase 6 — Community Library & Polish
+
+Goal: import from community, cross-platform builds.
+
+27. Library browser — read exercises from `library/` directory
+28. Import flow: copy from library to `~/.courtdraw/exercises/`
+29. Responsive layout (mobile/tablet/desktop)
+30. Cross-platform packaging (APK, IPA, Linux/Windows binaries)
+31. Ship initial community exercise collection in `library/`
+
+Deliverable: production-ready app with community exercises.
