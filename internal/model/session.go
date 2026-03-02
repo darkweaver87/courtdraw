@@ -3,6 +3,7 @@ package model
 // Session represents an ordered collection of exercises.
 type Session struct {
 	Title      string          `yaml:"title"`
+	Date       string          `yaml:"date,omitempty"`
 	Subtitle   string          `yaml:"subtitle,omitempty"`
 	AgeGroup   string          `yaml:"age_group,omitempty"`
 	CoachNotes []string        `yaml:"coach_notes,omitempty"`

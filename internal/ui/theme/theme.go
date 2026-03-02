@@ -15,7 +15,7 @@ var (
 	ColorDefenseArr = color.NRGBA{R: 0x2a, G: 0x6f, B: 0xdb, A: 0xff} // #2a6fdb
 	ColorCoach      = color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff} // #f4a261
 	ColorNeutral    = color.NRGBA{R: 0x88, G: 0x88, B: 0x88, A: 0xff} // #888888
-	ColorCourtBg    = color.NRGBA{R: 0x3a, G: 0x7d, B: 0x3a, A: 0xff} // #3a7d3a
+	ColorCourtBg    = color.NRGBA{R: 0xc8, G: 0x96, B: 0x64, A: 0xff} // #c89664 parquet hêtre
 	ColorCourtLine  = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff} // #ffffff
 	ColorMaxInt     = color.NRGBA{R: 0xc1, G: 0x12, B: 0x1f, A: 0xff} // #c1121f
 	ColorSpecial    = color.NRGBA{R: 0xff, G: 0xb7, B: 0x03, A: 0xff} // #ffb703

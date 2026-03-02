@@ -37,7 +37,7 @@ func DrawFIBACourt(ops *op.Ops, courtType model.CourtType, vp *Viewport, geom *C
 // drawCourt draws the court for any standard using the geometry.
 func drawCourt(ops *op.Ops, courtType model.CourtType, vp *Viewport, geom *CourtGeometry) {
 	lineCol := color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
-	bgCol := color.NRGBA{R: 0x3a, G: 0x7d, B: 0x3a, A: 0xff}
+	bgCol := color.NRGBA{R: 0xc8, G: 0x96, B: 0x64, A: 0xff}
 
 	lineW := float32(vp.MeterToPixel(geom.LineWidth, geom, courtType))
 	if lineW < 1.5 {

@@ -18,6 +18,60 @@ type Exercise struct {
 	Category      Category      `yaml:"category,omitempty"`
 	Tags          []string      `yaml:"tags,omitempty"`
 	Sequences     []Sequence    `yaml:"sequences"`
+	I18n          map[string]ExerciseI18n `yaml:"i18n,omitempty"`
+}
+
+// ExerciseI18n holds translated text fields for an exercise.
+type ExerciseI18n struct {
+	Name        string         `yaml:"name,omitempty"`
+	Description string         `yaml:"description,omitempty"`
+	Tags        []string       `yaml:"tags,omitempty"`
+	Sequences   []SequenceI18n `yaml:"sequences,omitempty"`
+}
+
+// SequenceI18n holds translated text fields for a sequence.
+type SequenceI18n struct {
+	Label        string   `yaml:"label,omitempty"`
+	Instructions []string `yaml:"instructions,omitempty"`
+}
+
+// Localized returns a shallow copy of the exercise with translated text fields
+// applied for the given language. Falls back to the original if no translation
+// exists. Non-text fields (players, actions, positions) are shared, not copied.
+func (e *Exercise) Localized(lang string) *Exercise {
+	if lang == "" || lang == "en" || e.I18n == nil {
+		return e
+	}
+	tr, ok := e.I18n[lang]
+	if !ok {
+		return e
+	}
+	cp := *e
+	if tr.Name != "" {
+		cp.Name = tr.Name
+	}
+	if tr.Description != "" {
+		cp.Description = tr.Description
+	}
+	if len(tr.Tags) > 0 {
+		cp.Tags = tr.Tags
+	}
+	if len(tr.Sequences) > 0 {
+		cp.Sequences = make([]Sequence, len(e.Sequences))
+		copy(cp.Sequences, e.Sequences)
+		for i := range cp.Sequences {
+			if i >= len(tr.Sequences) {
+				break
+			}
+			if tr.Sequences[i].Label != "" {
+				cp.Sequences[i].Label = tr.Sequences[i].Label
+			}
+			if len(tr.Sequences[i].Instructions) > 0 {
+				cp.Sequences[i].Instructions = tr.Sequences[i].Instructions
+			}
+		}
+	}
+	return &cp
 }
 
 // Sequence is one chronological step of an exercise.
@@ -27,6 +81,7 @@ type Sequence struct {
 	Players      []Player    `yaml:"players,omitempty"`
 	Accessories  []Accessory `yaml:"accessories,omitempty"`
 	Actions      []Action    `yaml:"actions,omitempty"`
+	BallCarrier  string      `yaml:"ball_carrier,omitempty"`
 }
 
 // Player is a person on the court.

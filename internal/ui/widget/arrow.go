@@ -31,6 +31,64 @@ var (
 	colorDefault  = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff} // white
 )
 
+// DrawActionWithProgress draws an action with progressive stroke (0.0–1.0).
+func DrawActionWithProgress(ops *op.Ops, vp *court.Viewport, action *model.Action, players []model.Player, progress float64) {
+	if progress <= 0 {
+		return
+	}
+	if progress >= 1.0 {
+		DrawAction(ops, vp, action, players)
+		return
+	}
+	from := resolveRef(vp, action.From, players)
+	to := resolveRef(vp, action.To, players)
+	// Compute partial endpoint.
+	partialTo := f32.Point{
+		X: from.X + (to.X-from.X)*float32(progress),
+		Y: from.Y + (to.Y-from.Y)*float32(progress),
+	}
+
+	col := actionColor(action.Type)
+	switch action.Type {
+	case model.ActionPass, model.ActionContest:
+		court.DrawDashedLine(ops, from, partialTo, arrowLineWidth, dashLen, gapLen, col)
+		if progress > 0.3 {
+			court.DrawArrowhead(ops, from, partialTo, arrowHeadSize, col)
+		}
+	case model.ActionDribble:
+		court.DrawZigzag(ops, from, partialTo, arrowLineWidth, zigzagAmplitude, zigzagSegments, col)
+		if progress > 0.3 {
+			court.DrawArrowhead(ops, from, partialTo, arrowHeadSize, col)
+		}
+	case model.ActionScreen:
+		court.DrawLine(ops, from, partialTo, arrowLineWidth*3, col)
+	default:
+		court.DrawLine(ops, from, partialTo, arrowLineWidth, col)
+		if progress > 0.3 {
+			court.DrawArrowhead(ops, from, partialTo, arrowHeadSize, col)
+		}
+	}
+}
+
+// actionColor returns the color for a given action type.
+func actionColor(at model.ActionType) color.NRGBA {
+	switch at {
+	case model.ActionPass:
+		return colorPass
+	case model.ActionDribble:
+		return colorDribble
+	case model.ActionSprint, model.ActionCut, model.ActionShotLayup,
+		model.ActionShotPushup, model.ActionShotJump, model.ActionReverse:
+		return colorSprint
+	case model.ActionCloseOut, model.ActionContest:
+		return colorCloseOut
+	case model.ActionScreen:
+		return colorScreen
+	default:
+		return colorDefault
+	}
+}
+
 // DrawAction draws an action (arrow/movement) between elements.
 func DrawAction(ops *op.Ops, vp *court.Viewport, action *model.Action, players []model.Player) {
 	from := resolveRef(vp, action.From, players)

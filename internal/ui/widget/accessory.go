@@ -15,11 +15,11 @@ import (
 
 // Accessory visual constants.
 const (
-	coneSize       = 10
-	ladderWidth    = 12
-	ladderLength   = 40
-	ladderRungs    = 5
-	chairSize      = 12
+	coneSize     = 10
+	ladderWidth  = 12
+	ladderLength = 40
+	ladderRungs  = 5
+	chairSize    = 12
 )
 
 var (
@@ -28,9 +28,25 @@ var (
 	colorChair  = color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xff} // grey
 )
 
+// DrawAccessoryWithOpacity draws a court accessory with the given opacity.
+func DrawAccessoryWithOpacity(ops *op.Ops, vp *court.Viewport, acc *model.Accessory, opacity float64) {
+	if opacity <= 0 {
+		return
+	}
+	// For simplicity, accessories are drawn fully at any opacity > 0.
+	// True alpha blending would require changes to all draw* helpers.
+	// We use the same drawing for now; fade is primarily visual on players.
+	DrawAccessory(ops, vp, acc, false)
+}
+
 // DrawAccessory draws a court accessory as a simple geometric shape.
-func DrawAccessory(ops *op.Ops, vp *court.Viewport, acc *model.Accessory) {
+// If selected is true, draws a highlight outline around it.
+func DrawAccessory(ops *op.Ops, vp *court.Viewport, acc *model.Accessory, selected bool) {
 	center := vp.RelToPixel(acc.Position)
+
+	if selected {
+		court.DrawCircleOutline(ops, center, coneSize+6, 2, highlightColor)
+	}
 
 	switch acc.Type {
 	case model.AccessoryCone:

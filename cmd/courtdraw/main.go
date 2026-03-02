@@ -10,6 +10,7 @@ import (
 	"gioui.org/op"
 	"gioui.org/unit"
 
+	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/store"
 	"github.com/darkweaver87/courtdraw/internal/ui"
 	"github.com/darkweaver87/courtdraw/internal/ui/theme"
@@ -32,17 +33,44 @@ func run() {
 		log.Fatalf("init store: %v", err)
 	}
 
+	// init i18n: load locales, then apply saved or system language
+	i18n.Load()
+	settings, err := st.LoadSettings()
+	if err != nil {
+		log.Printf("load settings: %v", err)
+	}
+	if settings.Language != "" {
+		i18n.SetLang(i18n.Lang(settings.Language))
+	} else {
+		// No saved preference — detect from system locale
+		i18n.SetLang(i18n.DetectSystemLang())
+	}
+
+	// detect library directory (alongside the executable or in repo)
+	exePath, _ := os.Executable()
+	libraryDir := ""
+	candidates := []string{
+		filepath.Join(filepath.Dir(exePath), "library"),
+		filepath.Join(".", "library"),
+	}
+	for _, c := range candidates {
+		if info, err := os.Stat(c); err == nil && info.IsDir() {
+			libraryDir = c
+			break
+		}
+	}
+
 	// init theme and app
 	th := theme.NewTheme()
-	application := ui.NewApp(th, st)
+	application := ui.NewApp(th, st, libraryDir)
 
-	// load first exercise if available
-	if err := application.LoadFirstExercise(); err != nil {
-		log.Printf("load exercise: %v", err)
-	}
+	// start with a blank exercise and blank session
+	application.NewExercise()
+	application.NewSession()
 
 	// create window
 	w := new(app.Window)
+	application.SetWindow(w)
 	w.Option(
 		app.Title("CourtDraw"),
 		app.Size(unit.Dp(1200), unit.Dp(800)),

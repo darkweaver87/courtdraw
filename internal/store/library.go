@@ -21,6 +21,11 @@ func NewLibrary(dir string) *Library {
 	return &Library{dir: dir}
 }
 
+// Dir returns the library's root directory.
+func (l *Library) Dir() string {
+	return l.dir
+}
+
 // ListExercises returns the names of available community exercises.
 func (l *Library) ListExercises() ([]string, error) {
 	entries, err := os.ReadDir(l.dir)

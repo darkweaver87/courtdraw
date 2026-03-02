@@ -33,8 +33,8 @@ func NewYAMLStore(baseDir string) (*YAMLStore, error) {
 
 var kebabRe = regexp.MustCompile(`[^a-z0-9]+`)
 
-// toKebab converts a name to a kebab-case filename (without extension).
-func toKebab(name string) string {
+// ToKebab converts a name to a kebab-case filename (without extension).
+func ToKebab(name string) string {
 	s := strings.ToLower(strings.TrimSpace(name))
 	s = kebabRe.ReplaceAllString(s, "-")
 	return strings.Trim(s, "-")
@@ -58,7 +58,7 @@ func (s *YAMLStore) LoadExercise(name string) (*model.Exercise, error) {
 }
 
 func (s *YAMLStore) SaveExercise(exercise *model.Exercise) error {
-	name := toKebab(exercise.Name)
+	name := ToKebab(exercise.Name)
 	if name == "" {
 		return fmt.Errorf("exercise name is empty")
 	}
@@ -88,7 +88,7 @@ func (s *YAMLStore) LoadSession(name string) (*model.Session, error) {
 }
 
 func (s *YAMLStore) SaveSession(session *model.Session) error {
-	name := toKebab(session.Title)
+	name := ToKebab(session.Title)
 	if name == "" {
 		return fmt.Errorf("session title is empty")
 	}

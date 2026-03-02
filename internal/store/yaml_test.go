@@ -211,9 +211,9 @@ func TestToKebab(t *testing.T) {
 		{"a--b", "a-b"},
 	}
 	for _, tt := range tests {
-		got := toKebab(tt.input)
+		got := ToKebab(tt.input)
 		if got != tt.want {
-			t.Errorf("toKebab(%q) = %q, want %q", tt.input, got, tt.want)
+			t.Errorf("ToKebab(%q) = %q, want %q", tt.input, got, tt.want)
 		}
 	}
 }

@@ -23,6 +23,93 @@ const (
 	queueSpacing       = 20
 )
 
+var highlightColor = color.NRGBA{R: 0xff, G: 0xff, B: 0x00, A: 0xcc} // yellow
+
+const (
+	ballRadius      = 6
+	ballOutlineWidth = 1.5
+	ballOffsetX     = 8
+	ballOffsetY     = 8
+)
+
+var ballColor = color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff} // #f4a261 orange
+
+// DrawBall draws a small orange basketball circle at the given pixel position.
+func DrawBall(ops *op.Ops, center f32.Point) {
+	ballCenter := f32.Point{X: center.X + ballOffsetX, Y: center.Y + ballOffsetY}
+	court.DrawCircleFill(ops, ballCenter, ballRadius, ballColor)
+	court.DrawCircleOutline(ops, ballCenter, ballRadius, ballOutlineWidth,
+		color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0xff})
+}
+
+// DrawBallWithOpacity draws a ball with the given opacity.
+func DrawBallWithOpacity(ops *op.Ops, center f32.Point, opacity float64) {
+	if opacity <= 0 {
+		return
+	}
+	alpha := uint8(opacity * 255)
+	ballCenter := f32.Point{X: center.X + ballOffsetX, Y: center.Y + ballOffsetY}
+	col := ballColor
+	col.A = alpha
+	court.DrawCircleFill(ops, ballCenter, ballRadius, col)
+	court.DrawCircleOutline(ops, ballCenter, ballRadius, ballOutlineWidth,
+		color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: alpha})
+}
+
+// DrawPlayerWithOpacity draws a player with a given opacity (0.0–1.0).
+func DrawPlayerWithOpacity(gtx layout.Context, th *material.Theme, vp *court.Viewport, player *model.Player, opacity float64, hasBall bool) {
+	if opacity <= 0 {
+		return
+	}
+	alpha := uint8(opacity * 255)
+
+	center := vp.RelToPixel(player.Position)
+	col := model.RoleColor(player.Role)
+	col.A = alpha
+
+	// filled circle
+	court.DrawCircleFill(gtx.Ops, center, playerRadius, col)
+
+	// white outline
+	outlineCol := color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: alpha}
+	court.DrawCircleOutline(gtx.Ops, center, playerRadius, playerOutlineWidth, outlineCol)
+
+	// label text
+	label := player.Label
+	if label == "" {
+		label = model.RoleLabel(player.Role)
+	}
+
+	lbl := material.Label(th, unit.Sp(11), label)
+	lbl.Color = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: alpha}
+	lbl.Alignment = text.Middle
+
+	macro := op.Record(gtx.Ops)
+	labelGtx := gtx
+	labelGtx.Constraints = layout.Constraints{
+		Max: image.Pt(playerRadius*3, playerRadius*2),
+	}
+	dims := lbl.Layout(labelGtx)
+	call := macro.Stop()
+
+	offsetX := int(center.X) - dims.Size.X/2
+	offsetY := int(center.Y) - dims.Size.Y/2
+
+	clipStack := clip.Rect{
+		Min: image.Pt(offsetX, offsetY),
+		Max: image.Pt(offsetX+dims.Size.X, offsetY+dims.Size.Y),
+	}.Push(gtx.Ops)
+	transStack := op.Offset(image.Pt(offsetX, offsetY)).Push(gtx.Ops)
+	call.Add(gtx.Ops)
+	transStack.Pop()
+	clipStack.Pop()
+
+	// Ball indicator.
+	if hasBall {
+		DrawBallWithOpacity(gtx.Ops, center, opacity)
+	}
+}
+
 // DrawPlayer draws a player circle with role color and label.
 func DrawPlayer(ops *op.Ops, vp *court.Viewport, player *model.Player) {
 	center := vp.RelToPixel(player.Position)
@@ -42,9 +129,16 @@ func DrawPlayer(ops *op.Ops, vp *court.Viewport, player *model.Player) {
 }
 
 // DrawPlayerWithLabel draws a player with text label using Gio layout.
-func DrawPlayerWithLabel(gtx layout.Context, th *material.Theme, vp *court.Viewport, player *model.Player) {
+// If selected is true, draws a highlight ring around the player.
+// If hasBall is true, draws a ball indicator near the player.
+func DrawPlayerWithLabel(gtx layout.Context, th *material.Theme, vp *court.Viewport, player *model.Player, selected bool, hasBall bool) {
 	center := vp.RelToPixel(player.Position)
 	col := model.RoleColor(player.Role)
+
+	// Selection highlight: larger ring.
+	if selected {
+		court.DrawCircleOutline(gtx.Ops, center, playerRadius+4, 2.5, highlightColor)
+	}
 
 	// filled circle
 	court.DrawCircleFill(gtx.Ops, center, playerRadius, col)
@@ -77,13 +171,19 @@ func DrawPlayerWithLabel(gtx layout.Context, th *material.Theme, vp *court.Viewp
 	offsetX := int(center.X) - dims.Size.X/2
 	offsetY := int(center.Y) - dims.Size.Y/2
 
-	stack := clip.Rect{
+	clipStack := clip.Rect{
 		Min: image.Pt(offsetX, offsetY),
 		Max: image.Pt(offsetX+dims.Size.X, offsetY+dims.Size.Y),
 	}.Push(gtx.Ops)
-	op.Offset(image.Pt(offsetX, offsetY)).Add(gtx.Ops)
+	transStack := op.Offset(image.Pt(offsetX, offsetY)).Push(gtx.Ops)
 	call.Add(gtx.Ops)
-	stack.Pop()
+	transStack.Pop()
+	clipStack.Pop()
+
+	// Ball indicator.
+	if hasBall {
+		DrawBall(gtx.Ops, center)
+	}
 
 	// queue: smaller grey circles behind
 	if player.Type == "queue" && player.Count > 1 {
