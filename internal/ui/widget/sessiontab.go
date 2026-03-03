@@ -40,6 +40,7 @@ type ManagedExercise struct {
 	DisplayName string
 	Category    string
 	AgeGroup    string
+	CourtType   string
 	Duration    string
 	Tags        []string
 }
@@ -93,6 +94,11 @@ type SessionTab struct {
 	ageGroupFilter widget.Clickable
 	filterAgeGroup model.AgeGroup
 	agePopup       PopupSelector
+
+	// Court type filter.
+	courtTypeFilter widget.Clickable
+	filterCourtType model.CourtType
+	courtTypePopup  PopupSelector
 
 	// Tag filter (multi-select, intersection).
 	filterTags      []string
@@ -241,6 +247,9 @@ func (st *SessionTab) HandleActions(gtx layout.Context) SessionTabEvent {
 				if ex == nil {
 					ex = filtered[i].RemoteEx
 				}
+				if ex != nil {
+					ex = ex.Localized(string(i18n.CurrentLang()))
+				}
 				st.previewCourt.SetExercise(ex)
 			}
 		}
@@ -282,6 +291,9 @@ func (st *SessionTab) Layout(gtx layout.Context, th *material.Theme) layout.Dime
 	}
 	if key, ok := st.agePopup.Update(gtx); ok {
 		st.filterAgeGroup = model.AgeGroup(key)
+	}
+	if key, ok := st.courtTypePopup.Update(gtx); ok {
+		st.filterCourtType = model.CourtType(key)
 	}
 	if key, ok := st.tagPopup.Update(gtx); ok && key != "" {
 		st.filterTags = append(st.filterTags, key)
@@ -444,6 +456,29 @@ func (st *SessionTab) layoutLibrary(gtx layout.Context, th *material.Theme) layo
 			)
 			if st.agePopup.Visible {
 				st.agePopup.LayoutBelow(gtx, th, dims)
+			}
+			return dims
+		}),
+		// Court type filter.
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if st.courtTypeFilter.Clicked(gtx) {
+				st.courtTypePopup.Show(courtTypeFilterPopupOptions())
+			}
+			label := i18n.T("session.category_all")
+			if st.filterCourtType != "" {
+				label = i18n.T("court_type." + string(st.filterCourtType))
+			}
+			dims := layout.Inset{Left: unit.Dp(8), Bottom: unit.Dp(4)}.Layout(gtx,
+				func(gtx layout.Context) layout.Dimensions {
+					return material.Clickable(gtx, &st.courtTypeFilter, func(gtx layout.Context) layout.Dimensions {
+						lbl := material.Label(th, unit.Sp(11), i18n.Tf("session.court_type_label", label))
+						lbl.Color = theme.ColorTabText
+						return lbl.Layout(gtx)
+					})
+				},
+			)
+			if st.courtTypePopup.Visible {
+				st.courtTypePopup.LayoutBelow(gtx, th, dims)
 			}
 			return dims
 		}),
@@ -1131,6 +1166,11 @@ func (st *SessionTab) filteredExercises() []ManagedExercise {
 
 		// Age group filter.
 		if st.filterAgeGroup != "" && model.AgeGroup(item.AgeGroup) != st.filterAgeGroup {
+			continue
+		}
+
+		// Court type filter.
+		if st.filterCourtType != "" && model.CourtType(item.CourtType) != st.filterCourtType {
 			continue
 		}
 

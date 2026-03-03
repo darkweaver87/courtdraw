@@ -526,6 +526,14 @@ func courtTypePopupOptions() []PopupOption {
 	}
 }
 
+func courtTypeFilterPopupOptions() []PopupOption {
+	return []PopupOption{
+		{Key: "", Label: i18n.T("props.category_none")},
+		{Key: string(model.HalfCourt), Label: i18n.T("court_type.half_court")},
+		{Key: string(model.FullCourt), Label: i18n.T("court_type.full_court")},
+	}
+}
+
 func categoryPopupOptions() []PopupOption {
 	cats := []model.Category{
 		"",

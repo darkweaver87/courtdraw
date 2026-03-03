@@ -870,6 +870,7 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 		displayName := name
 		category := ""
 		ageGroup := ""
+		courtType := ""
 		duration := ""
 		var tags []string
 		if local != nil {
@@ -881,6 +882,7 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 			displayName = loc.Name
 			category = string(local.Category)
 			ageGroup = string(local.AgeGroup)
+			courtType = string(local.CourtType)
 			duration = local.Duration
 			tags = loc.Tags
 		} else if remote != nil {
@@ -888,6 +890,7 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 			displayName = loc.Name
 			category = string(remote.Category)
 			ageGroup = string(remote.AgeGroup)
+			courtType = string(remote.CourtType)
 			duration = remote.Duration
 			tags = loc.Tags
 		}
@@ -900,6 +903,7 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 			DisplayName: displayName,
 			Category:    category,
 			AgeGroup:    ageGroup,
+			CourtType:   courtType,
 			Duration:    duration,
 			Tags:        tags,
 		})

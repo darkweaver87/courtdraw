@@ -4,11 +4,14 @@ import (
 	"image"
 	"image/color"
 
+	"fmt"
+
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
+	"gioui.org/widget"
 	"gioui.org/widget/material"
 
 	"github.com/darkweaver87/courtdraw/internal/anim"
@@ -19,9 +22,10 @@ import (
 
 // PreviewCourt displays an animated preview of an exercise.
 type PreviewCourt struct {
-	exercise *model.Exercise
-	court    CourtWidget
-	playback *anim.Playback
+	exercise   *model.Exercise
+	court      CourtWidget
+	playback   *anim.Playback
+	instrList  widget.List
 }
 
 // SetExercise sets the exercise to preview and starts playback.
@@ -98,12 +102,16 @@ func (pc *PreviewCourt) Layout(gtx layout.Context, th *material.Theme) layout.Di
 			)
 		}),
 		// Court preview (animated or static).
-		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+		layout.Flexed(0.6, func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4), Bottom: unit.Dp(4)}.Layout(gtx,
 				func(gtx layout.Context) layout.Dimensions {
 					return pc.layoutCourt(gtx, th)
 				},
 			)
+		}),
+		// Instructions for current sequence.
+		layout.Flexed(0.4, func(gtx layout.Context) layout.Dimensions {
+			return pc.layoutInstructions(gtx, th)
 		}),
 	)
 }
@@ -166,4 +174,51 @@ func constrainAspect(max image.Point, ct model.CourtType) image.Point {
 		h = w / aspect
 	}
 	return image.Pt(int(w), int(h))
+}
+
+func (pc *PreviewCourt) layoutInstructions(gtx layout.Context, th *material.Theme) layout.Dimensions {
+	if pc.exercise == nil || len(pc.exercise.Sequences) == 0 {
+		return layout.Dimensions{Size: gtx.Constraints.Max}
+	}
+
+	pc.instrList.Axis = layout.Vertical
+
+	// Build items: for each sequence, a header + numbered instruction lines.
+	type item struct {
+		text   string
+		header bool
+	}
+	var items []item
+	for i, seq := range pc.exercise.Sequences {
+		label := seq.Label
+		if label == "" {
+			label = fmt.Sprintf("Sequence %d", i+1)
+		}
+		items = append(items, item{text: label, header: true})
+		for j, instr := range seq.Instructions {
+			items = append(items, item{text: fmt.Sprintf("%d. %s", j+1, instr)})
+		}
+	}
+	if len(items) == 0 {
+		return layout.Dimensions{Size: gtx.Constraints.Max}
+	}
+
+	return layout.Inset{Left: unit.Dp(8), Right: unit.Dp(8), Top: unit.Dp(4)}.Layout(gtx,
+		func(gtx layout.Context) layout.Dimensions {
+			return material.List(th, &pc.instrList).Layout(gtx, len(items), func(gtx layout.Context, idx int) layout.Dimensions {
+				it := items[idx]
+				return layout.Inset{Bottom: unit.Dp(2)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					if it.header {
+						lbl := material.Label(th, unit.Sp(12), it.text)
+						lbl.Color = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+						lbl.Font.Weight = 700
+						return lbl.Layout(gtx)
+					}
+					lbl := material.Label(th, unit.Sp(11), it.text)
+					lbl.Color = theme.ColorTabText
+					return lbl.Layout(gtx)
+				})
+			})
+		},
+	)
 }
