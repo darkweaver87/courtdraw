@@ -1,0 +1,152 @@
+name: "Speed & Coordination Relay Race"
+description: "2 columns of players, 1 ball per column, 4 cones. Teams race in relay format with 8 different relay types: 1) medicine ball behind back + sprint, 2) medicine ball behind back + backpedal, 3) ball between legs + sprint, 4) ball between legs + backpedal, 5) right hand dribble, 6) left hand dribble, 7) dribble + touch 4 cones laterally (left hand left, right hand right), 8) V-dribble protection (look over shoulder). Each player circles the center cone before rolling ball between teammate's legs. Develops movement speed and ball handling coordination."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 5
+category: offense
+tags:
+  - speed
+  - coordination
+  - relay
+  - conditioning
+  - dribble
+
+sequences:
+  - label: "Relay Setup"
+    instructions:
+      - "2 columns of players face to face across half court"
+      - "1 ball per column, 4 cones marking the center circle"
+      - "Each player goes around the center cone"
+      - "Then rolls the ball between the next player's legs"
+      - "8 relay types performed in order"
+      - "First team to finish all 8 relays wins"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.30, 0.90]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.30, 0.85]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.70, 0.90]
+      - id: a4
+        label: "4"
+        role: attacker
+        position: [0.70, 0.85]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.40, 0.50]
+      - id: cone2
+        type: cone
+        position: [0.60, 0.50]
+      - id: cone3
+        type: cone
+        position: [0.50, 0.45]
+      - id: cone4
+        type: cone
+        position: [0.50, 0.55]
+    actions:
+      - type: sprint
+        from: a1
+        to: [0.30, 0.10]
+
+  - label: "Relay Types"
+    instructions:
+      - "Relay 1: medicine ball behind back + forward sprint"
+      - "Relay 2: medicine ball behind back + backward sprint"
+      - "Relay 3: ball between legs + forward sprint"
+      - "Relay 4: ball between legs + backward sprint"
+      - "Relay 5: right hand dribble only"
+      - "Relay 6: left hand dribble only"
+      - "Relay 7: dribble + touch 4 cones laterally (left/left, right/right)"
+      - "Relay 8: V-dribble protection (look over shoulder)"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.30, 0.90]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.70, 0.90]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.40, 0.50]
+      - id: cone2
+        type: cone
+        position: [0.60, 0.50]
+    actions: []
+
+  - label: "Movement Speed"
+    ball_carrier: a1
+    instructions:
+      - "2 columns of players, 1 ball per pair"
+      - "Coach bounces ball at center court"
+      - "Player must catch ball before 2nd bounce"
+      - "After catch: maximum 2 dribbles + layup"
+      - "2 sets of 5 reps (right and left)"
+      - "Rest: 2 min between reps, 6 min between sets"
+      - "Variant: after catch, play 1v1 against waiting defender"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.55]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.70, 0.55]
+    accessories: []
+    actions:
+      - type: sprint
+        from: a1
+        to: [0.50, 0.50]
+      - type: dribble
+        from: a1
+        to: [0.50, 0.20]
+
+i18n:
+  fr:
+    name: "Course relais : vitesse et coordination"
+    description: "2 colonnes de joueurs, 1 ballon par colonne, 4 plots. Les equipes font la course en relais avec 8 types de relais differents : 1) medecine-ball dans le dos + sprint, 2) medecine-ball dans le dos + course arriere, 3) ballon entre les jambes + sprint, 4) ballon entre les jambes + course arriere, 5) dribble main droite, 6) dribble main gauche, 7) dribble + toucher 4 plots lateralement (main gauche a gauche, main droite a droite), 8) dribble de protection en V (regarder par-dessus l'epaule). Chaque joueur fait le tour du plot central avant de faire rouler le ballon entre les jambes du suivant. Travail de la vitesse de deplacement et de la coordination avec le ballon."
+    tags:
+      - vitesse
+      - coordination
+      - relais
+      - condition-physique
+      - dribble
+    sequences:
+      - label: "Mise en place relais"
+        instructions:
+          - "2 colonnes de joueurs face a face sur le demi-terrain"
+          - "1 ballon par colonne, 4 plots marquant le cercle central"
+          - "Chaque joueur fait le tour du plot central"
+          - "Puis fait rouler le ballon entre les jambes du suivant"
+          - "8 types de relais effectues dans l'ordre"
+          - "La premiere equipe a finir les 8 relais gagne"
+      - label: "Types de relais"
+        instructions:
+          - "Relais 1 : medecine-ball dans le dos + sprint avant"
+          - "Relais 2 : medecine-ball dans le dos + sprint arriere"
+          - "Relais 3 : ballon entre les jambes + sprint avant"
+          - "Relais 4 : ballon entre les jambes + sprint arriere"
+          - "Relais 5 : dribble main droite uniquement"
+          - "Relais 6 : dribble main gauche uniquement"
+          - "Relais 7 : dribble + toucher 4 plots lateralement (gauche/gauche, droite/droite)"
+          - "Relais 8 : dribble de protection en V (regarder par-dessus l'epaule)"
+      - label: "Vitesse de deplacement"
+        instructions:
+          - "2 colonnes de joueurs, 1 ballon pour 2"
+          - "Le coach fait rebondir le ballon au centre du terrain"
+          - "Le joueur doit attraper le ballon avant le 2eme rebond"
+          - "Apres l'attrape : maximum 2 dribbles + double-pas"
+          - "2 series de 5 repetitions (droite et gauche)"
+          - "Repos : 2 min entre les repetitions, 6 min entre les series"
+          - "Variante : apres l'attrape, jouer le 1c1 contre un defenseur qui attend"

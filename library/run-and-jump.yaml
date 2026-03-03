@@ -1,0 +1,208 @@
+name: "Run and Jump Defense"
+description: "Full court man-to-man press with run-and-jump rotation. D2 sprints to jump on the dribbler while D1 and D3 rotate defensively."
+court_type: full_court
+court_standard: fiba
+duration: 15m
+intensity: 3
+category: defense
+tags:
+  - defense
+  - pressing
+  - run-and-jump
+  - rotation
+  - full-court
+  - 5v5
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "5v5 man-to-man press on the inbound"
+      - "D1 forces the ball handler toward the center of the court"
+      - "Each defender picks up their direct opponent"
+    players:
+      - id: a1
+        label: "1"
+        role: point_guard
+        position: [0.35, 0.85]
+      - id: a2
+        label: "2"
+        role: shooting_guard
+        position: [0.15, 0.70]
+      - id: a3
+        label: "3"
+        role: small_forward
+        position: [0.85, 0.70]
+      - id: a4
+        label: "4"
+        role: power_forward
+        position: [0.15, 0.45]
+      - id: a5
+        label: "5"
+        role: center
+        position: [0.80, 0.40]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.40, 0.82]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.20, 0.67]
+      - id: d3
+        label: "D3"
+        role: defender
+        position: [0.80, 0.67]
+      - id: d4
+        label: "D4"
+        role: defender
+        position: [0.20, 0.42]
+      - id: d5
+        label: "D5"
+        role: defender
+        position: [0.75, 0.37]
+    accessories: []
+    actions: []
+
+  - label: "Jump"
+    ball_carrier: a1
+    instructions:
+      - "D1 orients ball handler toward the center"
+      - "D2, nearest help-side defender, sprints and jumps on the dribbler"
+      - "D2 shouts 'Here!' to signal the jump"
+    players:
+      - id: a1
+        label: "1"
+        role: point_guard
+        position: [0.40, 0.70]
+      - id: a2
+        label: "2"
+        role: shooting_guard
+        position: [0.15, 0.60]
+      - id: a3
+        label: "3"
+        role: small_forward
+        position: [0.85, 0.55]
+      - id: a4
+        label: "4"
+        role: power_forward
+        position: [0.15, 0.40]
+      - id: a5
+        label: "5"
+        role: center
+        position: [0.80, 0.35]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.45, 0.68]
+      - id: d2
+        label: "D2"
+        role: defender
+        callout: here
+        position: [0.35, 0.65]
+      - id: d3
+        label: "D3"
+        role: defender
+        position: [0.75, 0.52]
+      - id: d4
+        label: "D4"
+        role: defender
+        position: [0.20, 0.38]
+      - id: d5
+        label: "D5"
+        role: defender
+        position: [0.70, 0.33]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.40, 0.70]
+      - type: sprint
+        from: d2
+        to: [0.35, 0.65]
+
+  - label: "Rotation"
+    ball_carrier: a1
+    instructions:
+      - "D2 jumps on ball handler to force a stop or bad pass"
+      - "D3 sprints to replace D2 on A2"
+      - "D1 drops to replace D3 on A3"
+      - "3-player defensive rotation"
+    players:
+      - id: a1
+        label: "1"
+        role: point_guard
+        position: [0.40, 0.65]
+      - id: a2
+        label: "2"
+        role: shooting_guard
+        position: [0.15, 0.55]
+      - id: a3
+        label: "3"
+        role: small_forward
+        position: [0.85, 0.50]
+      - id: a4
+        label: "4"
+        role: power_forward
+        position: [0.15, 0.35]
+      - id: a5
+        label: "5"
+        role: center
+        position: [0.80, 0.30]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.65, 0.50]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.35, 0.63]
+      - id: d3
+        label: "D3"
+        role: defender
+        position: [0.25, 0.53]
+      - id: d4
+        label: "D4"
+        role: defender
+        position: [0.20, 0.33]
+      - id: d5
+        label: "D5"
+        role: defender
+        position: [0.70, 0.28]
+    accessories: []
+    actions:
+      - type: sprint
+        from: d3
+        to: [0.25, 0.53]
+      - type: sprint
+        from: d1
+        to: [0.65, 0.50]
+
+i18n:
+  fr:
+    name: "Defense Run and Jump"
+    description: "Pressing tout terrain homme a homme avec rotation run-and-jump. D2 sprinte pour sauter sur le dribbleur tandis que D1 et D3 effectuent la rotation defensive."
+    tags:
+      - defense
+      - pressing
+      - run-and-jump
+      - rotation
+      - tout-terrain
+      - 5c5
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "Pressing 5c5 homme a homme sur la remise en jeu"
+          - "D1 oriente le porteur de balle vers le centre du terrain"
+          - "Chaque defenseur prend en charge son adversaire direct"
+      - label: "Saut"
+        instructions:
+          - "D1 oriente le porteur vers le centre"
+          - "D2, partenaire en aide le plus proche, court et saute sur le dribbleur"
+          - "D2 crie 'Ici !' pour signaler le saut"
+      - label: "Rotation"
+        instructions:
+          - "D2 saute sur le porteur pour forcer un arret ou une mauvaise passe"
+          - "D3 sprinte pour remplacer D2 sur A2"
+          - "D1 descend pour remplacer D3 sur A3"
+          - "Rotation defensive a 3 joueurs"

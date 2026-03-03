@@ -1,0 +1,136 @@
+name: "Fast Break Dribble"
+description: "Full court drill. Rebounder outlets to the wing who attacks in transition. The passer chases to defend."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: transition
+tags:
+  - dribble
+  - transition
+  - fast-break
+  - layup
+  - 1v1
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "Player A with ball at the free throw line, facing the backboard"
+      - "1 column of players on each wing at the free throw line extension"
+      - "A shoots off the backboard to simulate a rebound"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.80]
+      - id: w1
+        label: "W"
+        role: attacker
+        position: [0.15, 0.78]
+      - id: qw
+        label: "W"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.10, 0.80]
+    accessories: []
+    actions: []
+
+  - label: "Outlet"
+    ball_carrier: w1
+    instructions:
+      - "A shoots off the glass, grabs the rebound"
+      - "A makes an outlet pass to wing player W"
+      - "W receives and immediately attacks in dribble"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.45, 0.82]
+      - id: w1
+        label: "W"
+        role: attacker
+        position: [0.15, 0.70]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: w1
+
+  - label: "Attack"
+    ball_carrier: w1
+    instructions:
+      - "W dribbles full speed toward opposite basket"
+      - "A (who made the outlet) becomes the chasing defender"
+      - "W finishes with a layup as fast as possible"
+    players:
+      - id: a1
+        label: "A"
+        role: defender
+        position: [0.35, 0.35]
+      - id: w1
+        label: "W"
+        role: attacker
+        position: [0.20, 0.15]
+    accessories: []
+    actions:
+      - type: dribble
+        from: w1
+        to: [0.20, 0.15]
+      - type: sprint
+        from: a1
+        to: [0.35, 0.35]
+
+  - label: "Finish"
+    ball_carrier: w1
+    instructions:
+      - "W finishes at the rim with a layup"
+      - "After the shot, W goes to defend the other wing"
+      - "Continuous drill with both sides"
+    players:
+      - id: a1
+        label: "A"
+        role: defender
+        position: [0.40, 0.12]
+      - id: w1
+        label: "W"
+        role: attacker
+        position: [0.45, 0.08]
+    accessories: []
+    actions:
+      - type: shot_layup
+        from: w1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Dribble de contre-attaque"
+    description: "Exercice tout terrain. Le rebondeur fait une passe de degagement vers l'ailier qui attaque en transition. Le passeur poursuit pour defendre."
+    tags:
+      - dribble
+      - transition
+      - contre-attaque
+      - tir-en-course
+      - 1c1
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "Joueur A avec ballon au lancer-franc, face a la planche"
+          - "1 colonne de joueurs sur chaque aile au niveau des lancers-francs"
+          - "A tire sur la planche pour simuler un rebond"
+      - label: "Degagement"
+        instructions:
+          - "A tire sur la planche, prend le rebond"
+          - "A fait une passe de degagement vers l'ailier W"
+          - "W recoit et attaque immediatement en dribble"
+      - label: "Attaque"
+        instructions:
+          - "W dribble a pleine vitesse vers le panier oppose"
+          - "A (qui a fait le degagement) devient le defenseur poursuivant"
+          - "W finit avec un tir en course le plus vite possible"
+      - label: "Finition"
+        instructions:
+          - "W finit au cercle avec un tir en course"
+          - "Apres le tir, W va defendre l'autre ailier"
+          - "Exercice en continu des deux cotes"

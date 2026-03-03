@@ -1,0 +1,103 @@
+name: "Anticipation: Catch-and-Shoot & Interception"
+description: "Two anticipation drills. First: catch-and-shoot at 45 degrees — column of shooters, A goes under the circle back to baseline then sprints to the wing at 45 degrees to receive and shoot. Key: open hands to passer, inside foot as pivot. Second: interception anticipation — 2 passers exchange passes, 1 defender runs a set path and must intercept before the 5th pass, then chains with a shot. Develops anticipation timing in both offense and defense."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: offense
+tags:
+  - anticipation
+  - catch-and-shoot
+  - interception
+  - timing
+  - shooting
+
+sequences:
+  - label: "Catch-and-Shoot 45"
+    ball_carrier: b1
+    instructions:
+      - "Column of players with balls (except first)"
+      - "A goes under the circle, back to baseline"
+      - "A sprints to the wing at 45 degrees (free throw line extended)"
+      - "B passes to A who shoots immediately"
+      - "A takes own rebound, rejoins column"
+      - "Key: A opens hands to passer, inside foot near cone as pivot"
+      - "5 reps per player, then switch sides"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.35]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.50, 0.55]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.30, 0.30]
+    actions:
+      - type: pass
+        from: b1
+        to: a1
+      - type: shot_jumpshot
+        from: a1
+        to: [0.50, 0.05]
+
+  - label: "Interception Anticipation"
+    instructions:
+      - "2 passers (P1, P2) at the wings with 1 ball"
+      - "1 defender (D) starts below the free throw line"
+      - "P1 and P2 exchange passes"
+      - "D runs a set path (cannot change rhythm)"
+      - "D must intercept the ball before the 5th pass"
+      - "After interception, D chains with a layup or jump shot"
+      - "5 reps per defender, then rotate"
+    players:
+      - id: p1
+        label: "P1"
+        role: attacker
+        position: [0.20, 0.35]
+      - id: p2
+        label: "P2"
+        role: attacker
+        position: [0.80, 0.35]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.50, 0.25]
+    accessories: []
+    actions:
+      - type: pass
+        from: p1
+        to: p2
+
+i18n:
+  fr:
+    name: "Anticipation : tir en reception et interception"
+    description: "Deux exercices d'anticipation. Premier : tir en reception a 45 degres — colonne de tireurs, A va sous le cercle dos a la ligne de fond puis sprinte vers l'aile a 45 degres pour recevoir et tirer. Cle : mains ouvertes vers le passeur, pied interieur comme pivot. Deuxieme : anticipation d'interception — 2 passeurs echangent des passes, 1 defenseur court un parcours impose et doit intercepter avant la 5eme passe, puis enchaine avec un tir. Travail du timing d'anticipation en attaque et en defense."
+    tags:
+      - anticipation
+      - tir-en-reception
+      - interception
+      - timing
+      - tir
+    sequences:
+      - label: "Tir en reception a 45"
+        instructions:
+          - "Colonne de joueurs avec ballons (sauf le premier)"
+          - "A va sous le cercle, dos a la ligne de fond"
+          - "A sprinte vers l'aile a 45 degres (prolongation des lancers-francs)"
+          - "B passe a A qui tire immediatement"
+          - "A prend son propre rebond, rejoint la colonne"
+          - "Cle : A ouvre les mains vers le passeur, pied interieur pres du plot comme pivot"
+          - "5 repetitions par joueur, puis changer de cote"
+      - label: "Anticipation d'interception"
+        instructions:
+          - "2 passeurs (P1, P2) aux ailes avec 1 ballon"
+          - "1 defenseur (D) demarre sous la ligne des lancers-francs"
+          - "P1 et P2 echangent des passes"
+          - "D court un parcours impose (ne peut pas changer de rythme)"
+          - "D doit intercepter le ballon avant la 5eme passe"
+          - "Apres l'interception, D enchaine avec un double-pas ou un tir en suspension"
+          - "5 repetitions par defenseur, puis rotation"

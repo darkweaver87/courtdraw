@@ -1,0 +1,146 @@
+name: "Pass & Follow 4 Corners"
+description: "4 groups at half-court corners with 1 ball. A passes to B and joins B's column, B passes to C and joins C's column, etc. Continuous passing chain with movement."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 2
+category: offense
+tags:
+  - passing
+  - movement
+  - rotation
+  - 4-groups
+  - fundamentals
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "4 groups at the 4 corners of the half-court"
+      - "1 ball starting with group A (bottom-left)"
+      - "After passing, run to the group you passed to"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.15, 0.90]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.85, 0.90]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.85, 0.40]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.15, 0.40]
+      - id: qa
+        label: "A"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.10, 0.93]
+      - id: qb
+        label: "B"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.90, 0.93]
+      - id: qc
+        label: "C"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.90, 0.37]
+      - id: qd
+        label: "D"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.10, 0.37]
+    accessories: []
+    actions: []
+
+  - label: "Pass & Follow"
+    ball_carrier: b1
+    instructions:
+      - "A passes to B and runs to join B's column"
+      - "B passes to C and runs to join C's column"
+      - "C passes to D, D passes to next A, etc."
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.85, 0.90]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.85, 0.65]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.85, 0.40]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.15, 0.40]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+      - type: sprint
+        from: a1
+        to: [0.85, 0.90]
+
+  - label: "Variant"
+    instructions:
+      - "Variant: pass-return. A passes to B, B returns to A, A passes again, then joins B's column"
+      - "Vary pass types: chest, bounce, one-hand, overhead"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.15, 0.90]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.85, 0.90]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.85, 0.40]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.15, 0.40]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "Passe et suit aux 4 coins"
+    description: "4 groupes aux coins du demi-terrain avec 1 ballon. A passe a B et se replace dans la colonne de B, B passe a C et se replace dans la colonne de C, etc. Enchainement de passes en mouvement continu."
+    tags:
+      - passe
+      - mouvement
+      - rotation
+      - 4-groupes
+      - fondamentaux
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "4 groupes aux 4 coins du demi-terrain"
+          - "1 ballon en partant du groupe A (bas-gauche)"
+          - "Apres la passe, courir vers le groupe a qui on a passe"
+      - label: "Passe et suit"
+        instructions:
+          - "A passe a B et court rejoindre la colonne de B"
+          - "B passe a C et court rejoindre la colonne de C"
+          - "C passe a D, D passe au suivant de A, etc."
+      - label: "Variante"
+        instructions:
+          - "Variante : passe-retour. A passe a B, B renvoie a A, A repasse puis rejoint la colonne de B"
+          - "Varier les types de passes : directes, a terre, a une main, au-dessus de la tete"

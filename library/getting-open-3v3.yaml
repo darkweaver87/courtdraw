@@ -1,0 +1,143 @@
+name: "3v3 Give-and-Go Scoring"
+description: "3v3 half-court game using individual getting-open techniques. Every basket scored off a give-and-go (pass-and-cut) counts 3 points. Other baskets scored normally. Interceptions: 1 pt without control, 2 pts with control. 5 possessions per team."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: offense
+tags:
+  - getting-open
+  - give-and-go
+  - 3v3
+  - game-situation
+  - fundamentals
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "3v3 on half-court"
+      - "Normal game rules"
+      - "Basket off give-and-go = 3 points"
+      - "Other baskets scored normally (2 pts)"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.80]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.20, 0.55]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.55]
+      - id: d1
+        label: "X1"
+        role: defender
+        position: [0.50, 0.72]
+      - id: d2
+        label: "X2"
+        role: defender
+        position: [0.25, 0.50]
+      - id: d3
+        label: "X3"
+        role: defender
+        position: [0.75, 0.50]
+    accessories: []
+    actions: []
+
+  - label: "Give-and-Go"
+    ball_carrier: a2
+    instructions:
+      - "1 passes to 2 and cuts hard to the basket"
+      - "2 returns the ball to 1 who scores"
+      - "This give-and-go basket counts 3 points"
+      - "Interception without control: 1 pt; with control: 2 pts"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.35, 0.40]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.20, 0.55]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.55]
+      - id: d1
+        label: "X1"
+        role: defender
+        position: [0.40, 0.45]
+      - id: d2
+        label: "X2"
+        role: defender
+        position: [0.25, 0.50]
+      - id: d3
+        label: "X3"
+        role: defender
+        position: [0.75, 0.50]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: a2
+      - type: cut
+        from: a1
+        to: [0.35, 0.40]
+      - type: pass
+        from: a2
+        to: a1
+
+  - label: "Variant"
+    instructions:
+      - "5 possessions per team, most points wins"
+      - "Variant: backdoor cut baskets count 3 points instead"
+      - "Variant: no dribble allowed"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.80]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.20, 0.55]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.55]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "3c3 scoring passe et va"
+    description: "Jeu 3c3 sur demi-terrain utilisant les techniques de demarquage individuel. Chaque panier marque apres un passe-et-va compte 3 points. Les autres paniers comptent normalement. Interceptions : 1 pt sans controle, 2 pts avec controle. 5 possessions par equipe."
+    tags:
+      - demarquage
+      - passe-et-va
+      - 3c3
+      - situation-de-jeu
+      - fondamentaux
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "3c3 sur demi-terrain"
+          - "Regles de jeu normales"
+          - "Panier apres passe-et-va = 3 points"
+          - "Autres paniers comptes normalement (2 pts)"
+      - label: "Passe et va"
+        instructions:
+          - "1 passe a 2 et coupe fort vers le panier"
+          - "2 renvoie le ballon a 1 qui marque"
+          - "Ce panier en passe-et-va compte 3 points"
+          - "Interception sans controle : 1 pt ; avec controle : 2 pts"
+      - label: "Variante"
+        instructions:
+          - "5 possessions par equipe, le plus de points gagne"
+          - "Variante : les paniers en backdoor comptent 3 points"
+          - "Variante : interdire le dribble"

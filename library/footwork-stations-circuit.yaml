@@ -1,0 +1,139 @@
+name: "Footwork & Speed Station Circuit"
+description: "6-station circuit for footwork quality and speed. Station 1: lateral jumps (4) + sprint. Station 2: double hops + sprint. Station 3: forward-backward jumps (4) + sprint. Station 4: lateral slides (4) + sprint. Station 5: figure-8 movements (2) facing opposite sideline + sprint. Station 6: slalom + sprint. Each station ends with an explosive sprint. Develops footwork quality, coordination, and speed."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 5
+category: offense
+tags:
+  - footwork
+  - speed
+  - coordination
+  - conditioning
+  - agility
+
+sequences:
+  - label: "Stations 1-3"
+    instructions:
+      - "Station 1: 4 lateral jumps over line + sprint to end"
+      - "Station 2: double hops forward + sprint to end"
+      - "Station 3: 4 forward-backward jumps + sprint to end"
+      - "Use cones to mark each station"
+      - "Players rotate clockwise after each station"
+      - "30 seconds per station, 15 seconds transition"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.20, 0.55]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.55]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.20, 0.50]
+      - id: cone2
+        type: cone
+        position: [0.50, 0.50]
+      - id: cone3
+        type: cone
+        position: [0.80, 0.50]
+      - id: cone4
+        type: cone
+        position: [0.20, 0.20]
+      - id: cone5
+        type: cone
+        position: [0.50, 0.20]
+      - id: cone6
+        type: cone
+        position: [0.80, 0.20]
+    actions:
+      - type: sprint
+        from: a1
+        to: [0.20, 0.20]
+      - type: sprint
+        from: a2
+        to: [0.50, 0.20]
+      - type: sprint
+        from: a3
+        to: [0.80, 0.20]
+
+  - label: "Stations 4-6"
+    instructions:
+      - "Station 4: 4 lateral slides + sprint to end"
+      - "Station 5: 2 figure-8 movements (face opposite sideline) + sprint"
+      - "Station 6: slalom through cones + sprint to end"
+      - "Variant: add ball to each station"
+      - "Variant: add bench jump, sprint to ball, dribble, 4 lateral hops, shot + rebound"
+    players:
+      - id: a1
+        label: "4"
+        role: attacker
+        position: [0.20, 0.55]
+      - id: a2
+        label: "5"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: a3
+        label: "6"
+        role: attacker
+        position: [0.80, 0.55]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.20, 0.50]
+      - id: cone2
+        type: cone
+        position: [0.50, 0.50]
+      - id: cone3
+        type: cone
+        position: [0.80, 0.50]
+      - id: cone4
+        type: cone
+        position: [0.80, 0.40]
+      - id: cone5
+        type: cone
+        position: [0.80, 0.30]
+    actions:
+      - type: sprint
+        from: a1
+        to: [0.20, 0.20]
+      - type: sprint
+        from: a2
+        to: [0.50, 0.20]
+      - type: sprint
+        from: a3
+        to: [0.80, 0.20]
+
+i18n:
+  fr:
+    name: "Circuit d'appuis et de vitesse par ateliers"
+    description: "Circuit de 6 ateliers pour la qualite des appuis et la vitesse. Atelier 1 : sauts lateraux (4) + sprint. Atelier 2 : double bonds + sprint. Atelier 3 : sauts avant-arriere (4) + sprint. Atelier 4 : deplacements lateraux (4) + sprint. Atelier 5 : deplacements en 8 (2) face a la ligne de touche opposee + sprint. Atelier 6 : slalom + sprint. Chaque atelier se termine par un sprint explosif. Travail de la qualite des appuis, coordination et vitesse."
+    tags:
+      - appuis
+      - vitesse
+      - coordination
+      - condition-physique
+      - agilite
+    sequences:
+      - label: "Ateliers 1-3"
+        instructions:
+          - "Atelier 1 : 4 sauts lateraux par-dessus la ligne + sprint"
+          - "Atelier 2 : double bonds vers l'avant + sprint"
+          - "Atelier 3 : 4 sauts avant-arriere + sprint"
+          - "Utiliser des plots pour marquer chaque atelier"
+          - "Les joueurs tournent dans le sens des aiguilles apres chaque atelier"
+          - "30 secondes par atelier, 15 secondes de transition"
+      - label: "Ateliers 4-6"
+        instructions:
+          - "Atelier 4 : 4 deplacements lateraux + sprint"
+          - "Atelier 5 : 2 deplacements en 8 (face a la touche opposee) + sprint"
+          - "Atelier 6 : slalom entre les plots + sprint"
+          - "Variante : ajouter un ballon a chaque atelier"
+          - "Variante : saut de banc, sprint vers le ballon, dribble, 4 bonds lateraux, tir + rebond"

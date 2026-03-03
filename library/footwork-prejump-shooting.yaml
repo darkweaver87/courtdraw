@@ -1,0 +1,109 @@
+name: "Pre-Jump & Catch-and-Shoot Footwork"
+description: "Two footwork-to-shooting drills. First: hurdle jump chain — player jumps hurdle, catches pass from dribbler during the jump, lands with simultaneous stop, feet set to shoot. Second: pre-jump — column without ball in center circle, column with ball on the side. Dribbler drives along 3-point line to free throw line extension, non-ball player starts simultaneously, jumps hurdle, catches pass mid-air, lands and shoots. Develops the pre-jump timing before catch-and-shoot."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 3
+category: offense
+tags:
+  - footwork
+  - shooting
+  - pre-jump
+  - catch-and-shoot
+  - coordination
+
+sequences:
+  - label: "Hurdle Chain"
+    ball_carrier: a1
+    instructions:
+      - "1 column without ball in center circle"
+      - "1 column with ball on the side"
+      - "Player jumps the hurdle"
+      - "Dribbler passes during the jump"
+      - "Receiver catches ball mid-air"
+      - "Lands with simultaneous stop, feet ready to shoot"
+      - "Immediate shot after landing"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.70, 0.55]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.30, 0.55]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.30, 0.40]
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+      - type: shot_jumpshot
+        from: b1
+        to: [0.50, 0.05]
+
+  - label: "Pre-Jump Timing"
+    ball_carrier: a1
+    instructions:
+      - "Dribbler drives along 3-point line to free throw extension"
+      - "Non-ball player starts simultaneously from center circle"
+      - "Non-ball player jumps hurdle at free throw line level"
+      - "Catches pass from dribbler during the jump"
+      - "Lands with simultaneous stop ready to shoot"
+      - "Shooter rebounds, dribbler changes column"
+      - "Variant: receive at high post after circling low post cone"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.70, 0.55]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.30, 0.55]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.40, 0.35]
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.65, 0.35]
+      - type: pass
+        from: a1
+        to: b1
+      - type: shot_jumpshot
+        from: b1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Pre-appel et tir en reception"
+    description: "Deux exercices d'appuis vers le tir. Premier : enchainement avec haie — le joueur saute la haie, recoit la passe du dribbleur pendant le saut, retombe en arret simultane pieds places pour tirer. Deuxieme : pre-appel — colonne sans ballon dans le cercle central, colonne avec ballon sur le cote. Le dribbleur longe la ligne des 3 points jusqu'a la prolongation des lancers-francs, le non-porteur demarre en meme temps, franchit la haie, recoit la passe en l'air et tire. Travail du timing du pre-appel avant le tir en reception."
+    tags:
+      - appuis
+      - tir
+      - pre-appel
+      - tir-en-reception
+      - coordination
+    sequences:
+      - label: "Enchainement avec haie"
+        instructions:
+          - "1 colonne sans ballon dans le cercle central"
+          - "1 colonne avec ballon sur le cote"
+          - "Le joueur saute la haie"
+          - "Le dribbleur passe pendant le saut"
+          - "Le receveur attrape le ballon en l'air"
+          - "Retombe en arret simultane, pieds prets a tirer"
+          - "Tir immediat apres l'atterrissage"
+      - label: "Timing du pre-appel"
+        instructions:
+          - "Le dribbleur longe la ligne de 3 pts jusqu'a la prolongation des lancers-francs"
+          - "Le non-porteur demarre en meme temps du cercle central"
+          - "Le non-porteur franchit la haie au niveau des lancers-francs"
+          - "Recoit la passe du dribbleur pendant le saut"
+          - "Retombe en arret simultane pret a tirer"
+          - "Le tireur prend son rebond, le dribbleur change de colonne"
+          - "Variante : reception au poste haut apres contournement d'un plot au poste bas"

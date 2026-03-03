@@ -1,0 +1,95 @@
+name: "Off-Ball Defense Ball-Side Denial"
+description: "1 passer, 1 attacker, 1 defender. B has 5 seconds to get open and receive from P while A denies. If B receives, plays 1v1. If not, A wins. 3 reps then rotate. Develops off-ball defensive positioning and pass denial."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: defense
+tags:
+  - defense
+  - off-ball
+  - denial
+  - positioning
+  - 1v1
+
+sequences:
+  - label: "Setup"
+    ball_carrier: p1
+    instructions:
+      - "1 passer (P) with ball at the top"
+      - "1 attacker (B) on the wing"
+      - "1 defender (A) between P and B"
+      - "A must deny the pass to B for 5 seconds"
+    players:
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.50, 0.70]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.70, 0.40]
+      - id: a1
+        label: "A"
+        role: defender
+        position: [0.65, 0.45]
+    accessories: []
+    actions: []
+
+  - label: "Deny & Contest"
+    ball_carrier: b1
+    instructions:
+      - "B uses V-cuts, backdoor, L-cuts to get open"
+      - "A maintains position: 1 foot on passing lane, 1 hand extended"
+      - "If B receives, plays 1v1 against A"
+      - "If B doesn't receive in 5 seconds, A wins the rep"
+      - "3 reps per player, then rotate B→A→P→B"
+    players:
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.50, 0.70]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.75, 0.35]
+      - id: a1
+        label: "A"
+        role: defender
+        position: [0.70, 0.38]
+    accessories: []
+    actions:
+      - type: pass
+        from: p1
+        to: b1
+      - type: dribble
+        from: b1
+        to: [0.55, 0.20]
+      - type: shot_layup
+        from: b1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Defense sur non-porteur cote ballon"
+    description: "1 passeur, 1 attaquant, 1 defenseur. B a 5 secondes pour se demarquer et recevoir de P pendant que A conteste. Si B recoit, il joue le 1c1. Sinon, A gagne. 3 repetitions puis rotation. Travail du placement defensif hors ballon et de la contestation de passe."
+    tags:
+      - defense
+      - hors-ballon
+      - contestation
+      - positionnement
+      - 1c1
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 passeur (P) avec ballon en haut"
+          - "1 attaquant (B) sur l'aile"
+          - "1 defenseur (A) entre P et B"
+          - "A doit empecher la passe vers B pendant 5 secondes"
+      - label: "Contestation"
+        instructions:
+          - "B utilise coupes en V, backdoor, coupes en L pour se demarquer"
+          - "A garde sa position : 1 pied sur la ligne de passe, 1 main etendue"
+          - "Si B recoit, il joue le 1c1 contre A"
+          - "Si B ne recoit pas en 5 secondes, A gagne la repetition"
+          - "3 repetitions par joueur, puis rotation B→A→P→B"

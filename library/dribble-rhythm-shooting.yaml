@@ -1,0 +1,148 @@
+name: "Dribble Rhythm Shooting"
+description: "Dribble start drill with 3 cone stations around the key. Players take turns doing a dribble start at each cone, then shoot. Develops dribble start technique and shooting rhythm."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 2
+category: offense
+tags:
+  - dribble
+  - shooting
+  - rhythm
+  - cones
+  - technique
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 ball per player, 6 cones around the key"
+      - "3 stations: wing left, top, wing right"
+      - "Players take turns at each station"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.55]
+      - id: a2
+        label: "B"
+        role: attacker
+        position: [0.50, 0.75]
+      - id: a3
+        label: "C"
+        role: attacker
+        position: [0.80, 0.55]
+    accessories:
+      - type: cone
+        id: c1
+        position: [0.25, 0.45]
+      - type: cone
+        id: c2
+        position: [0.50, 0.60]
+      - type: cone
+        id: c3
+        position: [0.75, 0.45]
+    actions: []
+
+  - label: "Dribble Start"
+    ball_carrier: a1
+    instructions:
+      - "At each station, player does a dribble start toward the cone"
+      - "3 identical starts at each position"
+      - "Then shoot (in stride or pull-up)"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.35]
+      - id: a2
+        label: "B"
+        role: attacker
+        position: [0.50, 0.75]
+      - id: a3
+        label: "C"
+        role: attacker
+        position: [0.80, 0.55]
+    accessories:
+      - type: cone
+        id: c1
+        position: [0.25, 0.45]
+      - type: cone
+        id: c2
+        position: [0.50, 0.60]
+      - type: cone
+        id: c3
+        position: [0.75, 0.45]
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.30, 0.35]
+      - type: shot_jumpshot
+        from: a1
+        to: [0.50, 0.05]
+
+  - label: "Rotate"
+    ball_carrier: a2
+    instructions:
+      - "After 3 starts, rotate clockwise to next station"
+      - "After a full rotation, change the dribble start type"
+      - "Types: right hand, left hand, direct, crossover"
+      - "Variant: add a static defender or cone as obstacle"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.75]
+      - id: a2
+        label: "B"
+        role: attacker
+        position: [0.55, 0.50]
+      - id: a3
+        label: "C"
+        role: attacker
+        position: [0.20, 0.55]
+    accessories:
+      - type: cone
+        id: c1
+        position: [0.25, 0.45]
+      - type: cone
+        id: c2
+        position: [0.50, 0.60]
+      - type: cone
+        id: c3
+        position: [0.75, 0.45]
+    actions:
+      - type: dribble
+        from: a2
+        to: [0.55, 0.50]
+      - type: shot_jumpshot
+        from: a2
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Rythme dribble-tir"
+    description: "Exercice de depart en dribble avec 3 stations de plots autour de la raquette. Les joueurs font des departs en dribble a chaque plot puis tirent. Travail de la technique de depart et du rythme de tir."
+    tags:
+      - dribble
+      - tir
+      - rythme
+      - plots
+      - technique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 ballon par joueur, 6 plots autour de la raquette"
+          - "3 stations : aile gauche, tete de raquette, aile droite"
+          - "Les joueurs passent a tour de role a chaque station"
+      - label: "Depart en dribble"
+        instructions:
+          - "A chaque station, le joueur fait un depart en dribble vers le plot"
+          - "3 departs identiques a chaque position"
+          - "Puis tir (en course ou en suspension)"
+      - label: "Rotation"
+        instructions:
+          - "Apres 3 departs, tourner dans le sens des aiguilles d'une montre"
+          - "Apres un tour complet, changer la forme du depart en dribble"
+          - "Types : main droite, main gauche, depart direct, depart croise"
+          - "Variante : ajouter un defenseur statique ou un plot comme obstacle"

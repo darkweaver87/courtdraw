@@ -1,0 +1,99 @@
+name: "Wing 1v1 Sprint Race"
+description: "Attacker and defender start at half court on opposite sides. On signal, both sprint to the wing. A tries to receive from P and play 1v1. D tries to arrive first and deny. Develops getting open at speed and 1v1 from the wing."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 4
+category: offense
+tags:
+  - wing
+  - 1v1
+  - sprint
+  - getting-open
+  - conditioning
+
+sequences:
+  - label: "Setup"
+    ball_carrier: p1
+    instructions:
+      - "1 attacker (A) and 1 defender (D) at half court"
+      - "A on one side, D on the other side"
+      - "Passer (P) at the top of the key with ball"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.70, 0.85]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.30, 0.85]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.50, 0.65]
+    accessories: []
+    actions: []
+
+  - label: "Sprint & 1v1"
+    ball_carrier: a1
+    instructions:
+      - "On signal, A sprints to the right wing"
+      - "D sprints to contest on the wing"
+      - "P passes to A as soon as A is open"
+      - "A plays 1v1 from the wing"
+      - "Race element: if D arrives first, deny the pass"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.75, 0.45]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.70, 0.43]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.50, 0.65]
+    accessories: []
+    actions:
+      - type: sprint
+        from: a1
+        to: [0.75, 0.45]
+      - type: sprint
+        from: d1
+        to: [0.70, 0.43]
+      - type: pass
+        from: p1
+        to: a1
+      - type: dribble
+        from: a1
+        to: [0.55, 0.20]
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "1c1 aile avec course de vitesse"
+    description: "L'attaquant et le defenseur partent de mi-terrain de chaque cote. Au signal, les deux sprintent vers l'aile. A essaie de recevoir de P et jouer le 1c1. D essaie d'arriver en premier et d'empecher la passe. Travail du demarquage en vitesse et du 1c1 depuis l'aile."
+    tags:
+      - aile
+      - 1c1
+      - sprint
+      - demarquage
+      - physique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 attaquant (A) et 1 defenseur (D) a mi-terrain"
+          - "A d'un cote, D de l'autre"
+          - "Passeur (P) en haut de la raquette avec le ballon"
+      - label: "Sprint et 1c1"
+        instructions:
+          - "Au signal, A sprinte vers l'aile droite"
+          - "D sprinte pour contester sur l'aile"
+          - "P passe a A des que A est ouvert"
+          - "A joue le 1c1 depuis l'aile"
+          - "Element de course : si D arrive en premier, empecher la passe"

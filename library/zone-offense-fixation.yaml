@@ -1,0 +1,185 @@
+name: "Zone Offense Fixation Drill"
+description: "5v4 then 4v4. Attackers circulate the ball against zone defense by fixing defenders with dribble penetration before passing. Ball handler must dribble into gaps to fix 2 defenders, then pass to the open teammate. Develops ball movement against zone."
+court_type: half_court
+court_standard: fiba
+duration: 12m
+intensity: 3
+category: offense
+tags:
+  - zone-offense
+  - fixation
+  - ball-movement
+  - penetration
+  - team-offense
+
+sequences:
+  - label: "Setup 5v4"
+    ball_carrier: a1
+    instructions:
+      - "5 attackers vs 4 zone defenders"
+      - "Attackers in 2-1-2 or 1-3-1 formation"
+      - "Ball starts at the top"
+      - "Advantage: numerical superiority forces open shots"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.60]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.20, 0.40]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: a4
+        label: "4"
+        role: attacker
+        position: [0.35, 0.20]
+      - id: a5
+        label: "5"
+        role: attacker
+        position: [0.65, 0.20]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.35, 0.40]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.65, 0.40]
+      - id: d3
+        label: "D3"
+        role: defender
+        position: [0.40, 0.20]
+      - id: d4
+        label: "D4"
+        role: defender
+        position: [0.60, 0.20]
+    accessories: []
+    actions: []
+
+  - label: "Fix & Pass"
+    ball_carrier: a1
+    instructions:
+      - "1 dribbles into the gap between D1 and D2"
+      - "Goal: fix (attract) a defender with the dribble"
+      - "Once defender commits, pass to open teammate"
+      - "Receiver catches in motion — ready to shoot or fix again"
+      - "Ball must not stick — pass within 2 seconds"
+      - "Key: fix before passing, never pass to a covered player"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.40, 0.45]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.15, 0.35]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: a4
+        label: "4"
+        role: attacker
+        position: [0.35, 0.20]
+      - id: a5
+        label: "5"
+        role: attacker
+        position: [0.65, 0.20]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.40, 0.45]
+      - type: pass
+        from: a1
+        to: a2
+
+  - label: "Progression to 4v4"
+    ball_carrier: a1
+    instructions:
+      - "4 attackers vs 4 zone defenders"
+      - "Ball handler must penetrate with 2 feet in the paint"
+      - "Then pass out — no finishing inside"
+      - "First team to 4 paint touches wins"
+      - "Variant: 3 paint touches before you can shoot"
+      - "Teaches: dribble fixation creates open looks"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.20, 0.40]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: a4
+        label: "4"
+        role: attacker
+        position: [0.50, 0.30]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.35, 0.40]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.65, 0.40]
+      - id: d3
+        label: "D3"
+        role: defender
+        position: [0.40, 0.20]
+      - id: d4
+        label: "D4"
+        role: defender
+        position: [0.60, 0.20]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.45, 0.35]
+      - type: pass
+        from: a1
+        to: a3
+
+i18n:
+  fr:
+    name: "Attaque de zone : travail de fixation"
+    description: "5c4 puis 4c4. Les attaquants font circuler le ballon contre la defense de zone en fixant les defenseurs par la penetration en dribble avant de passer. Le porteur doit dribbler dans les intervalles pour fixer 2 defenseurs, puis passer au coequipier ouvert. Travail de la circulation du ballon contre la zone."
+    tags:
+      - attaque-de-zone
+      - fixation
+      - circulation-du-ballon
+      - penetration
+      - jeu-collectif
+    sequences:
+      - label: "Mise en place 5c4"
+        instructions:
+          - "5 attaquants contre 4 defenseurs en zone"
+          - "Attaquants en formation 2-1-2 ou 1-3-1"
+          - "Le ballon part du sommet"
+          - "Avantage : la superiorite numerique force des tirs ouverts"
+      - label: "Fixer et passer"
+        instructions:
+          - "1 dribble dans l'intervalle entre D1 et D2"
+          - "Objectif : fixer (attirer) un defenseur par le dribble"
+          - "Une fois le defenseur engage, passer au coequipier ouvert"
+          - "Le receveur attrape en mouvement — pret a tirer ou fixer a nouveau"
+          - "Le ballon ne doit pas coller — passer en 2 secondes"
+          - "Cle : fixer avant de passer, ne jamais passer a un joueur couvert"
+      - label: "Progression en 4c4"
+        instructions:
+          - "4 attaquants contre 4 defenseurs en zone"
+          - "Le porteur doit penetrer avec 2 pieds dans la raquette"
+          - "Puis ressortir — pas de finition a l'interieur"
+          - "Premiere equipe a 4 touches dans la raquette gagne"
+          - "Variante : 3 touches dans la raquette avant de pouvoir tirer"
+          - "Enseigne : la fixation en dribble cree des tirs ouverts"

@@ -1,0 +1,117 @@
+name: "Inside Post Entry Pass"
+description: "3 players, 1 ball. Post player B at mid-post, wing A with ball, defender D pressuring. A must feed the ball inside to B. When B receives, he kicks out to guard C who returns to A. Develops inside passing under pressure."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 2
+category: offense
+tags:
+  - passing
+  - post-play
+  - inside-pass
+  - pressure
+  - 3-players
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "3 players, 1 ball"
+      - "A (wing) has the ball"
+      - "B is the post player at mid-post"
+      - "D pressures the passing lane"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.75]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.40, 0.30]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.35, 0.45]
+    accessories: []
+    actions: []
+
+  - label: "Entry Pass"
+    ball_carrier: b1
+    instructions:
+      - "A feeds the ball inside to B at the post"
+      - "B receives, pivots, and kicks out to C (guard)"
+      - "C returns the ball to A"
+      - "5 reps on offense per player, then rotate: B→C→A→D→A"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.75]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.40, 0.25]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.30, 0.40]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+
+  - label: "Kick Out"
+    ball_carrier: a1
+    instructions:
+      - "B receives and kicks out to the guard"
+      - "Guard C returns the ball to A"
+      - "Rotation: B→C→A→D→A"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.75]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.40, 0.25]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.30, 0.35]
+    accessories: []
+    actions:
+      - type: pass
+        from: b1
+        to: a1
+
+i18n:
+  fr:
+    name: "Passe interieure au poste"
+    description: "3 joueurs, 1 ballon. Le poste B au poste moyen, l'ailier A avec le ballon, le defenseur D en pression. A doit faire la passe interieure a B. Quand B recoit, il ressort sur l'arriere C qui redonne a A. Travail de la passe interieure sous pression."
+    tags:
+      - passe
+      - poste
+      - passe-interieure
+      - pression
+      - 3-joueurs
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "3 joueurs, 1 ballon"
+          - "A (ailier) a le ballon"
+          - "B est le joueur interieur au poste moyen"
+          - "D presse la ligne de passe"
+      - label: "Passe interieure"
+        instructions:
+          - "A fait la passe interieure a B au poste"
+          - "B recoit, pivote et ressort sur l'arriere C"
+          - "C redonne le ballon a A"
+          - "5 repetitions en attaque par joueur puis rotation : B→C→A→D→A"
+      - label: "Ressortie"
+        instructions:
+          - "B recoit et ressort sur l'arriere"
+          - "L'arriere C redonne le ballon a A"
+          - "Rotation : B→C→A→D→A"

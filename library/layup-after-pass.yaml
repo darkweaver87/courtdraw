@@ -1,0 +1,111 @@
+name: "Layup After Pass"
+description: "1 column of players with balls, 1 passer at the edge of the key. A passes to P, follows the pass, receives the ball back, and finishes with a layup. Work both sides. Develops catch-and-finish coordination."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 2
+category: offense
+tags:
+  - layup
+  - passing
+  - catch-and-finish
+  - technique
+  - fundamentals
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 column of players with balls at the wing"
+      - "1 passer (P) at the edge of the key"
+      - "Work both right and left sides"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.75, 0.65]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.65, 0.40]
+      - id: qa
+        label: "A"
+        role: attacker
+        type: queue
+        count: 4
+        position: [0.80, 0.70]
+    accessories: []
+    actions: []
+
+  - label: "Pass & Receive"
+    ball_carrier: a1
+    instructions:
+      - "A passes to P and follows the pass"
+      - "P presents the ball back to A"
+      - "A catches on the move and finishes with a layup (no dribble)"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.60, 0.25]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.65, 0.40]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: p1
+      - type: pass
+        from: p1
+        to: a1
+      - type: shot_layup
+        from: a1
+        to: [0.55, 0.05]
+
+  - label: "Rotation & Variant"
+    instructions:
+      - "After the shot, A replaces P; P takes the rebound and joins the column"
+      - "Variant: P on the free throw line — A passes and finishes without dribble"
+      - "Variant: adjust pass timing for layup with or without dribble"
+      - "Work right side and left side equally"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.65, 0.40]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.75, 0.65]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "Tir en course apres passe"
+    description: "1 colonne de joueurs avec ballons, 1 passeur en bordure de raquette. A passe a P, suit sa passe, recoit le ballon et finit en tir en course. Travailler des deux cotes. Travail de la coordination reception-finition."
+    tags:
+      - tir-en-course
+      - passe
+      - reception-finition
+      - technique
+      - fondamentaux
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 colonne de joueurs avec ballons sur l'aile"
+          - "1 passeur (P) en bordure de la zone reservee"
+          - "Travailler a droite et a gauche"
+      - label: "Passe et reception"
+        instructions:
+          - "A passe a P et suit sa passe"
+          - "P presente le ballon a A"
+          - "A recoit en mouvement et finit en tir en course (sans dribble)"
+      - label: "Rotation et variante"
+        instructions:
+          - "Apres le tir, A remplace P ; P prend le rebond et rejoint la colonne"
+          - "Variante : P sur la ligne des lancers-francs — A passe et finit sans dribble"
+          - "Variante : ajuster le timing de la passe pour un tir avec ou sans dribble"
+          - "Travailler cote droit et cote gauche"

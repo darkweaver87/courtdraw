@@ -1,0 +1,107 @@
+name: "Point Guard Protection Dribble"
+description: "Guard dribbles in circles under pressure from defenders. Start in center circle, dribble to free throw circle, then to 3-point arc circle. Defender applies increasing pressure. Develops ball protection and body positioning."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 3
+category: offense
+tags:
+  - point-guard
+  - dribble
+  - protection
+  - ball-handling
+  - technique
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 point guard (A) with ball"
+      - "1 defender (D) applying pressure"
+      - "Start in center circle area"
+    players:
+      - id: a1
+        label: "PG"
+        role: attacker
+        position: [0.50, 0.75]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.55, 0.75]
+    accessories: []
+    actions: []
+
+  - label: "Protection Dribble"
+    ball_carrier: a1
+    instructions:
+      - "A dribbles in center circle, D applies light pressure"
+      - "A moves to free throw circle, D increases pressure"
+      - "A must protect ball with body positioning"
+      - "Keep head up, use off-arm for protection (no push)"
+      - "30 seconds per zone, then switch"
+    players:
+      - id: a1
+        label: "PG"
+        role: attacker
+        position: [0.50, 0.38]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.55, 0.40]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.50, 0.38]
+
+  - label: "Advance Under Pressure"
+    ball_carrier: a1
+    instructions:
+      - "A must advance ball from baseline to half court"
+      - "D applies full pressure the entire way"
+      - "A uses protection dribble, changes of pace and direction"
+      - "Variant: D shows numbers with fingers, A must call them out"
+    players:
+      - id: a1
+        label: "PG"
+        role: attacker
+        position: [0.50, 0.50]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.50, 0.55]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.50, 0.50]
+
+i18n:
+  fr:
+    name: "Dribble de protection du meneur"
+    description: "Le meneur dribble dans des cercles sous pression defensive. Depart dans le rond central, dribble vers le cercle des lancers-francs, puis vers la ligne des 3 points. Le defenseur augmente la pression progressivement. Travail de la protection de balle et du placement du corps."
+    tags:
+      - meneur
+      - dribble
+      - protection
+      - maniement
+      - technique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 meneur (A) avec ballon"
+          - "1 defenseur (D) qui met la pression"
+          - "Depart dans la zone du rond central"
+      - label: "Dribble de protection"
+        instructions:
+          - "A dribble dans le rond central, D met une pression legere"
+          - "A se deplace vers le cercle des lancers-francs, D augmente la pression"
+          - "A doit proteger le ballon avec le placement du corps"
+          - "Garder la tete haute, utiliser le bras libre pour proteger (sans pousser)"
+          - "30 secondes par zone, puis rotation"
+      - label: "Montee de balle sous pression"
+        instructions:
+          - "A doit monter le ballon de la ligne de fond jusqu'a mi-terrain"
+          - "D applique une pression totale sur tout le trajet"
+          - "A utilise le dribble de protection, changements de rythme et de direction"
+          - "Variante : D montre des chiffres avec les doigts, A doit les annoncer"

@@ -1,0 +1,101 @@
+name: "2v2 Simultaneous Perception"
+description: "2 teams of 2 play simultaneously on the same basket, using the full half-court width. Forces players to constantly observe space, ball, and teammates. Coach can impose constraints: pass-and-go only, must exchange ball between teams before shooting. Variant: exchange players between teams without exchanging balls. Develops spatial awareness and perception under pressure."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 4
+category: offense
+tags:
+  - perception
+  - awareness
+  - 2v2
+  - spacing
+  - game-sense
+
+sequences:
+  - label: "Free Play"
+    ball_carrier: a1
+    instructions:
+      - "2 teams of 2 play 2v2 simultaneously on the same basket"
+      - "Use the full width of the half court"
+      - "No specific constraints — players must observe everything"
+      - "Observe: space, ball, teammates, opponents from both games"
+      - "Develops constant information gathering"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.25, 0.50]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.25, 0.30]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.75, 0.50]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.75, 0.30]
+    accessories: []
+    actions: []
+
+  - label: "With Constraints"
+    ball_carrier: a1
+    instructions:
+      - "Same setup: 2 teams of 2 on same basket"
+      - "Constraint 1: pass-and-go only (no dribble)"
+      - "Constraint 2: must exchange ball between teams before shooting"
+      - "Constraint 3: exchange players between teams (not balls)"
+      - "Forces constant awareness of all players on court"
+      - "Players must communicate and avoid collisions"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.45]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.20, 0.25]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.70, 0.45]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.80, 0.25]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+
+i18n:
+  fr:
+    name: "2c2 simultane : perception"
+    description: "2 equipes de 2 jouent simultanement sur le meme panier, sur toute la largeur du demi-terrain. Force les joueurs a observer constamment l'espace, le ballon et les partenaires. Le coach peut imposer des contraintes : passe-et-va uniquement, obligation d'echanger le ballon entre equipes avant de tirer. Variante : echange de joueurs entre equipes sans echange de ballon. Travail de la conscience spatiale et de la perception sous pression."
+    tags:
+      - perception
+      - conscience-de-jeu
+      - 2c2
+      - espacement
+      - intelligence-de-jeu
+    sequences:
+      - label: "Jeu libre"
+        instructions:
+          - "2 equipes de 2 jouent en 2c2 simultanement sur le meme panier"
+          - "Utiliser toute la largeur du demi-terrain"
+          - "Pas de contrainte specifique — les joueurs doivent tout observer"
+          - "Observer : espace, ballon, partenaires, adversaires des deux jeux"
+          - "Travail de la prise d'information constante"
+      - label: "Avec contraintes"
+        instructions:
+          - "Meme dispositif : 2 equipes de 2 sur le meme panier"
+          - "Contrainte 1 : passe-et-va uniquement (pas de dribble)"
+          - "Contrainte 2 : obligation d'echanger le ballon entre les 2 equipes avant de tirer"
+          - "Contrainte 3 : echange de joueurs entre equipes (pas de ballons)"
+          - "Force la conscience constante de tous les joueurs sur le terrain"
+          - "Les joueurs doivent communiquer et eviter les collisions"

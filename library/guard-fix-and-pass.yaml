@@ -1,0 +1,109 @@
+name: "Guard Fix & Pass Game"
+description: "Point guard fixes the defender then passes to the open teammate. 3 attackers vs 2 defenders. PG at the top, 2 wings. PG drives to fix help defender, then kicks to open wing for a shot. Develops reading the defense and passing decision."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: offense
+tags:
+  - point-guard
+  - passing
+  - fix-and-kick
+  - 3v2
+  - decision-making
+
+sequences:
+  - label: "Setup"
+    ball_carrier: pg
+    instructions:
+      - "3 attackers: PG at top, W1 and W2 on wings"
+      - "2 defenders: D1 on PG, D2 in help position"
+      - "PG reads D2's position to decide which wing to attack"
+    players:
+      - id: pg
+        label: "PG"
+        role: attacker
+        position: [0.50, 0.65]
+      - id: w1
+        label: "W1"
+        role: attacker
+        position: [0.20, 0.40]
+      - id: w2
+        label: "W2"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.50, 0.60]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.40, 0.45]
+    accessories: []
+    actions: []
+
+  - label: "Fix & Kick"
+    ball_carrier: w2
+    instructions:
+      - "PG drives toward the basket to fix D2"
+      - "When D2 commits to help, PG passes to the open wing"
+      - "Wing catches and shoots"
+      - "If D2 doesn't help, PG finishes at the rim"
+      - "Rotate: wings become defenders after each round"
+    players:
+      - id: pg
+        label: "PG"
+        role: attacker
+        position: [0.45, 0.40]
+      - id: w1
+        label: "W1"
+        role: attacker
+        position: [0.20, 0.40]
+      - id: w2
+        label: "W2"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.47, 0.42]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.55, 0.35]
+    accessories: []
+    actions:
+      - type: dribble
+        from: pg
+        to: [0.45, 0.40]
+      - type: pass
+        from: pg
+        to: w2
+      - type: shot_jumpshot
+        from: w2
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Jeu de fixation et passe du meneur"
+    description: "Le meneur fixe le defenseur puis passe au coequipier ouvert. 3 attaquants contre 2 defenseurs. PG en haut, 2 ailiers. PG penetre pour fixer l'aide, puis ressort sur l'aile ouverte pour un tir. Travail de la lecture defensive et de la prise de decision a la passe."
+    tags:
+      - meneur
+      - passe
+      - fixation
+      - 3c2
+      - prise-de-decision
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "3 attaquants : PG en haut, W1 et W2 sur les ailes"
+          - "2 defenseurs : D1 sur PG, D2 en position d'aide"
+          - "PG lit la position de D2 pour decider vers quelle aile attaquer"
+      - label: "Fixation et ressort"
+        instructions:
+          - "PG penetre vers le panier pour fixer D2"
+          - "Quand D2 vient en aide, PG passe a l'aile ouverte"
+          - "L'ailier recoit et tire"
+          - "Si D2 n'aide pas, PG finit au cercle"
+          - "Rotation : les ailiers deviennent defenseurs apres chaque tour"

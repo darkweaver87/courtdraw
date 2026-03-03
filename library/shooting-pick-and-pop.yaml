@@ -1,0 +1,115 @@
+name: "Pick & Pop Jump Shot"
+description: "3 players minimum. A gets open (sprint + stop under basket), receives from B. B sets a pick for A, then pops out. A uses the screen, takes 1-2 dribbles and shoots. Work screen on both sides."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 2
+category: offense
+tags:
+  - shooting
+  - pick-and-roll
+  - screen
+  - 3-players
+  - technique
+
+sequences:
+  - label: "Setup"
+    ball_carrier: b1
+    instructions:
+      - "3 players minimum"
+      - "A at the free throw line area"
+      - "B at the top with the ball"
+      - "C in the column"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.50]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.50, 0.80]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.50, 0.90]
+    accessories: []
+    actions: []
+
+  - label: "Get Open & Receive"
+    ball_carrier: a1
+    instructions:
+      - "A sprints under the basket and stops, comes back to receive from B"
+      - "B passes to A, then sets a ball screen for A"
+      - "B pops out after the screen"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.50]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.55, 0.55]
+    accessories: []
+    actions:
+      - type: pass
+        from: b1
+        to: a1
+      - type: screen
+        from: b1
+        to: a1
+
+  - label: "Use Screen & Shoot"
+    ball_carrier: a1
+    instructions:
+      - "A fakes opposite the screen direction, then uses the screen"
+      - "A takes 1-2 dribbles max and shoots"
+      - "Screen can be set on either side"
+      - "Rotation: A takes rebound, B takes A's spot"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.65, 0.40]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.55, 0.55]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.65, 0.40]
+      - type: shot_jumpshot
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Tir apres pick and pop"
+    description: "3 joueurs minimum. A se demarque (sprint + arret sous le cercle), recoit de B. B pose un ecran pour A puis s'ecarte. A utilise l'ecran, prend 1-2 dribbles et tire. Travailler l'ecran des deux cotes."
+    tags:
+      - tir
+      - pick-and-roll
+      - ecran
+      - 3-joueurs
+      - technique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "3 joueurs minimum"
+          - "A a la ligne des lancers-francs"
+          - "B en haut avec le ballon"
+          - "C dans la colonne"
+      - label: "Demarquage et reception"
+        instructions:
+          - "A sprinte sous le cercle et s'arrete, revient recevoir de B"
+          - "B passe a A, puis pose un ecran direct pour A"
+          - "B s'ecarte apres l'ecran"
+      - label: "Utilisation ecran et tir"
+        instructions:
+          - "A feinte a l'oppose de l'ecran puis utilise l'ecran"
+          - "A prend 1-2 dribbles maximum et tire"
+          - "L'ecran peut etre pose a droite ou a gauche"
+          - "Rotation : A prend le rebond, B prend la place de A"

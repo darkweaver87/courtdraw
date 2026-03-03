@@ -1,0 +1,117 @@
+name: "Guard-Post Pick & Roll 2-Man Game"
+description: "2 players (guard + high post). High post sets ball screen for guard. Three options based on defensive reaction: drive, handoff, or pop. Develops pick & roll reads between perimeter and interior players."
+court_type: half_court
+court_standard: fiba
+duration: 12m
+intensity: 3
+category: offense
+tags:
+  - two-man-game
+  - pick-and-roll
+  - guard-post
+  - reads
+  - ball-screen
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "Guard (1) with ball at top of key"
+      - "High post (4) at the elbow"
+      - "Add defenders progressively"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: a2
+        label: "4"
+        role: attacker
+        position: [0.40, 0.35]
+    accessories: []
+    actions: []
+
+  - label: "Ball Screen"
+    ball_carrier: a1
+    instructions:
+      - "4 sets ball screen on 1's defender"
+      - "1 uses the screen and attacks"
+      - "4 opens to the ball after the screen"
+      - "Read 1: defender caught in screen → 1 drives to basket"
+      - "Read 2: defender goes over → handoff to 4"
+      - "Read 3: defender goes under → 1 pulls up for jumper"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.45, 0.40]
+      - id: a2
+        label: "4"
+        role: attacker
+        position: [0.42, 0.42]
+    accessories: []
+    actions:
+      - type: screen
+        from: a2
+        to: [0.42, 0.42]
+      - type: dribble
+        from: a1
+        to: [0.45, 0.25]
+
+  - label: "Finish"
+    ball_carrier: a1
+    instructions:
+      - "Option A: 1 drives all the way → layup"
+      - "Option B: 1 passes to 4 rolling to basket"
+      - "Option C: 1 pulls up for mid-range if defense drops"
+      - "4 always opens to ball after screen (roll or pop)"
+      - "5 reps each read, then add 2 defenders"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.45, 0.20]
+      - id: a2
+        label: "4"
+        role: attacker
+        position: [0.50, 0.15]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: a2
+      - type: shot_layup
+        from: a2
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Jeu a 2 meneur-poste haut pick & roll"
+    description: "2 joueurs (meneur + poste haut). Le poste haut pose un ecran direct pour le meneur. Trois options selon la reaction defensive : penetration, main a main, ou ouverture. Travail de la lecture du pick & roll entre exterieur et interieur."
+    tags:
+      - jeu-a-deux
+      - pick-and-roll
+      - meneur-poste
+      - lecture
+      - ecran-direct
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "Meneur (1) avec ballon en tete de raquette"
+          - "Poste haut (4) au coude"
+          - "Ajouter des defenseurs progressivement"
+      - label: "Ecran direct"
+        instructions:
+          - "4 pose un ecran direct sur le defenseur de 1"
+          - "1 utilise l'ecran et attaque"
+          - "4 s'ouvre au ballon apres l'ecran"
+          - "Lecture 1 : defenseur coince dans l'ecran → 1 penetre au panier"
+          - "Lecture 2 : defenseur passe par dessus → main a main avec 4"
+          - "Lecture 3 : defenseur passe par dessous → 1 tire en suspension"
+      - label: "Finition"
+        instructions:
+          - "Option A : 1 penetre tout le long → tir en course"
+          - "Option B : 1 passe a 4 qui roule au panier"
+          - "Option C : 1 tire en mi-distance si la defense recule"
+          - "4 s'ouvre toujours au ballon apres ecran (rouleau ou ouverture)"
+          - "5 repetitions par lecture, puis ajouter 2 defenseurs"

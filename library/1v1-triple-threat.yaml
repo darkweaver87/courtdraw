@@ -1,0 +1,107 @@
+name: "1v0 Triple Threat Moves"
+description: "Players self-pass forward, catch in triple threat position, then execute move combinations: direct drive, crossover drive, shot fake + drive, shot fake + shot, drive fake + direct. 10 reps each side. Work layups and jump shots."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 2
+category: offense
+tags:
+  - 1v1
+  - triple-threat
+  - dribble
+  - shooting
+  - technique
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 ball per player"
+      - "Players self-pass forward and catch in triple threat"
+      - "Execute predetermined move combinations"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.65]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.25, 0.65]
+    accessories: []
+    actions: []
+
+  - label: "Direct Drive"
+    ball_carrier: a1
+    instructions:
+      - "Self-pass, catch in triple threat"
+      - "Direct drive right, finish layup"
+      - "Direct drive left, finish layup"
+      - "10 repetitions each side"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.55, 0.35]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.55, 0.35]
+      - type: shot_layup
+        from: a1
+        to: [0.55, 0.05]
+
+  - label: "Combinations"
+    ball_carrier: a1
+    instructions:
+      - "Shot fake + direct drive + layup or jump shot"
+      - "Shot fake + crossover drive + layup or jump shot"
+      - "Pass fake + direct drive"
+      - "Drive fake + direct drive"
+      - "Shot fake + shot"
+      - "Vary finishes: layup, jump shot"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.50]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.50, 0.30]
+      - type: shot_jumpshot
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "1c0 enchainements triple menace"
+    description: "Les joueurs se font une passe en avant, recoivent en position de triple menace, puis executent des enchainements : depart direct, depart croise, feinte de tir + depart, feinte de tir + tir, feinte de depart + depart direct. 10 repetitions de chaque cote."
+    tags:
+      - 1c1
+      - triple-menace
+      - dribble
+      - tir
+      - technique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 ballon par joueur"
+          - "Les joueurs se font une passe en avant et recoivent en triple menace"
+          - "Executer les enchainements predetermines"
+      - label: "Depart direct"
+        instructions:
+          - "Passe en avant, reception en triple menace"
+          - "Depart direct a droite, finition en tir en course"
+          - "Depart direct a gauche, finition en tir en course"
+          - "10 repetitions de chaque cote"
+      - label: "Enchainements"
+        instructions:
+          - "Feinte de tir + depart direct + tir en course ou en suspension"
+          - "Feinte de tir + depart croise + tir en course ou en suspension"
+          - "Feinte de passe + depart direct"
+          - "Feinte de depart + depart direct"
+          - "Feinte de tir + tir"
+          - "Varier les finitions : tir en course, tir en suspension"

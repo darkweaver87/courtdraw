@@ -1,0 +1,138 @@
+name: "3-Man Game: Guard + Wing + High Post"
+description: "3 players (guard, wing, high post). Multiple solutions from the same starting position. Guard passes to wing, uses high post screen. Options include back-door, pick & roll, handoff, and interior pivot. Develops reading defensive reactions in 3-player offense."
+court_type: half_court
+court_standard: fiba
+duration: 15m
+intensity: 3
+category: offense
+tags:
+  - three-man-game
+  - pick-and-roll
+  - back-door
+  - reads
+  - team-offense
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "Guard (1) with ball at top"
+      - "Wing (3) on the right wing"
+      - "High post (4) at the elbow"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: a2
+        label: "3"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: a3
+        label: "4"
+        role: attacker
+        position: [0.40, 0.30]
+    accessories: []
+    actions: []
+
+  - label: "Solution 1: Use the Screen"
+    ball_carrier: a1
+    instructions:
+      - "1 passes to 3 and uses 4's screen"
+      - "1 turns around 4 into the lane"
+      - "Option A: 3 passes to 1 who has posted up (size advantage)"
+      - "Option B: 3 passes to 4 who pops beyond the 3-point line"
+      - "Option C: 3 passes to 4 who pivots face-up and attacks"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.45, 0.20]
+      - id: a2
+        label: "3"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: a3
+        label: "4"
+        role: attacker
+        position: [0.40, 0.30]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: a2
+      - type: screen
+        from: a3
+        to: [0.40, 0.30]
+      - type: cut
+        from: a1
+        to: [0.45, 0.20]
+
+  - label: "Solution 2: Interior Pivot"
+    ball_carrier: a3
+    instructions:
+      - "1 passes directly to 4 at the high post"
+      - "4 pivots face-to-basket"
+      - "3 fakes, then back-doors to basket for pass from 4"
+      - "If 4 can't pass to 3: 4 plays 1v1 from high post"
+      - "1 relocates to create spacing"
+      - "Add 3 defenders to practice all solutions"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: a2
+        label: "3"
+        role: attacker
+        position: [0.70, 0.15]
+      - id: a3
+        label: "4"
+        role: attacker
+        position: [0.45, 0.30]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: a3
+      - type: cut
+        from: a2
+        to: [0.70, 0.15]
+      - type: pass
+        from: a3
+        to: a2
+      - type: shot_layup
+        from: a2
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Jeu a 3 : meneur + ailier + poste haut"
+    description: "3 joueurs (meneur, ailier, poste haut). Plusieurs solutions a partir de la meme position de depart. Le meneur passe a l'ailier, utilise l'ecran du poste haut. Options : back-door, pick & roll, main a main, et pivot interieur. Travail de la lecture des reactions defensives dans le jeu a 3."
+    tags:
+      - jeu-a-trois
+      - pick-and-roll
+      - back-door
+      - lecture
+      - jeu-collectif
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "Meneur (1) avec ballon en tete de raquette"
+          - "Ailier (3) sur l'aile droite"
+          - "Poste haut (4) au coude"
+      - label: "Solution 1 : Utiliser l'ecran"
+        instructions:
+          - "1 passe a 3 et utilise l'ecran de 4"
+          - "1 tourne autour de 4 dans la zone reservee"
+          - "Option A : 3 passe a 1 qui a pris position au poste (avantage de taille)"
+          - "Option B : 3 passe a 4 qui sort au-dela de la ligne a 3 points"
+          - "Option C : 3 passe a 4 qui pivote face au panier et attaque"
+      - label: "Solution 2 : Pivot interieur"
+        instructions:
+          - "1 passe directement a 4 au poste haut"
+          - "4 pivote face au panier"
+          - "3 feinte, puis back-door au panier pour une passe de 4"
+          - "Si 4 ne peut pas passer a 3 : 4 joue le 1c1 depuis le poste haut"
+          - "1 se replace pour creer de l'espacement"
+          - "Ajouter 3 defenseurs pour pratiquer toutes les solutions"

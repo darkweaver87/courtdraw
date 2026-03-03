@@ -1,0 +1,125 @@
+name: "1v1 Interior Post with Passer"
+description: "1 column of attackers, 1 defender, 1 passer. A passes to P, crosses the key to get open at low or mid post. D contests the movement. When P passes to A, A plays 1v1 inside. Develops interior positioning and post moves under pressure."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: offense
+tags:
+  - 1v1
+  - post-play
+  - inside
+  - positioning
+  - technique
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 column of attackers with balls"
+      - "1 defender (D)"
+      - "1 passer (P)"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.25, 0.70]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.35, 0.45]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.15, 0.45]
+      - id: qa
+        label: "A"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.20, 0.75]
+    accessories: []
+    actions: []
+
+  - label: "Cross & Post Up"
+    ball_carrier: p1
+    instructions:
+      - "A passes ball to P"
+      - "A crosses the key to establish position at low or mid post"
+      - "D contests A's movement and positioning"
+      - "P looks for the entry pass to A"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.45, 0.30]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.40, 0.32]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.15, 0.45]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: p1
+      - type: cut
+        from: a1
+        to: [0.45, 0.30]
+
+  - label: "1v1 Post"
+    ball_carrier: a1
+    instructions:
+      - "P passes to A who has established preferred position"
+      - "A plays 1v1 against D"
+      - "Rotation: A→D→P→A"
+      - "Variant: A can also get open at high post"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.45, 0.25]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.42, 0.27]
+    accessories: []
+    actions:
+      - type: pass
+        from: p1
+        to: a1
+      - type: shot_jumpshot
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "1c1 interieur avec passeur"
+    description: "1 colonne d'attaquants, 1 defenseur, 1 passeur. A passe a P, traverse la raquette pour se demarquer au poste bas ou moyen. D conteste le deplacement. Quand P passe a A, A joue le 1c1 interieur. Travail du positionnement et des mouvements de poste sous pression."
+    tags:
+      - 1c1
+      - poste
+      - interieur
+      - positionnement
+      - technique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 colonne d'attaquants avec ballons"
+          - "1 defenseur (D)"
+          - "1 passeur (P)"
+      - label: "Traversee et prise de position"
+        instructions:
+          - "A passe le ballon a P"
+          - "A traverse la raquette pour se poster au poste bas ou moyen"
+          - "D conteste le deplacement et le positionnement de A"
+          - "P cherche la passe interieure vers A"
+      - label: "1c1 au poste"
+        instructions:
+          - "P passe a A qui a pris la position preferentielle"
+          - "A joue le 1c1 contre D"
+          - "Rotation : A→D→P→A"
+          - "Variante : A peut aussi se demarquer au poste haut"

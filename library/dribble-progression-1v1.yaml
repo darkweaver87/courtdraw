@@ -1,0 +1,119 @@
+name: "1v1 Dribble Progression"
+description: "Full court 1v1 drill. Attacker dribbles to score as fast as possible while the defender touches half-court then recovers to defend."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: offense
+tags:
+  - dribble
+  - 1v1
+  - progression
+  - conditioning
+  - full-court
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 column of attackers with balls behind each baseline"
+      - "1 column of defenders behind each baseline"
+      - "Attacker and defender face each other across the court"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.95]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.30, 0.05]
+      - id: qa
+        label: "A"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.30, 0.98]
+      - id: qd
+        label: "D"
+        role: defender
+        type: queue
+        count: 3
+        position: [0.30, 0.02]
+    accessories: []
+    actions: []
+
+  - label: "Go"
+    ball_carrier: a1
+    instructions:
+      - "On signal, attacker starts dribbling toward opposite basket"
+      - "Defender sprints to touch half-court line (or center circle)"
+      - "Then defender recovers to defend the attacker coming from opposite baseline"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.35, 0.60]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.50, 0.48]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.35, 0.60]
+      - type: sprint
+        from: d1
+        to: [0.50, 0.48]
+
+  - label: "Defend"
+    ball_carrier: a1
+    instructions:
+      - "Defender recovers and contests the attacker"
+      - "Attacker tries to score with minimum dribbles"
+      - "Play until shot or turnover"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.40, 0.15]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.35, 0.18]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.40, 0.15]
+      - type: close_out
+        from: d1
+        to: a1
+
+i18n:
+  fr:
+    name: "Dribble de progression 1c1"
+    description: "Exercice 1c1 tout terrain. L'attaquant dribble pour marquer le plus vite possible pendant que le defenseur touche la ligne mediane puis revient defendre."
+    tags:
+      - dribble
+      - 1c1
+      - progression
+      - physique
+      - tout-terrain
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 colonne d'attaquants avec ballon derriere chaque ligne de fond"
+          - "1 colonne de defenseurs derriere chaque ligne de fond"
+          - "Attaquant et defenseur se font face d'un bout a l'autre du terrain"
+      - label: "Depart"
+        instructions:
+          - "Au signal, l'attaquant demarre en dribble vers le panier oppose"
+          - "Le defenseur sprinte toucher la ligne mediane (ou le cercle central)"
+          - "Puis le defenseur revient defendre l'attaquant qui arrive"
+      - label: "Defense"
+        instructions:
+          - "Le defenseur recupere et conteste l'attaquant"
+          - "L'attaquant tente de marquer avec un minimum de dribbles"
+          - "Jouer jusqu'au tir ou a la perte de balle"

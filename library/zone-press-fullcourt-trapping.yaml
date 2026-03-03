@@ -1,0 +1,172 @@
+name: "Full Court Zone Press Trapping"
+description: "Progressive full court zone press drill. Starts with 2v3 systematic trapping: 2 attackers can only pass backwards, 3 defenders must touch ball handler simultaneously. Then 5v5 with full basketball rules. When defenders trap successfully, ball is dropped and roles switch. Develops coordinated full court pressure."
+court_type: full_court
+court_standard: fiba
+duration: 12m
+intensity: 5
+category: defense
+tags:
+  - defense
+  - zone-press
+  - trap
+  - full-court
+  - conditioning
+
+sequences:
+  - label: "2v3 Systematic Trap"
+    ball_carrier: a1
+    instructions:
+      - "2 attackers vs 3 defenders, full court"
+      - "Goal: defenders touch ball handler with both hands simultaneously"
+      - "Attackers can only pass backwards (toward own basket)"
+      - "If defenders trap successfully, ball is dropped"
+      - "After trap, 3 defenders become attackers going other way"
+      - "2 trapped attackers + 1 new player become 3 defenders"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.90]
+      - id: a2
+        label: "B"
+        role: attacker
+        position: [0.30, 0.80]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.50, 0.85]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.35, 0.75]
+      - id: d3
+        label: "D3"
+        role: defender
+        position: [0.65, 0.75]
+    accessories: []
+    actions: []
+
+  - label: "Trap Execution"
+    ball_carrier: a1
+    instructions:
+      - "D1 orients A toward the sideline"
+      - "D2 closes the trap when A reaches the sideline"
+      - "D3 reads the passing lane to B"
+      - "Both trappers must touch ball handler simultaneously"
+      - "If A passes to B, defenders sprint to set up new trap"
+      - "Continue full court until turnover or score"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.75]
+      - id: a2
+        label: "B"
+        role: attacker
+        position: [0.40, 0.65]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.25, 0.78]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.18, 0.73]
+      - id: d3
+        label: "D3"
+        role: defender
+        position: [0.45, 0.70]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: a2
+
+  - label: "5v5 Zone Press"
+    ball_carrier: a1
+    instructions:
+      - "Full basketball rules apply"
+      - "5v5 with zone press defense"
+      - "When both defenders touch ball handler, he drops ball"
+      - "Defenders become attackers going the other way"
+      - "Develop full court pressure with rotations"
+      - "Work curtain by curtain (1st line, 2nd line)"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.90]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.20, 0.80]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.80]
+      - id: a4
+        label: "4"
+        role: attacker
+        position: [0.35, 0.65]
+      - id: a5
+        label: "5"
+        role: attacker
+        position: [0.65, 0.65]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.50, 0.85]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.30, 0.75]
+      - id: d3
+        label: "D3"
+        role: defender
+        position: [0.70, 0.75]
+      - id: d4
+        label: "D4"
+        role: defender
+        position: [0.40, 0.60]
+      - id: d5
+        label: "D5"
+        role: defender
+        position: [0.60, 0.60]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "Zone press tout terrain : travail de prises a deux"
+    description: "Exercice progressif de zone press tout terrain. Commence en 2c3 avec prises a deux systematiques : les 2 attaquants ne peuvent passer que vers l'arriere, les 3 defenseurs doivent toucher le porteur simultanement. Puis 5c5 avec regles completes. Quand les defenseurs trappent, le ballon est pose et les roles s'inversent. Travail de la pression coordonnee tout terrain."
+    tags:
+      - defense
+      - zone-press
+      - trappe
+      - tout-terrain
+      - condition-physique
+    sequences:
+      - label: "2c3 trappe systematique"
+        instructions:
+          - "2 attaquants contre 3 defenseurs, tout terrain"
+          - "Objectif : les defenseurs touchent le porteur a deux simultanement"
+          - "Les attaquants ne peuvent passer que vers l'arriere"
+          - "Si les defenseurs trappent, le ballon est pose"
+          - "Apres la trappe, les 3 defenseurs deviennent attaquants"
+          - "Les 2 attaquants trappes + 1 nouveau deviennent defenseurs"
+      - label: "Execution de la trappe"
+        instructions:
+          - "D1 oriente A vers la ligne de touche"
+          - "D2 ferme la trappe quand A atteint la touche"
+          - "D3 lit la ligne de passe vers B"
+          - "Les deux trappeurs doivent toucher le porteur simultanement"
+          - "Si A passe a B, les defenseurs sprintent pour une nouvelle trappe"
+          - "Continuer tout terrain jusqu'a la perte de balle ou le panier"
+      - label: "5c5 zone press"
+        instructions:
+          - "Regles du basketball completes"
+          - "5c5 avec defense en zone press"
+          - "Quand les 2 defenseurs touchent le porteur, il pose le ballon"
+          - "Les defenseurs deviennent attaquants dans l'autre sens"
+          - "Travailler la pression tout terrain avec rotations"
+          - "Travailler rideau par rideau (1er rideau, 2eme rideau)"

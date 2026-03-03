@@ -1,0 +1,132 @@
+name: "Passing Fundamentals"
+description: "Passing technique drill. 2 players face each other and practice all pass types: chest, bounce, one-hand (left and right). 3 sets of 10 reps per type, increasing distance."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 1
+category: offense
+tags:
+  - passing
+  - fundamentals
+  - warmup
+  - technique
+  - 2-players
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "2 players face each other, 1 ball for 2"
+      - "Start close (3m), progressively increase distance"
+      - "3 sets of 10 reps per pass type"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.65]
+      - id: a2
+        label: "B"
+        role: attacker
+        position: [0.70, 0.65]
+    accessories: []
+    actions: []
+
+  - label: "Chest Pass"
+    ball_carrier: a1
+    instructions:
+      - "Direct chest pass (two hands)"
+      - "Bounce pass (two hands)"
+      - "10 reps each, then increase distance"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.25, 0.65]
+      - id: a2
+        label: "B"
+        role: attacker
+        position: [0.75, 0.65]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: a2
+
+  - label: "One-Hand"
+    ball_carrier: a1
+    instructions:
+      - "One-hand direct pass (right then left)"
+      - "One-hand bounce pass (right then left)"
+      - "Focus on accuracy and speed"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.65]
+      - id: a2
+        label: "B"
+        role: attacker
+        position: [0.80, 0.65]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: a2
+
+  - label: "Moving Apart"
+    ball_carrier: a2
+    instructions:
+      - "Exchange passes while increasing distance after each pass"
+      - "A passes to B, B steps back, passes to A, A steps back, etc."
+      - "Then reverse: B steps forward after each pass"
+      - "Variant: vary pass types (chest, bounce, overhead)"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.15, 0.75]
+      - id: a2
+        label: "B"
+        role: attacker
+        position: [0.15, 0.30]
+    accessories: []
+    actions:
+      - type: pass
+        from: a2
+        to: a1
+      - type: pass
+        from: a1
+        to: a2
+
+i18n:
+  fr:
+    name: "Fondamentaux de la passe"
+    description: "Exercice technique de passe. 2 joueurs face a face travaillent tous les types de passes : directes, a terre, a une main (droite et gauche). 3 series de 10 repetitions par type, en augmentant la distance."
+    tags:
+      - passe
+      - fondamentaux
+      - echauffement
+      - technique
+      - 2-joueurs
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "2 joueurs face a face, 1 ballon pour 2"
+          - "Commencer pres (3m), augmenter progressivement la distance"
+          - "3 series de 10 repetitions par type de passe"
+      - label: "Passes directes"
+        instructions:
+          - "Passe directe a deux mains"
+          - "Passe a terre a deux mains"
+          - "10 repetitions chaque, puis augmenter la distance"
+      - label: "A une main"
+        instructions:
+          - "Passe directe a une main (droite puis gauche)"
+          - "Passe a terre a une main (droite puis gauche)"
+          - "Se concentrer sur la precision et la vitesse"
+      - label: "Ecart progressif"
+        instructions:
+          - "Echanger des passes en augmentant la distance apres chaque passe"
+          - "A passe a B, B recule, passe a A, A recule, etc."
+          - "Puis inverser : B avance apres chaque passe"
+          - "Variante : varier les types de passes (directes, a terre, au-dessus de la tete)"

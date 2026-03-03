@@ -1,0 +1,138 @@
+name: "Weak Side Off-Ball Screens"
+description: "3 players + ball handler. Off-ball screening on the weak side to free a teammate. 4 types: horizontal screen (high post for wing), vertical screen (wing for post), screen between 2 guards, and diagonal screen (low post for wing). Develops off-ball movement and screen usage."
+court_type: half_court
+court_standard: fiba
+duration: 12m
+intensity: 3
+category: offense
+tags:
+  - screens
+  - off-ball
+  - weak-side
+  - getting-open
+  - team-offense
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "Ball handler (A) with ball on the strong side"
+      - "Screener (C) and cutter (B) on the weak side"
+      - "Objective: free B using C's screen on the weak side"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.50]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.75, 0.40]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.60, 0.25]
+    accessories: []
+    actions: []
+
+  - label: "Horizontal Screen"
+    ball_carrier: a1
+    instructions:
+      - "C (high post) sets a horizontal screen for B (wing)"
+      - "B uses the screen to cut toward the ball"
+      - "If defender is caught: B receives pass from A"
+      - "If defender goes over: B curls to the basket"
+      - "If defender goes under: B fades for a jump shot"
+      - "C opens to ball after the screen"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.50]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.55, 0.35]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.60, 0.25]
+    accessories: []
+    actions:
+      - type: screen
+        from: c1
+        to: [0.60, 0.25]
+      - type: cut
+        from: b1
+        to: [0.55, 0.35]
+      - type: pass
+        from: a1
+        to: b1
+
+  - label: "Diagonal Screen"
+    ball_carrier: a1
+    instructions:
+      - "C (low post) sets diagonal screen for B (wing)"
+      - "B cuts from wing to baseline using the screen"
+      - "A passes to B if open on the baseline"
+      - "C rolls to the ball after screening"
+      - "Practice all 4 screen types then add defenders"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.50]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.70, 0.15]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.60, 0.20]
+    accessories: []
+    actions:
+      - type: screen
+        from: c1
+        to: [0.60, 0.20]
+      - type: cut
+        from: b1
+        to: [0.70, 0.15]
+      - type: pass
+        from: a1
+        to: b1
+      - type: shot_jumpshot
+        from: b1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Ecrans cote faible hors ballon"
+    description: "3 joueurs + porteur de balle. Ecrans hors ballon cote faible pour liberer un coequipier. 4 types : ecran horizontal (poste haut pour ailier), ecran vertical (ailier pour poste), ecran entre 2 exterieurs, et ecran diagonal (poste bas pour ailier). Travail du jeu sans ballon et de l'utilisation des ecrans."
+    tags:
+      - ecrans
+      - jeu-sans-ballon
+      - cote-faible
+      - demarquage
+      - jeu-collectif
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "Porteur de balle (A) avec ballon cote fort"
+          - "Poseur d'ecran (C) et coupeur (B) cote faible"
+          - "Objectif : liberer B en utilisant l'ecran de C cote faible"
+      - label: "Ecran horizontal"
+        instructions:
+          - "C (poste haut) pose un ecran horizontal pour B (ailier)"
+          - "B utilise l'ecran pour couper vers le ballon"
+          - "Si le defenseur est coince : B recoit la passe de A"
+          - "Si le defenseur passe par dessus : B curle vers le panier"
+          - "Si le defenseur passe par dessous : B fade pour un tir en suspension"
+          - "C s'ouvre au ballon apres l'ecran"
+      - label: "Ecran diagonal"
+        instructions:
+          - "C (poste bas) pose un ecran diagonal pour B (ailier)"
+          - "B coupe de l'aile vers la ligne de fond en utilisant l'ecran"
+          - "A passe a B si ouvert sur la ligne de fond"
+          - "C roule vers le ballon apres l'ecran"
+          - "Pratiquer les 4 types d'ecran puis ajouter des defenseurs"

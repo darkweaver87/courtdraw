@@ -1,0 +1,107 @@
+name: "Dribble Mirror"
+description: "Ball handling drill. The non-ball handler moves freely — changes of direction, pace, forward, backward. The dribbler must mirror every move."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 2
+category: offense
+tags:
+  - dribble
+  - ball-handling
+  - coordination
+  - warmup
+  - 2-players
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 ball for 2 players"
+      - "Half-court or area defined by the coach"
+      - "Non-ball handler (B) leads, dribbler (A) mirrors"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.35, 0.55]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.65, 0.55]
+    accessories: []
+    actions: []
+
+  - label: "Mirror"
+    ball_carrier: a1
+    instructions:
+      - "B moves freely: changes of pace, direction, forward, backward"
+      - "A must imitate B while maintaining the dribble"
+      - "No shots allowed — pure ball handling"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.25, 0.35]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.55, 0.35]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.25, 0.35]
+      - type: sprint
+        from: b1
+        to: [0.55, 0.35]
+
+  - label: "Switch"
+    ball_carrier: b1
+    instructions:
+      - "Swap roles: B takes the ball, A leads"
+      - "Variant: both players have a ball"
+      - "Variant: place obstacles (cones)"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.60, 0.60]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.35, 0.60]
+    accessories: []
+    actions:
+      - type: dribble
+        from: b1
+        to: [0.35, 0.60]
+      - type: sprint
+        from: a1
+        to: [0.60, 0.60]
+
+i18n:
+  fr:
+    name: "Dribble miroir"
+    description: "Exercice de conduite de balle. Le non-porteur se deplace librement — changements de direction, de rythme, course avant, arriere. Le dribbleur doit imiter chaque mouvement."
+    tags:
+      - dribble
+      - conduite-de-balle
+      - coordination
+      - echauffement
+      - 2-joueurs
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 ballon pour 2 joueurs"
+          - "Demi-terrain ou espace delimite par l'entraineur"
+          - "Le non-porteur (B) guide, le dribbleur (A) imite"
+      - label: "Miroir"
+        instructions:
+          - "B se deplace librement : changements de rythme, direction, avant, arriere"
+          - "A doit imiter B tout en conservant le dribble"
+          - "Pas de tir — travail pur de conduite de balle"
+      - label: "Echange"
+        instructions:
+          - "Inverser les roles : B prend le ballon, A guide"
+          - "Variante : les 2 joueurs ont un ballon"
+          - "Variante : placer des obstacles (plots)"

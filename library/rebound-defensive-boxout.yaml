@@ -1,0 +1,116 @@
+name: "Defensive Rebound Box Out & Outlet"
+description: "2 columns sprint to free throw line on passer's signal. First to arrive shoots, other box outs and rebounds. After rebound, passer relocates to wing for outlet pass. Defender contests the outlet. Develops boxing out, rebounding, and outlet passing."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 4
+category: defense
+tags:
+  - rebound
+  - defensive
+  - box-out
+  - outlet
+  - conditioning
+
+sequences:
+  - label: "Setup"
+    ball_carrier: p1
+    instructions:
+      - "2 columns of players without balls"
+      - "1 column of passers (P) with balls"
+      - "Columns on opposite sides of the key"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.35, 0.65]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.65, 0.65]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.50, 0.80]
+    accessories: []
+    actions: []
+
+  - label: "Sprint, Shoot & Rebound"
+    ball_carrier: a1
+    instructions:
+      - "On P's signal, A and B sprint to free throw line"
+      - "First to arrive receives pass from P and shoots"
+      - "Other player box outs the shooter (screen out)"
+      - "After shot, rebounder outlets to P who relocated to the wing"
+      - "Non-rebounder contests the outlet pass"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.45, 0.38]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.50, 0.35]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.20, 0.50]
+    accessories: []
+    actions:
+      - type: pass
+        from: p1
+        to: a1
+      - type: shot_jumpshot
+        from: a1
+        to: [0.50, 0.05]
+
+  - label: "Variant"
+    instructions:
+      - "Columns positioned on the sides instead of center"
+      - "Penalty: 5 push-ups for defender allowing offensive rebound"
+      - "Rotation: shooter goes to opposite column"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.25, 0.55]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.75, 0.55]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.50, 0.80]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "Rebond defensif ecran de retard et sortie de balle"
+    description: "2 colonnes sprintent vers la ligne des lancers-francs au signal du passeur. Le premier arrive tire, l'autre fait un ecran de retard et prend le rebond. Apres le rebond, le passeur se decale pour la sortie de balle. Le defenseur conteste la sortie. Travail de l'ecran de retard, du rebond et de la sortie de balle."
+    tags:
+      - rebond
+      - defensif
+      - ecran-de-retard
+      - sortie-de-balle
+      - physique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "2 colonnes de joueurs sans ballon"
+          - "1 colonne de passeurs (P) avec ballons"
+          - "Colonnes de part et d'autre de la raquette"
+      - label: "Sprint, tir et rebond"
+        instructions:
+          - "Au signal de P, A et B sprintent vers la ligne des lancers-francs"
+          - "Le premier arrive recoit la passe de P et tire"
+          - "L'autre joueur fait un ecran de retard sur le tireur"
+          - "Apres le tir, le rebondeur sort la balle sur P qui s'est decale sur l'aile"
+          - "Le non-rebondeur conteste la sortie de balle"
+      - label: "Variante"
+        instructions:
+          - "Colonnes positionnees sur les cotes au lieu du centre"
+          - "Penalite : 5 pompes pour le defenseur qui laisse un rebond offensif"
+          - "Rotation : le tireur va dans la colonne opposee"

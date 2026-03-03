@@ -1,0 +1,108 @@
+name: "Full Court 1v1 Defensive Zones"
+description: "1 attacker, 1 defender. Full court 1v1 with 4 defensive zones requiring different strategies. Zone 1 (backcourt): heavy pressure, steal attempts. Zone 2 (mid): control distance, frame dribbler. Zone 3 (wing): reduce distance, orient to sideline. Zone 4 (paint): contest all shots, arms up."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 4
+category: defense
+tags:
+  - defense
+  - on-ball
+  - full-court
+  - pressure
+  - strategy
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 attacker (A) with ball, 1 defender (D)"
+      - "4 zones on the court with different defensive objectives"
+      - "Zone 1 (backcourt): heavy pressure, steal attempts"
+      - "Zone 2 (half court): frame dribbler, control distance"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.90]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.50, 0.85]
+    accessories: []
+    actions: []
+
+  - label: "Advance Through Zones"
+    ball_carrier: a1
+    instructions:
+      - "A advances ball through all 4 zones"
+      - "D adapts strategy per zone"
+      - "Zone 3 (wing): reduce distance, orient to sideline or baseline"
+      - "Zone 4 (paint): stay grounded, arms up, contest everything"
+      - "If A gets past D, D sprints to basket and recovers"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.40]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.50, 0.35]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.50, 0.15]
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+  - label: "Scoring"
+    instructions:
+      - "Must pass ball to coach once (no backdoor), then play 1v1"
+      - "Variant: work on half court only"
+      - "Variant: mandatory mid-range shot at end"
+      - "Rotation after each possession"
+    players:
+      - id: a1
+        label: "A"
+        role: defender
+        position: [0.50, 0.85]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.50, 0.90]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "1c1 tout terrain par zones defensives"
+    description: "1 attaquant, 1 defenseur. 1c1 tout terrain avec 4 zones defensives necessitant des strategies differentes. Zone 1 (arriere) : forte pression, tentatives de vol. Zone 2 (centre) : controler la distance, cadrer le dribbleur. Zone 3 (aile) : reduire la distance, orienter vers la touche. Zone 4 (raquette) : contester tous les tirs, bras leves."
+    tags:
+      - defense
+      - sur-porteur
+      - tout-terrain
+      - pression
+      - strategie
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 attaquant (A) avec ballon, 1 defenseur (D)"
+          - "4 zones sur le terrain avec differents objectifs defensifs"
+          - "Zone 1 (arriere) : forte pression, tentatives de vol"
+          - "Zone 2 (mi-terrain) : cadrer le dribbleur, controler la distance"
+      - label: "Progression a travers les zones"
+        instructions:
+          - "A avance le ballon a travers les 4 zones"
+          - "D adapte sa strategie par zone"
+          - "Zone 3 (aile) : reduire la distance, orienter vers la touche ou la ligne de fond"
+          - "Zone 4 (raquette) : rester ancre, bras leves, tout contester"
+          - "Si A depasse D, D sprinte vers le panier et se replace"
+      - label: "Comptage"
+        instructions:
+          - "Passer obligatoirement le ballon au coach une fois (backdoor interdit), puis 1c1"
+          - "Variante : travailler sur demi-terrain uniquement"
+          - "Variante : tir a mi-distance obligatoire a la fin"
+          - "Rotation apres chaque possession"

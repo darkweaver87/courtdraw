@@ -1,0 +1,131 @@
+name: "Anticipation: Ball-Teammate Rotation"
+description: "Progressive ball-teammate anticipation drill. Groups of 3: A passes to B in center lane, C runs along sideline, receives from B, shoots (layup or jump shot), takes rebound. During C's action, A takes B's spot and B moves to sideline. Then groups of 4 with D as rebounder: same pattern but 4 passages = 1 shot per player. Develops passing and cutting anticipation in transition."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 4
+category: offense
+tags:
+  - anticipation
+  - passing
+  - transition
+  - rotation
+  - shooting
+
+sequences:
+  - label: "3-Player Rotation"
+    ball_carrier: a1
+    instructions:
+      - "Groups of 3 on half-width court"
+      - "A passes to B in center lane"
+      - "C runs along the sideline"
+      - "C receives from B, shoots (layup or jump shot)"
+      - "C takes own rebound"
+      - "During C's action: A takes B's position (3-point line)"
+      - "B moves to sideline lane"
+      - "Restart going the other way (3 passes = 1 shot per player)"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.85]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.50, 0.80]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.15, 0.85]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.30, 0.50]
+      - id: cone2
+        type: cone
+        position: [0.70, 0.50]
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+      - type: pass
+        from: b1
+        to: c1
+
+  - label: "4-Player Rotation"
+    ball_carrier: a1
+    instructions:
+      - "Groups of 4, 1 ball"
+      - "A passes to B in center lane"
+      - "C and D run along sidelines"
+      - "C receives from B, shoots (layup or jump shot)"
+      - "D takes the rebound"
+      - "During C and D's action: A takes B's spot, B goes to sideline"
+      - "4 passages = 1 shot per player"
+      - "Variant: 2 groups of 3 race to X baskets"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.85]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.50, 0.80]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.15, 0.85]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.70, 0.85]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.30, 0.50]
+      - id: cone2
+        type: cone
+        position: [0.70, 0.50]
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+      - type: pass
+        from: b1
+        to: c1
+      - type: shot_layup
+        from: c1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Anticipation : rotation ballon-partenaire"
+    description: "Exercice progressif d'anticipation ballon-partenaire. Groupes de 3 : A passe a B dans le couloir central, C court le long de la ligne de touche, recoit de B, tire (en course ou en suspension), prend le rebond. Pendant l'action de C, A prend la place de B et B se place sur le couloir lateral. Puis groupes de 4 avec D en rebondeur : meme principe mais 4 passages = 1 tir par joueur. Travail de l'anticipation de la passe et de la coupe en transition."
+    tags:
+      - anticipation
+      - passe
+      - transition
+      - rotation
+      - tir
+    sequences:
+      - label: "Rotation a 3 joueurs"
+        instructions:
+          - "Groupes de 3 sur demi-largeur de terrain"
+          - "A passe a B dans le couloir central"
+          - "C court le long de la ligne de touche"
+          - "C recoit de B, tire (en course ou en suspension)"
+          - "C prend son propre rebond"
+          - "Pendant l'action de C : A prend la place de B (a la ligne de 3 pts)"
+          - "B se place dans le couloir lateral"
+          - "Recommencer dans l'autre sens (3 passages = 1 tir par joueur)"
+      - label: "Rotation a 4 joueurs"
+        instructions:
+          - "Groupes de 4, 1 ballon"
+          - "A passe a B dans le couloir central"
+          - "C et D courent le long des lignes de touche"
+          - "C recoit de B, tire (en course ou en suspension)"
+          - "D prend le rebond"
+          - "Pendant l'action de C et D : A prend la place de B, B va au couloir lateral"
+          - "4 passages = 1 tir par joueur"
+          - "Variante : 2 groupes de 3 en course poursuite sur X paniers"

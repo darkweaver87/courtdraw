@@ -1,0 +1,119 @@
+name: "Crossover Slalom"
+description: "Full court dribble slalom with crossovers. Players weave through cones across the court width, practicing all four types of crossover, then finish with a layup."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 2
+category: offense
+tags:
+  - dribble
+  - crossover
+  - ball-handling
+  - cones
+  - layup
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "Work in waves across the width then length of the court"
+      - "4 types of crossover: simple, reverse, behind the back, between the legs"
+      - "3 cones set in a zigzag pattern"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.10, 0.92]
+    accessories:
+      - type: cone
+        id: c1
+        position: [0.30, 0.82]
+      - type: cone
+        id: c2
+        position: [0.15, 0.70]
+      - type: cone
+        id: c3
+        position: [0.30, 0.58]
+    actions: []
+
+  - label: "Slalom"
+    ball_carrier: a1
+    instructions:
+      - "Dribble right hand toward first cone"
+      - "Crossover at each cone — alternate directions"
+      - "Maintain speed, low dribble, protect the ball"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.25, 0.65]
+    accessories:
+      - type: cone
+        id: c1
+        position: [0.30, 0.82]
+      - type: cone
+        id: c2
+        position: [0.15, 0.70]
+      - type: cone
+        id: c3
+        position: [0.30, 0.58]
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.25, 0.65]
+
+  - label: "Finish"
+    ball_carrier: a1
+    instructions:
+      - "After the last cone, attack the basket"
+      - "Finish with a layup (in stride or pull-up)"
+      - "Variant: change side, add reverse at the last cone"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.45, 0.08]
+    accessories:
+      - type: cone
+        id: c1
+        position: [0.30, 0.82]
+      - type: cone
+        id: c2
+        position: [0.15, 0.70]
+      - type: cone
+        id: c3
+        position: [0.30, 0.58]
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.45, 0.08]
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Slalom en dribble avec changements de main"
+    description: "Slalom en dribble tout terrain avec changements de main. Les joueurs slaloment entre les plots en travaillant les 4 types de changement de main, puis finissent au panier."
+    tags:
+      - dribble
+      - changement-de-main
+      - conduite-de-balle
+      - plots
+      - tir-en-course
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "Travail par vagues sur la largeur puis longueur du terrain"
+          - "4 types de changement de main : simple, renversement, dans le dos, entre les jambes"
+          - "3 plots disposes en zigzag"
+      - label: "Slalom"
+        instructions:
+          - "Dribble main droite vers le premier plot"
+          - "Changement de main a chaque plot — alterner les directions"
+          - "Garder la vitesse, dribble bas, proteger le ballon"
+      - label: "Finition"
+        instructions:
+          - "Apres le dernier plot, attaquer le panier"
+          - "Finir avec un tir en course (en foulee ou arret)"
+          - "Variante : changer de cote, ajouter un reverse au dernier plot"

@@ -1,0 +1,117 @@
+name: "Fix Defender & Kick Pass"
+description: "3 players, 1 ball. A dribbles toward the opposite side to the 3-point line, fixing defender B's pressure. C spaces out then cuts to the opposite side. A passes to C who shoots a jump shot."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 2
+category: offense
+tags:
+  - passing
+  - dribble
+  - shooting
+  - fix-and-kick
+  - 3-players
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 ball for 3 players"
+      - "A has the ball on the wing"
+      - "B is the defender pressuring A"
+      - "C is on the opposite side"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.55]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.25, 0.52]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.20, 0.40]
+    accessories: []
+    actions: []
+
+  - label: "Fix & Kick"
+    ball_carrier: c1
+    instructions:
+      - "A dribbles toward the opposite side to the 3-point line"
+      - "A maintains protection dribble despite B's defensive pressure"
+      - "C spaces out then cuts to the opposite wing to receive"
+      - "A passes to C for the jump shot"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.65, 0.45]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.60, 0.43]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.80, 0.50]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.65, 0.45]
+      - type: pass
+        from: a1
+        to: c1
+      - type: shot_jumpshot
+        from: c1
+        to: [0.50, 0.05]
+
+  - label: "Variant"
+    instructions:
+      - "Variant: A stops dribble and protects ball until passing to C"
+      - "Variant: add defender D on C, making it a 2v2 read"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.55]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.25, 0.52]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.80, 0.50]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "Fixation et passe decalee"
+    description: "3 joueurs, 1 ballon. A dribble vers l'oppose jusqu'a la ligne des trois points en fixant la pression defensive de B. C s'ecarte puis coupe a l'oppose pour recevoir. A passe a C qui tire en suspension."
+    tags:
+      - passe
+      - dribble
+      - tir
+      - fixation
+      - 3-joueurs
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 ballon pour 3 joueurs"
+          - "A a le ballon sur l'aile"
+          - "B est le defenseur qui presse A"
+          - "C est du cote oppose"
+      - label: "Fixation et passe"
+        instructions:
+          - "A dribble vers l'oppose jusqu'a la ligne des trois points"
+          - "A maintient son dribble de protection malgre la pression de B"
+          - "C s'ecarte puis coupe a l'aile opposee pour recevoir"
+          - "A passe a C qui tire en suspension"
+      - label: "Variante"
+        instructions:
+          - "Variante : A arrete son dribble et protege son ballon jusqu'a pouvoir passer a C"
+          - "Variante : ajouter un defenseur D sur C, en situation de 2c2"

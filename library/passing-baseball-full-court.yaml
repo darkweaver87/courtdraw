@@ -1,0 +1,161 @@
+name: "Baseball Pass Full Court"
+description: "Full court baseball pass drill. Columns on each baseline with a passer at each free throw line. Player sprints around cone, receives long baseball pass, takes the layup. Continuous rotation on both sides."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: offense
+tags:
+  - passing
+  - baseball-pass
+  - layup
+  - transition
+  - conditioning
+
+sequences:
+  - label: "Setup"
+    ball_carrier: g1
+    instructions:
+      - "1 column of players on each baseline"
+      - "1 passer with ball on each free throw line"
+      - "1 cone near each free throw line"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.15, 0.92]
+      - id: g1
+        label: "G"
+        role: attacker
+        position: [0.30, 0.75]
+      - id: e1
+        label: "E"
+        role: attacker
+        position: [0.85, 0.08]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.70, 0.25]
+      - id: qa
+        label: "A"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.10, 0.95]
+      - id: qe
+        label: "E"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.90, 0.05]
+    accessories:
+      - type: cone
+        id: cn1
+        position: [0.35, 0.80]
+      - type: cone
+        id: cn2
+        position: [0.65, 0.20]
+    actions: []
+
+  - label: "Sprint & Receive"
+    ball_carrier: a1
+    instructions:
+      - "A sprints around the cone toward the basket"
+      - "G makes a long baseball pass to A"
+      - "A catches and finishes with a layup"
+      - "Simultaneously on the other side: E sprints, receives from C"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.15]
+      - id: g1
+        label: "G"
+        role: attacker
+        position: [0.30, 0.75]
+      - id: e1
+        label: "E"
+        role: attacker
+        position: [0.50, 0.85]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.70, 0.25]
+    accessories:
+      - type: cone
+        id: cn1
+        position: [0.35, 0.80]
+      - type: cone
+        id: cn2
+        position: [0.65, 0.20]
+    actions:
+      - type: pass
+        from: g1
+        to: a1
+      - type: sprint
+        from: a1
+        to: [0.50, 0.15]
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+  - label: "Rotation"
+    instructions:
+      - "A takes the rebound and joins the opposite baseline column"
+      - "G joins A's original column"
+      - "The shooter becomes the 1st passer on the other side"
+      - "Variant: use dribble-pass (pass in the dribble) instead of baseball pass"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.85, 0.08]
+      - id: g1
+        label: "G"
+        role: attacker
+        position: [0.15, 0.92]
+      - id: e1
+        label: "E"
+        role: attacker
+        position: [0.15, 0.92]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.85, 0.08]
+    accessories:
+      - type: cone
+        id: cn1
+        position: [0.35, 0.80]
+      - type: cone
+        id: cn2
+        position: [0.65, 0.20]
+    actions: []
+
+i18n:
+  fr:
+    name: "Passe baseball tout terrain"
+    description: "Exercice de passe baseball sur tout le terrain. Colonnes sur chaque ligne de fond avec un passeur a chaque ligne de lancer-francs. Le joueur sprinte autour du plot, recoit la longue passe baseball et tire en course. Rotation continue des deux cotes."
+    tags:
+      - passe
+      - passe-baseball
+      - tir-en-course
+      - transition
+      - physique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 colonne de joueurs sur chaque ligne de fond"
+          - "1 passeur avec ballon sur chaque ligne de lancer-francs"
+          - "1 plot pres de chaque ligne de lancer-francs"
+      - label: "Sprint et reception"
+        instructions:
+          - "A sprinte autour du plot vers le panier"
+          - "G fait une longue passe baseball a A"
+          - "A recoit et finit en tir en course"
+          - "Simultanement de l'autre cote : E sprinte, recoit de C"
+      - label: "Rotation"
+        instructions:
+          - "A prend le rebond et rejoint la colonne opposee"
+          - "G rejoint la colonne d'origine de A"
+          - "Le tireur devient le 1er passeur de l'autre cote"
+          - "Variante : utiliser une passe dans le dribble au lieu de la passe baseball"

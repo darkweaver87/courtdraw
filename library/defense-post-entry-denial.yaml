@@ -1,0 +1,127 @@
+name: "Defense Post Entry Denial"
+description: "2 passers at free throw line extensions, 1 coach at top with ball, 2 interior players under backboard. On signal, one becomes attacker, other defender. Defender contests post entry pass using 3/4 denial position. After reception, 1v1 in the post."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: defense
+tags:
+  - defense
+  - interior
+  - post-entry
+  - denial
+  - positioning
+
+sequences:
+  - label: "Setup"
+    instructions:
+      - "2 passers (P1, P2) at free throw line extension"
+      - "Coach (E) at top of key with ball"
+      - "A and B under the backboard touching rim/backboard"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.45, 0.10]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.55, 0.10]
+      - id: p1
+        label: "P1"
+        role: attacker
+        position: [0.15, 0.38]
+      - id: p2
+        label: "P2"
+        role: attacker
+        position: [0.85, 0.38]
+    accessories: []
+    actions: []
+
+  - label: "Signal & Deny"
+    ball_carrier: a1
+    instructions:
+      - "On coach signal (color, number), one becomes attacker, other defender"
+      - "Attacker tries to establish low post position"
+      - "Defender uses 3/4 denial: feet higher than attacker, arm in passing lane"
+      - "P1 or P2 tries to make the entry pass (no lobs)"
+      - "After reception: 1v1 in the post"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.35, 0.22]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.38, 0.25]
+      - id: p1
+        label: "P1"
+        role: attacker
+        position: [0.15, 0.38]
+      - id: p2
+        label: "P2"
+        role: attacker
+        position: [0.85, 0.38]
+    accessories: []
+    actions:
+      - type: pass
+        from: p1
+        to: a1
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+  - label: "Rotation"
+    instructions:
+      - "After 3 reps, passers and interiors swap roles"
+      - "Vary defender position: 3/4 front, full front, behind"
+      - "Vary pass entry: bounce pass, chest pass from different angles"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.15, 0.38]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.85, 0.38]
+      - id: p1
+        label: "P1"
+        role: attacker
+        position: [0.45, 0.10]
+      - id: p2
+        label: "P2"
+        role: defender
+        position: [0.55, 0.10]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "Defense contestation de passe interieure"
+    description: "2 passeurs aux prolongements des lancers-francs, 1 coach en haut avec ballon, 2 joueurs interieurs sous la planche. Au signal, l'un devient attaquant, l'autre defenseur. Le defenseur conteste la passe interieure en position 3/4. Apres reception, 1c1 au poste."
+    tags:
+      - defense
+      - interieur
+      - passe-interieure
+      - contestation
+      - positionnement
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "2 passeurs (P1, P2) aux prolongements des lancers-francs"
+          - "Coach (E) en haut de la raquette avec ballon"
+          - "A et B sous la planche touchant le cercle/la planche"
+      - label: "Signal et contestation"
+        instructions:
+          - "Au signal du coach (couleur, numero), l'un devient attaquant, l'autre defenseur"
+          - "L'attaquant essaie de prendre une position au poste bas"
+          - "Le defenseur utilise la defense 3/4 : appuis plus hauts que l'attaquant, bras dans la ligne de passe"
+          - "P1 ou P2 essaie de faire la passe interieure (pas de lob)"
+          - "Apres reception : 1c1 au poste"
+      - label: "Rotation"
+        instructions:
+          - "Apres 3 repetitions, passeurs et interieurs echangent"
+          - "Varier la position du defenseur : 3/4, face, derriere"
+          - "Varier l'entree de passe : passe a terre, passe directe depuis differents angles"

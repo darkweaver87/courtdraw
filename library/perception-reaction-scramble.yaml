@@ -1,0 +1,116 @@
+name: "Perception & Reaction Speed"
+description: "Two perception drills. First: 2 teams of 5 run in pairs on full court, on coach signal one team gets the ball with specific constraints (no dribble, limited dribbles). Second: 6-8 players each dribble a ball, on signal they drop their ball and scramble to grab a different one. Last player to grab a ball does 5 push-ups. Develops reaction speed and game awareness."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 4
+category: offense
+tags:
+  - perception
+  - reaction
+  - awareness
+  - dribble
+  - conditioning
+
+sequences:
+  - label: "5v5 Reaction Drill"
+    instructions:
+      - "2 teams of 5 run in pairs on the court"
+      - "On coach signal: designated team gets the ball"
+      - "Coach specifies: inbound location, target basket, constraints"
+      - "Constraints: no dribble, limited dribbles, etc."
+      - "Variant: players not paired at start, run freely"
+      - "On signal, defenders must quickly pick up an attacker"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.30, 0.60]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.70, 0.60]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.30, 0.40]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.50, 0.45]
+      - id: d3
+        label: "D3"
+        role: defender
+        position: [0.70, 0.40]
+    accessories: []
+    actions: []
+
+  - label: "Ball Scramble"
+    instructions:
+      - "6-8 players, each with a ball"
+      - "All players dribble freely on the court"
+      - "On coach signal: drop your ball!"
+      - "Players must grab a DIFFERENT ball as fast as possible"
+      - "Last player to grab a ball does 5 push-ups"
+      - "Variant: touch sideline before grabbing new ball"
+      - "Variant: do a forward roll before grabbing new ball"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.30, 0.70]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.70, 0.70]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.30, 0.30]
+      - id: a4
+        label: "4"
+        role: attacker
+        position: [0.70, 0.30]
+      - id: a5
+        label: "5"
+        role: attacker
+        position: [0.50, 0.50]
+      - id: a6
+        label: "6"
+        role: attacker
+        position: [0.50, 0.80]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "Perception et vitesse de reaction"
+    description: "Deux exercices de perception. Premier : 2 equipes de 5 courent par 2 sur tout le terrain, au signal du coach une equipe recoit le ballon avec des contraintes specifiques (sans dribble, dribbles limites). Deuxieme : 6-8 joueurs dribblent chacun un ballon, au signal ils posent leur ballon et se precipitent pour en prendre un autre. Le dernier fait 5 pompes. Travail de la vitesse de reaction et de la conscience du jeu."
+    tags:
+      - perception
+      - reaction
+      - conscience-de-jeu
+      - dribble
+      - condition-physique
+    sequences:
+      - label: "5c5 reaction"
+        instructions:
+          - "2 equipes de 5 courent par 2 sur le terrain"
+          - "Au signal du coach : l'equipe designee recoit le ballon"
+          - "Le coach precise : lieu de remise en jeu, panier attaque, contraintes"
+          - "Contraintes : sans dribble, dribbles limites, etc."
+          - "Variante : joueurs non appaires au depart, courent librement"
+          - "Au signal, les defenseurs doivent rapidement prendre en charge un attaquant"
+      - label: "Course aux ballons"
+        instructions:
+          - "6-8 joueurs, chacun avec un ballon"
+          - "Tous les joueurs dribblent librement sur le terrain"
+          - "Au signal du coach : posez votre ballon !"
+          - "Les joueurs doivent attraper un ballon DIFFERENT le plus vite possible"
+          - "Le dernier joueur a attraper un ballon fait 5 pompes"
+          - "Variante : toucher la ligne de touche avant de prendre un nouveau ballon"
+          - "Variante : faire une roulade avant de prendre un nouveau ballon"

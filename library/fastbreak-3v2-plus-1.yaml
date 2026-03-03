@@ -1,0 +1,148 @@
+name: "3v2+1 Fast Break with Trailer"
+description: "9+ players. 3 attackers vs 2 defenders, with a 3rd defender sprinting from half court. Attackers must score quickly before 3rd defender arrives, creating 3v2 then 3v3. After the play, defenders become attackers going the other way. Continuous."
+court_type: full_court
+court_standard: fiba
+duration: 12m
+intensity: 4
+category: offense
+tags:
+  - fast-break
+  - 3v2
+  - transition
+  - numbers
+  - decision-making
+
+sequences:
+  - label: "Setup"
+    instructions:
+      - "3 attackers (1, 2, 3) at half court"
+      - "2 defenders (4, 5) near their basket"
+      - "1 trailer defender (6) at half court, must touch rim before defending"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.20, 0.55]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.55]
+      - id: d1
+        label: "4"
+        role: defender
+        position: [0.40, 0.20]
+      - id: d2
+        label: "5"
+        role: defender
+        position: [0.60, 0.20]
+      - id: d3
+        label: "6"
+        role: defender
+        position: [0.50, 0.50]
+    accessories: []
+    actions: []
+
+  - label: "3v2 Rush"
+    ball_carrier: a1
+    instructions:
+      - "1, 2, 3 attack at speed against 4 and 5"
+      - "6 sprints to touch the rim then joins defense (3v3)"
+      - "Attackers must score before 6 arrives (3v2 advantage)"
+      - "Ball handler reads tandem defense: pass to open man"
+      - "Quick decision: shoot or extra pass"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.25]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.20, 0.20]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.20]
+      - id: d1
+        label: "4"
+        role: defender
+        position: [0.45, 0.15]
+      - id: d2
+        label: "5"
+        role: defender
+        position: [0.55, 0.10]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.50, 0.25]
+      - type: pass
+        from: a1
+        to: a2
+      - type: shot_layup
+        from: a2
+        to: [0.50, 0.05]
+
+  - label: "Transition"
+    instructions:
+      - "After the play, 4, 5, 6 become attackers going back"
+      - "1, 2 become defenders, 3 becomes the trailing sprinter"
+      - "Continuous rotation"
+      - "Variant: 3v1+2 — only 1 defender, 2 trailers"
+    players:
+      - id: d1
+        label: "4"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: d2
+        label: "5"
+        role: attacker
+        position: [0.30, 0.55]
+      - id: d3
+        label: "6"
+        role: attacker
+        position: [0.70, 0.55]
+      - id: a1
+        label: "1"
+        role: defender
+        position: [0.40, 0.80]
+      - id: a2
+        label: "2"
+        role: defender
+        position: [0.60, 0.80]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "Contre-attaque 3c2+1 avec retardataire"
+    description: "9+ joueurs. 3 attaquants contre 2 defenseurs, avec un 3eme defenseur qui sprinte depuis mi-terrain. Les attaquants doivent marquer rapidement avant l'arrivee du 3eme defenseur, creant un 3c2 puis 3c3. Apres l'action, les defenseurs deviennent attaquants dans l'autre sens. Continu."
+    tags:
+      - contre-attaque
+      - 3c2
+      - transition
+      - surnombre
+      - prise-de-decision
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "3 attaquants (1, 2, 3) a mi-terrain"
+          - "2 defenseurs (4, 5) pres de leur panier"
+          - "1 defenseur retardataire (6) a mi-terrain, doit toucher le cercle avant de defendre"
+      - label: "Rush 3c2"
+        instructions:
+          - "1, 2, 3 attaquent a pleine vitesse contre 4 et 5"
+          - "6 sprinte toucher le cercle puis rejoint la defense (3c3)"
+          - "Les attaquants doivent marquer avant l'arrivee de 6 (avantage 3c2)"
+          - "Le porteur lit la defense en tandem : passe au joueur ouvert"
+          - "Decision rapide : tirer ou passe supplementaire"
+      - label: "Transition"
+        instructions:
+          - "Apres l'action, 4, 5, 6 deviennent attaquants dans l'autre sens"
+          - "1, 2 deviennent defenseurs, 3 devient le sprinteur retardataire"
+          - "Rotation continue"
+          - "Variante : 3c1+2 — 1 seul defenseur, 2 retardataires"

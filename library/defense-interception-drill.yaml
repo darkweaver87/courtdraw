@@ -1,0 +1,92 @@
+name: "Defensive Interception Anticipation"
+description: "2 passers exchanging passes, 1 defender running between them. D must intercept before the 5th pass, then scores a layup. Develops anticipation, reaction speed, and reading passing lanes. 5 reps per player."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 3
+category: defense
+tags:
+  - defense
+  - interception
+  - anticipation
+  - reaction
+  - aggressiveness
+
+sequences:
+  - label: "Setup"
+    ball_carrier: p1
+    instructions:
+      - "2 passers (P1, P2) near the key"
+      - "1 defender (D) positioned below them"
+      - "P1 and P2 exchange passes"
+    players:
+      - id: p1
+        label: "P1"
+        role: attacker
+        position: [0.30, 0.40]
+      - id: p2
+        label: "P2"
+        role: attacker
+        position: [0.70, 0.40]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.50, 0.55]
+    accessories: []
+    actions: []
+
+  - label: "Intercept & Score"
+    ball_carrier: d1
+    instructions:
+      - "P1 and P2 exchange passes at moderate speed"
+      - "D runs between them trying to intercept"
+      - "D cannot change running pace (constant speed)"
+      - "D must intercept before the 5th pass"
+      - "After interception, D finishes with a layup"
+      - "5 reps per player, then rotate"
+    players:
+      - id: p1
+        label: "P1"
+        role: attacker
+        position: [0.30, 0.40]
+      - id: p2
+        label: "P2"
+        role: attacker
+        position: [0.70, 0.40]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.45, 0.40]
+    accessories: []
+    actions:
+      - type: sprint
+        from: d1
+        to: [0.45, 0.40]
+      - type: shot_layup
+        from: d1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Interception defensive et anticipation"
+    description: "2 passeurs echangent des passes, 1 defenseur court entre eux. D doit intercepter avant la 5eme passe, puis marque en tir en course. Travail de l'anticipation, de la vitesse de reaction et de la lecture des lignes de passe. 5 repetitions par joueur."
+    tags:
+      - defense
+      - interception
+      - anticipation
+      - reaction
+      - agressivite
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "2 passeurs (P1, P2) pres de la raquette"
+          - "1 defenseur (D) positionne en dessous"
+          - "P1 et P2 echangent des passes"
+      - label: "Interception et finition"
+        instructions:
+          - "P1 et P2 echangent des passes a vitesse moderee"
+          - "D court entre eux en essayant d'intercepter"
+          - "D ne peut pas changer son rythme de course (vitesse constante)"
+          - "D doit intercepter avant la 5eme passe"
+          - "Apres l'interception, D finit en tir en course"
+          - "5 repetitions par joueur, puis rotation"

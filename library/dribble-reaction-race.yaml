@@ -1,0 +1,149 @@
+name: "Dribble Reaction Race"
+description: "2-3 groups behind the 3-point line. Coach calls a number, that player from each group races to score first. Develops reaction time and dribble speed."
+court_type: half_court
+court_standard: fiba
+duration: 12m
+intensity: 3
+category: offense
+tags:
+  - dribble
+  - reaction
+  - speed
+  - competition
+  - conditioning
+
+sequences:
+  - label: "Setup"
+    instructions:
+      - "2 or 3 groups of players behind the 3-point line"
+      - "Each player in the group gets a number (1, 2, 3)"
+      - "Coach at center with ball"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.20, 0.75]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.20, 0.80]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.20, 0.85]
+      - id: b1
+        label: "1"
+        role: attacker
+        position: [0.80, 0.75]
+      - id: b2
+        label: "2"
+        role: attacker
+        position: [0.80, 0.80]
+      - id: b3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.85]
+      - id: coach
+        label: "C"
+        role: coach
+        position: [0.50, 0.90]
+    accessories: []
+    actions: []
+
+  - label: "Call"
+    ball_carrier: a2
+    instructions:
+      - "Coach calls a number (e.g. '2!')"
+      - "Player #2 from each group starts dribbling to score"
+      - "First to score wins the point for their team"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.20, 0.75]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.35, 0.55]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.20, 0.85]
+      - id: b1
+        label: "1"
+        role: attacker
+        position: [0.80, 0.75]
+      - id: b2
+        label: "2"
+        role: attacker
+        position: [0.65, 0.55]
+      - id: b3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.85]
+      - id: coach
+        label: "C"
+        role: coach
+        callout: go
+        position: [0.50, 0.90]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a2
+        to: [0.35, 0.55]
+      - type: dribble
+        from: b2
+        to: [0.65, 0.55]
+
+  - label: "Race"
+    ball_carrier: a2
+    instructions:
+      - "1v1 race to the basket"
+      - "3 sets of 15 calls, 3 min rest between sets"
+      - "Switch group positions between sets"
+      - "Variant: impose the start type (direct or crossover)"
+    players:
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.40, 0.12]
+      - id: b2
+        label: "2"
+        role: attacker
+        position: [0.60, 0.12]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a2
+        to: [0.40, 0.12]
+      - type: dribble
+        from: b2
+        to: [0.60, 0.12]
+
+i18n:
+  fr:
+    name: "Course-reaction en dribble"
+    description: "2-3 groupes derriere la ligne a 3 points. L'entraineur appelle un numero, ce joueur de chaque groupe part marquer en premier. Travail du temps de reaction et de la vitesse en dribble."
+    tags:
+      - dribble
+      - reaction
+      - vitesse
+      - competition
+      - physique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "2 ou 3 groupes de joueurs derriere la ligne a 3 points"
+          - "Chaque joueur du groupe recoit un numero (1, 2, 3)"
+          - "Entraineur au centre avec le ballon"
+      - label: "Appel"
+        instructions:
+          - "L'entraineur appelle un numero (ex: '2 !')"
+          - "Le joueur n 2 de chaque groupe part en dribble pour marquer"
+          - "Le premier a marquer gagne le point pour son equipe"
+      - label: "Course"
+        instructions:
+          - "Course 1c1 vers le panier"
+          - "3 series de 15 appels, 3 min de recuperation entre les series"
+          - "Changer les groupes de position entre chaque serie"
+          - "Variante : imposer le type de depart en dribble (direct ou croise)"

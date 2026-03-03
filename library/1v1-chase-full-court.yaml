@@ -1,0 +1,120 @@
+name: "1v1 Full Court Chase"
+description: "2 players, 1 ball, 3 cones. Attacker and defender start side by side behind baseline. On signal, attacker sprints dribbling past cone P2 toward the far basket. Defender cuts around cone P1 and chases. Attacker must score before defender catches up."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 4
+category: offense
+tags:
+  - 1v1
+  - transition
+  - dribble
+  - speed
+  - conditioning
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 attacker with ball, 1 defender, 3 cones"
+      - "Both start side by side behind the baseline"
+      - "Cone P1 near the key, cone P2 at center, cone P3 at the far end"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.55, 0.95]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.45, 0.95]
+    accessories:
+      - type: cone
+        id: p1
+        position: [0.35, 0.80]
+      - type: cone
+        id: p2
+        position: [0.55, 0.50]
+    actions: []
+
+  - label: "Sprint & Chase"
+    ball_carrier: a1
+    instructions:
+      - "On signal, A sprints dribbling past cone P2 toward the basket"
+      - "B cuts around cone P1 then chases A"
+      - "A must score before B catches up and defends"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.55, 0.15]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.40, 0.30]
+    accessories:
+      - type: cone
+        id: p1
+        position: [0.35, 0.80]
+      - type: cone
+        id: p2
+        position: [0.55, 0.50]
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.55, 0.15]
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+  - label: "Rotation"
+    instructions:
+      - "Attacker becomes defender and vice versa"
+      - "Variant: adjust cone P1 position to control defender's delay"
+      - "Closer cone = defender arrives sooner (1v1 under pressure)"
+      - "Further cone = attacker has more time (finishing practice)"
+    players:
+      - id: a1
+        label: "A"
+        role: defender
+        position: [0.45, 0.95]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.55, 0.95]
+    accessories:
+      - type: cone
+        id: p1
+        position: [0.35, 0.80]
+      - type: cone
+        id: p2
+        position: [0.55, 0.50]
+    actions: []
+
+i18n:
+  fr:
+    name: "1c1 tout terrain avec poursuivant"
+    description: "2 joueurs, 1 ballon, 3 plots. L'attaquant et le defenseur partent cote a cote derriere la ligne de fond. Au signal, l'attaquant sprinte en dribblant au-dela du plot P2 vers le panier oppose. Le defenseur coupe au-dela du plot P1 et poursuit. L'attaquant doit marquer avant que le defenseur le rattrape."
+    tags:
+      - 1c1
+      - transition
+      - dribble
+      - vitesse
+      - physique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 attaquant avec ballon, 1 defenseur, 3 plots"
+          - "Les deux partent cote a cote derriere la ligne de fond"
+          - "Plot P1 pres de la raquette, plot P2 au centre, plot P3 au bout"
+      - label: "Sprint et poursuite"
+        instructions:
+          - "Au signal, A sprinte en dribblant au-dela du plot P2 vers le panier"
+          - "B coupe au-dela du plot P1 puis poursuit A"
+          - "A doit marquer avant que B le rattrape et defende"
+      - label: "Rotation"
+        instructions:
+          - "L'attaquant devient defenseur et inversement"
+          - "Variante : ajuster la position du plot P1 pour controler le retard du defenseur"
+          - "Plot plus proche = defenseur arrive plus tot (1c1 sous pression)"
+          - "Plot plus loin = attaquant a plus de temps (travail de finition)"

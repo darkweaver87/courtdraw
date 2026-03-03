@@ -1,0 +1,115 @@
+name: "Post Moves Back to Basket"
+description: "2 columns of players, 1 with balls. A does a jab step at baseline, posts up at low post or mid post. B passes to A. A executes a post move: over-the-shoulder fake + pivot + shot, spin move, face-up jump shot. Work both sides."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 2
+category: offense
+tags:
+  - post-play
+  - shooting
+  - pivots
+  - technique
+  - inside
+
+sequences:
+  - label: "Setup"
+    ball_carrier: b1
+    instructions:
+      - "2 columns: A (post players) at the baseline, B (passers) with balls"
+      - "A posts up at the low post or mid post"
+      - "B is at the free throw line extended or wing"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.35, 0.35]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.20, 0.65]
+      - id: qa
+        label: "A"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.30, 0.90]
+      - id: qb
+        label: "B"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.15, 0.70]
+    accessories: []
+    actions: []
+
+  - label: "Post Up & Receive"
+    ball_carrier: a1
+    instructions:
+      - "A does a jab step at the baseline to create space"
+      - "A posts up back to basket at the mid post"
+      - "B feeds the entry pass to A"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.40, 0.30]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.20, 0.65]
+    accessories: []
+    actions:
+      - type: pass
+        from: b1
+        to: a1
+
+  - label: "Post Move & Finish"
+    ball_carrier: a1
+    instructions:
+      - "A executes a post move and finishes"
+      - "Moves: over-shoulder fake + pivot engage + shot"
+      - "Spin move with dribble between feet + shot"
+      - "Over-shoulder fake + face-up + direct/crossover dribble + shot"
+      - "A recovers ball and changes column"
+      - "Work both low post and mid post, both sides"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.45, 0.20]
+    accessories: []
+    actions:
+      - type: shot_jumpshot
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Jeu au poste dos au panier"
+    description: "2 colonnes de joueurs, 1 avec ballons. A fait un aiguillage ligne de fond, se poste au poste bas ou poste moyen. B passe a A. A execute un mouvement de poste : feinte au-dessus de l'epaule + pivote engage + tir, enroule avec dribble, face-up + depart en dribble. Travailler des deux cotes."
+    tags:
+      - poste
+      - tir
+      - pivotes
+      - technique
+      - interieur
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "2 colonnes : A (joueurs interieurs) sur la ligne de fond, B (passeurs) avec ballons"
+          - "A se poste au poste bas ou poste moyen"
+          - "B est a la ligne de lancer-francs prolongee ou sur l'aile"
+      - label: "Prise de position et reception"
+        instructions:
+          - "A fait un aiguillage a la ligne de fond pour creer l'espace"
+          - "A se poste dos au panier au poste moyen"
+          - "B fait la passe interieure a A"
+      - label: "Mouvement de poste et finition"
+        instructions:
+          - "A execute un mouvement de poste et finit"
+          - "Mouvements : feinte au-dessus de l'epaule + pivote engage + tir"
+          - "Enroule avec dribble entre les appuis + tir"
+          - "Feinte de l'epaule + face-up + depart direct/croise + tir"
+          - "A recupere son ballon et change de colonne"
+          - "Travailler poste bas et poste moyen, des deux cotes"

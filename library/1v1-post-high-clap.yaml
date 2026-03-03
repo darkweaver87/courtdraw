@@ -1,0 +1,129 @@
+name: "1v1 High Post Clap Drill"
+description: "3 columns, 1 ball. A at free throw line, D behind. On coach clap, D sprints to touch baseline then recovers. A receives from P and plays 1v1. Develops high post scoring and quick decision-making."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: offense
+tags:
+  - 1v1
+  - post-play
+  - high-post
+  - reaction
+  - technique
+
+sequences:
+  - label: "Setup"
+    ball_carrier: p1
+    instructions:
+      - "3 columns: attackers (A), defenders (D), passers (P)"
+      - "A at free throw line, D directly behind A"
+      - "P at the top of the key with ball"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.38]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.50, 0.42]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.50, 0.65]
+      - id: qa
+        label: "A"
+        role: attacker
+        type: queue
+        count: 3
+        position: [0.70, 0.70]
+      - id: qd
+        label: "D"
+        role: defender
+        type: queue
+        count: 3
+        position: [0.30, 0.70]
+    accessories: []
+    actions: []
+
+  - label: "Clap & React"
+    ball_carrier: a1
+    instructions:
+      - "On coach clap, D sprints to touch the baseline"
+      - "P passes to A immediately"
+      - "A catches and plays 1v1 before D recovers"
+      - "A can shoot, drive, or use post moves"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.30]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.50, 0.15]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.50, 0.65]
+    accessories: []
+    actions:
+      - type: sprint
+        from: d1
+        to: [0.50, 0.02]
+      - type: pass
+        from: p1
+        to: a1
+      - type: shot_jumpshot
+        from: a1
+        to: [0.50, 0.05]
+
+  - label: "Rotation"
+    instructions:
+      - "Rotation: A→D→P→A"
+      - "Variant: change pass angle (wing entry)"
+      - "Variant: add time constraint for A's decision"
+    players:
+      - id: a1
+        label: "A"
+        role: defender
+        position: [0.50, 0.42]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.50, 0.65]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.70, 0.70]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "1c1 poste haut sur claquement"
+    description: "3 colonnes, 1 ballon. A a la ligne des lancers-francs, D derriere. Au claquement du coach, D sprinte toucher la ligne de fond puis revient. A recoit de P et joue le 1c1. Travail du scoring au poste haut et de la prise de decision rapide."
+    tags:
+      - 1c1
+      - poste
+      - poste-haut
+      - reaction
+      - technique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "3 colonnes : attaquants (A), defenseurs (D), passeurs (P)"
+          - "A a la ligne des lancers-francs, D directement derriere A"
+          - "P en haut de la raquette avec le ballon"
+      - label: "Claquement et reaction"
+        instructions:
+          - "Au claquement du coach, D sprinte toucher la ligne de fond"
+          - "P passe a A immediatement"
+          - "A recoit et joue le 1c1 avant que D ne revienne"
+          - "A peut tirer, penetrer ou utiliser des mouvements de poste"
+      - label: "Rotation"
+        instructions:
+          - "Rotation : A→D→P→A"
+          - "Variante : changer l'angle de passe (entree aile)"
+          - "Variante : ajouter une contrainte de temps pour la decision de A"

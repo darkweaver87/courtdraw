@@ -1,0 +1,160 @@
+name: "Transition Trailer Shot"
+description: "3 players, 4 cones. After a fast break layup, the trailer (3rd player) fills to the free throw line for a mid-range jumper. Develops the trailer role in transition and catch-and-shoot from the elbow."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: offense
+tags:
+  - transition
+  - trailer
+  - shooting
+  - catch-and-shoot
+  - fast-break
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "A with ball on the wing"
+      - "B on the opposite wing"
+      - "C (trailer) at half court"
+      - "4 cones mark the fast break lanes"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.20, 0.85]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.80, 0.85]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.50, 0.55]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.20, 0.70]
+      - id: cone2
+        type: cone
+        position: [0.80, 0.70]
+      - id: cone3
+        type: cone
+        position: [0.20, 0.30]
+      - id: cone4
+        type: cone
+        position: [0.80, 0.30]
+    actions: []
+
+  - label: "Fast Break & Layup"
+    ball_carrier: a1
+    instructions:
+      - "A and B sprint down the wings"
+      - "A passes to B on the run for a layup"
+      - "C trails behind at moderate pace"
+      - "C reads the play and fills to the elbow"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.25]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.70, 0.15]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.50, 0.35]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.20, 0.70]
+      - id: cone2
+        type: cone
+        position: [0.80, 0.70]
+      - id: cone3
+        type: cone
+        position: [0.20, 0.30]
+      - id: cone4
+        type: cone
+        position: [0.80, 0.30]
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+
+  - label: "Trailer Jumper"
+    ball_carrier: c1
+    instructions:
+      - "After layup, B rebounds and passes to C at the elbow"
+      - "C catches and shoots a mid-range jumper"
+      - "A crashes for offensive rebound"
+      - "Rotation: A→B→C→A"
+      - "Variant: C comes off a screen at the elbow"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.20]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.60, 0.10]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.50, 0.22]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.20, 0.70]
+      - id: cone2
+        type: cone
+        position: [0.80, 0.70]
+      - id: cone3
+        type: cone
+        position: [0.20, 0.30]
+      - id: cone4
+        type: cone
+        position: [0.80, 0.30]
+    actions:
+      - type: pass
+        from: b1
+        to: c1
+      - type: shot_jumpshot
+        from: c1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Transition tir du retardataire"
+    description: "3 joueurs, 4 plots. Apres un tir en course en contre-attaque, le retardataire (3eme joueur) remplit la ligne des lancers francs pour un tir mi-distance. Travail du role de retardataire en transition et du tir apres reception au coude."
+    tags:
+      - transition
+      - retardataire
+      - tir
+      - tir-apres-reception
+      - contre-attaque
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "A avec ballon sur l'aile"
+          - "B sur l'aile opposee"
+          - "C (retardataire) a mi-terrain"
+          - "4 plots delimitent les couloirs de contre-attaque"
+      - label: "Contre-attaque et tir en course"
+        instructions:
+          - "A et B sprintent dans les couloirs"
+          - "A passe a B en course pour un tir en course"
+          - "C suit derriere a rythme modere"
+          - "C lit l'action et remplit vers le coude"
+      - label: "Tir du retardataire"
+        instructions:
+          - "Apres le tir en course, B prend le rebond et passe a C au coude"
+          - "C attrape et tire en mi-distance"
+          - "A plonge au rebond offensif"
+          - "Rotation : A→B→C→A"
+          - "Variante : C sort d'un ecran au coude"

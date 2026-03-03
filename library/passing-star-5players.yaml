@@ -1,0 +1,136 @@
+name: "5-Player Star Passing"
+description: "5 players in a star pattern with center relay. A passes to center E who passes to C, B passes to E who passes to D. Continuous rotation after each pass. Develops passing accuracy and all pass types."
+court_type: half_court
+court_standard: fiba
+duration: 8m
+intensity: 2
+category: offense
+tags:
+  - passing
+  - movement
+  - coordination
+  - 5-players
+  - technique
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "5 players: 4 in a square on half-court, 1 in the center (E)"
+      - "2 balls: A and B each have one"
+      - "Center E serves as relay for all passes"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.15, 0.90]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.85, 0.90]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.85, 0.40]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.15, 0.40]
+      - id: e1
+        label: "E"
+        role: attacker
+        position: [0.50, 0.65]
+    accessories: []
+    actions: []
+
+  - label: "Pass Through Center"
+    ball_carrier: e1
+    instructions:
+      - "A passes to E, E passes to C"
+      - "B passes to E, E passes to D"
+      - "After each pass sequence, rotate: A→B→C→D→E→A"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.15, 0.90]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.85, 0.90]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.85, 0.40]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.15, 0.40]
+      - id: e1
+        label: "E"
+        role: attacker
+        position: [0.50, 0.65]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: e1
+      - type: pass
+        from: e1
+        to: c1
+
+  - label: "Continue"
+    instructions:
+      - "Continuous rotation — vary pass types"
+      - "Variant: vary pass types (chest, bounce, one-hand, overhead)"
+      - "Variant: change side of balls"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.85, 0.90]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.85, 0.40]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.15, 0.40]
+      - id: d1
+        label: "D"
+        role: attacker
+        position: [0.50, 0.65]
+      - id: e1
+        label: "E"
+        role: attacker
+        position: [0.15, 0.90]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "Etoile de passes a 5"
+    description: "5 joueurs en etoile avec relais central. A passe au centre E qui passe a C, B passe a E qui passe a D. Rotation continue apres chaque passe. Travail de precision et de tous les types de passes."
+    tags:
+      - passe
+      - mouvement
+      - coordination
+      - 5-joueurs
+      - technique
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "5 joueurs : 4 en carre sur le demi-terrain, 1 au centre (E)"
+          - "2 ballons : A et B ont chacun un ballon"
+          - "Le centre E sert de relais pour toutes les passes"
+      - label: "Passe par le centre"
+        instructions:
+          - "A passe a E, E passe a C"
+          - "B passe a E, E passe a D"
+          - "Apres chaque sequence, rotation : A→B→C→D→E→A"
+      - label: "Enchainement"
+        instructions:
+          - "Rotation continue — varier les types de passes"
+          - "Variante : varier les passes (directes, a terre, a une main, au-dessus de la tete)"
+          - "Variante : changer le cote des ballons"

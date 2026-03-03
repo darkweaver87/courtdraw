@@ -1,0 +1,127 @@
+name: "2v1 Fast Break Continuity"
+description: "2 columns, 1 defender under each basket. A1 and B1 attack D1 in 2v1. After the play, the shooter becomes defender. D1 joins the attack going back the other way with the non-shooter. Continuous 2v1 transitions."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 4
+category: offense
+tags:
+  - fast-break
+  - 2v1
+  - transition
+  - continuity
+  - decision-making
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "2 columns on each side of court"
+      - "1 defender (D1) under the far basket"
+      - "A1 with ball and B1 attack D1"
+    players:
+      - id: a1
+        label: "A1"
+        role: attacker
+        position: [0.40, 0.90]
+      - id: b1
+        label: "B1"
+        role: attacker
+        position: [0.60, 0.90]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.50, 0.10]
+    accessories: []
+    actions: []
+
+  - label: "2v1 Attack"
+    ball_carrier: a1
+    instructions:
+      - "A1 and B1 fast break against D1"
+      - "Ball handler reads the defender"
+      - "If D1 commits to ball, pass to teammate"
+      - "If D1 stays back, attack the basket"
+      - "After shot or score, shooter becomes new defender"
+    players:
+      - id: a1
+        label: "A1"
+        role: attacker
+        position: [0.40, 0.20]
+      - id: b1
+        label: "B1"
+        role: attacker
+        position: [0.65, 0.20]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.50, 0.15]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.40, 0.20]
+      - type: pass
+        from: a1
+        to: b1
+      - type: shot_layup
+        from: b1
+        to: [0.50, 0.05]
+
+  - label: "Transition Back"
+    ball_carrier: d1
+    instructions:
+      - "D1 gets the ball (rebound or inbound)"
+      - "D1 attacks the other way with the non-shooter"
+      - "Shooter stays as defender"
+      - "Continuous 2v1 back and forth"
+      - "Variant: D2 must touch half court line first (delayed)"
+    players:
+      - id: a1
+        label: "A1"
+        role: defender
+        position: [0.50, 0.90]
+      - id: b1
+        label: "B1"
+        role: attacker
+        position: [0.60, 0.50]
+      - id: d1
+        label: "D1"
+        role: attacker
+        position: [0.40, 0.50]
+    accessories: []
+    actions:
+      - type: dribble
+        from: d1
+        to: [0.40, 0.50]
+
+i18n:
+  fr:
+    name: "Contre-attaque 2c1 en continuite"
+    description: "2 colonnes, 1 defenseur sous chaque panier. A1 et B1 attaquent D1 en 2c1. Apres l'action, le tireur devient defenseur. D1 rejoint l'attaque dans l'autre sens avec le non-tireur. 2c1 en transition continue."
+    tags:
+      - contre-attaque
+      - 2c1
+      - transition
+      - continuite
+      - prise-de-decision
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "2 colonnes de chaque cote du terrain"
+          - "1 defenseur (D1) sous le panier oppose"
+          - "A1 avec ballon et B1 attaquent D1"
+      - label: "Attaque 2c1"
+        instructions:
+          - "A1 et B1 en contre-attaque contre D1"
+          - "Le porteur de balle lit le defenseur"
+          - "Si D1 monte sur le ballon, passer au coequipier"
+          - "Si D1 reste en retrait, attaquer le panier"
+          - "Apres le tir ou le panier, le tireur devient le nouveau defenseur"
+      - label: "Transition retour"
+        instructions:
+          - "D1 recupere le ballon (rebond ou remise en jeu)"
+          - "D1 attaque dans l'autre sens avec le non-tireur"
+          - "Le tireur reste comme defenseur"
+          - "2c1 continu aller-retour"
+          - "Variante : D2 doit toucher la ligne mediane d'abord (retard)"

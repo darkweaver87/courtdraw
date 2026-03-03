@@ -1,0 +1,161 @@
+name: "Zone Offense Overload Continuity"
+description: "5v5 zone offense with 2-1-2 alignment. Ball starts on the strong side creating an overload. Players fix in the gaps, pass to shift the zone, use the high post as relay, and attack the weak side baseline. Continuous reset with ball reversal through the high post."
+court_type: half_court
+court_standard: fiba
+duration: 15m
+intensity: 4
+category: offense
+tags:
+  - zone-offense
+  - overload
+  - continuity
+  - ball-reversal
+  - team-offense
+
+sequences:
+  - label: "Setup 2-1-2"
+    ball_carrier: a1
+    instructions:
+      - "5 attackers in 2-1-2 formation"
+      - "1 (guard) with ball at top"
+      - "2 (wing) on the right"
+      - "3 (wing) on the left"
+      - "4 (high post) at the free throw line"
+      - "5 (low post) at the right block"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.60]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.20, 0.40]
+      - id: a4
+        label: "4"
+        role: attacker
+        position: [0.50, 0.30]
+      - id: a5
+        label: "5"
+        role: attacker
+        position: [0.65, 0.15]
+    accessories: []
+    actions: []
+
+  - label: "Strong Side Overload"
+    ball_carrier: a2
+    instructions:
+      - "1 passes to 2 on the strong side"
+      - "4 slides to the ball-side elbow"
+      - "5 seals low on the ball-side block"
+      - "2 looks inside to 5 or 4"
+      - "If neither is open, 2 passes back to 1"
+      - "Zone is shifted to the strong side"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.55, 0.60]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.20, 0.40]
+      - id: a4
+        label: "4"
+        role: attacker
+        position: [0.55, 0.30]
+      - id: a5
+        label: "5"
+        role: attacker
+        position: [0.65, 0.15]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: a2
+
+  - label: "Ball Reversal"
+    ball_carrier: a3
+    instructions:
+      - "1 passes to 4 at the high post (relay)"
+      - "4 swings the ball to 3 on the weak side"
+      - "5 crosses the lane to the weak-side block"
+      - "3 looks inside to 5 who has position"
+      - "Zone is late to rotate — weak side is open"
+      - "Continuous: if no shot, 3 returns to 1, swing again"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.60]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.20, 0.35]
+      - id: a4
+        label: "4"
+        role: attacker
+        position: [0.45, 0.30]
+      - id: a5
+        label: "5"
+        role: attacker
+        position: [0.35, 0.15]
+    accessories: []
+    actions:
+      - type: pass
+        from: a4
+        to: a3
+      - type: pass
+        from: a3
+        to: a5
+      - type: shot_layup
+        from: a5
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Attaque de zone : continuite en surnombre"
+    description: "5c5 attaque de zone en alignement 2-1-2. Le ballon commence cote fort creant un surnombre. Les joueurs fixent dans les intervalles, passent pour deplacer la zone, utilisent le poste haut comme relais, et attaquent la ligne de fond cote faible. Reset continu avec renversement par le poste haut."
+    tags:
+      - attaque-de-zone
+      - surnombre
+      - continuite
+      - renversement
+      - jeu-collectif
+    sequences:
+      - label: "Mise en place 2-1-2"
+        instructions:
+          - "5 attaquants en formation 2-1-2"
+          - "1 (meneur) avec ballon au sommet"
+          - "2 (ailier) a droite"
+          - "3 (ailier) a gauche"
+          - "4 (poste haut) a la ligne des lancers francs"
+          - "5 (poste bas) au bloc droit"
+      - label: "Surnombre cote fort"
+        instructions:
+          - "1 passe a 2 cote fort"
+          - "4 glisse au coude cote ballon"
+          - "5 scelle au bloc bas cote ballon"
+          - "2 regarde a l'interieur vers 5 ou 4"
+          - "Si aucun n'est ouvert, 2 repasse a 1"
+          - "La zone est deplacee vers le cote fort"
+      - label: "Renversement"
+        instructions:
+          - "1 passe a 4 au poste haut (relais)"
+          - "4 transfere le ballon a 3 cote faible"
+          - "5 traverse la raquette vers le bloc cote faible"
+          - "3 regarde a l'interieur vers 5 qui a position"
+          - "La zone est en retard pour tourner — le cote faible est ouvert"
+          - "Continu : si pas de tir, 3 revient a 1, renverser a nouveau"

@@ -1,0 +1,110 @@
+name: "Defensive Intensity to Fast Break"
+description: "Complex conditioning drill combining defensive footwork and fast break finishing. Player A chains: defensive slides (1-2), backpedal (3), tipping (3 times), sprint (5), crossover steps (6-7), then intercepts coach's pass (8) and scores on the opposite basket as fast as possible. Columns under each basket, both sides work simultaneously. Develops defensive intensity transitioning to offensive speed."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 5
+category: defense
+tags:
+  - speed
+  - defense
+  - conditioning
+  - fast-break
+  - footwork
+
+sequences:
+  - label: "Defensive Footwork Chain"
+    instructions:
+      - "Column under each basket, coach (E) on each wing with ball"
+      - "Player A starts under the basket"
+      - "Step 1-2: defensive slides along the baseline"
+      - "Step 3: backpedal to the elbow"
+      - "Step 3b: tipping (3 times at the free throw line)"
+      - "Step 5: sprint to center court"
+      - "Step 6-7: crossover steps through cones"
+      - "Step 8: intercept coach's pass"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.95]
+      - id: e1
+        label: "E"
+        role: attacker
+        position: [0.15, 0.75]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.30, 0.80]
+      - id: cone2
+        type: cone
+        position: [0.45, 0.70]
+      - id: cone3
+        type: cone
+        position: [0.30, 0.60]
+      - id: cone4
+        type: cone
+        position: [0.50, 0.55]
+    actions:
+      - type: sprint
+        from: a1
+        to: [0.30, 0.55]
+
+  - label: "Fast Break Finish"
+    ball_carrier: a1
+    instructions:
+      - "After intercepting coach's pass, A attacks opposite basket"
+      - "Score as fast as possible — no dribble limit"
+      - "Both sides of the court work simultaneously"
+      - "Competition format: losing group does push-ups"
+      - "Variant: work left side as well as right side"
+      - "Variant: vary finish — layup, lay-back, pull-up at 45 degrees"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.40, 0.45]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.40, 0.30]
+      - id: cone2
+        type: cone
+        position: [0.50, 0.20]
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.50, 0.10]
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Intensite defensive vers contre-attaque"
+    description: "Exercice de condition physique complexe combinant appuis defensifs et finition en contre-attaque. Le joueur A enchaine : pas glisses (1-2), course de repli (3), tipping (3 fois), sprint (5), pas croises (6-7), puis intercepte la passe du coach (8) et marque sur le panier oppose le plus vite possible. Colonnes sous chaque panier, les deux cotes travaillent simultanement. Travail de l'intensite defensive transitionnant vers la vitesse offensive."
+    tags:
+      - vitesse
+      - defense
+      - condition-physique
+      - contre-attaque
+      - appuis
+    sequences:
+      - label: "Enchainement d'appuis defensifs"
+        instructions:
+          - "Colonne sous chaque panier, coach (E) sur chaque aile avec ballon"
+          - "Le joueur A demarre sous le panier"
+          - "Etape 1-2 : pas glisses le long de la ligne de fond"
+          - "Etape 3 : course de repli vers le coude"
+          - "Etape 3b : tipping (3 fois sur la ligne des lancers-francs)"
+          - "Etape 5 : sprint jusqu'au centre du terrain"
+          - "Etape 6-7 : pas croises entre les plots"
+          - "Etape 8 : interception de la passe du coach"
+      - label: "Finition en contre-attaque"
+        instructions:
+          - "Apres interception de la passe du coach, A attaque le panier oppose"
+          - "Marquer le plus vite possible — pas de limite de dribbles"
+          - "Les deux cotes du terrain travaillent simultanement"
+          - "Format competition : le groupe perdant fait des pompes"
+          - "Variante : travailler a gauche comme a droite"
+          - "Variante : varier la finition — double-pas, lay-back, tir a 45 degres"

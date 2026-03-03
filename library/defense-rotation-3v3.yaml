@@ -1,0 +1,156 @@
+name: "Defensive Rotations 3v3"
+description: "3 attackers, 3 defenders. A penetrates while his defender intentionally lets him through. B1, C1 rotate to stop A: one helps on ball, the other covers the pass. Develops defensive rotation timing, communication, and interception in rotation."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 4
+category: defense
+tags:
+  - defense
+  - rotation
+  - help-defense
+  - communication
+  - team-defense
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "A with ball at the top"
+      - "B on the right wing, C on the left wing"
+      - "A1 defends A (will let him through)"
+      - "B1 and C1 defend B and C in help position"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.80, 0.35]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.20, 0.35]
+      - id: d1
+        label: "A1"
+        role: defender
+        position: [0.48, 0.50]
+      - id: d2
+        label: "B1"
+        role: defender
+        position: [0.65, 0.30]
+      - id: d3
+        label: "C1"
+        role: defender
+        position: [0.35, 0.30]
+    accessories: []
+    actions: []
+
+  - label: "Rotation"
+    ball_carrier: a1
+    instructions:
+      - "A drives to the basket"
+      - "A1 lets A through (simulates being beaten)"
+      - "B1 or C1 rotates to help on A (depends on direction)"
+      - "The other defender rotates to cover the pass"
+      - "A can go to basket or pass to B or C"
+      - "Defenders must communicate: 'help!' and 'rotate!'"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.25]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.80, 0.35]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.20, 0.35]
+      - id: d1
+        label: "A1"
+        role: defender
+        position: [0.50, 0.35]
+      - id: d2
+        label: "B1"
+        role: defender
+        position: [0.55, 0.20]
+      - id: d3
+        label: "C1"
+        role: defender
+        position: [0.35, 0.30]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.50, 0.25]
+
+  - label: "Interception Drill"
+    instructions:
+      - "Passer E passes to A2 who dribbles toward cones"
+      - "D4 is positioned near the cones"
+      - "When A2 arrives at the cones, he passes to A3"
+      - "D4 tries to intercept the pass to A3"
+      - "Teaches reading the pass in defensive rotation"
+      - "Variant: work 3v3 live after mastering rotations"
+    players:
+      - id: a1
+        label: "A2"
+        role: attacker
+        position: [0.30, 0.40]
+      - id: b1
+        label: "A3"
+        role: attacker
+        position: [0.60, 0.35]
+      - id: d1
+        label: "D4"
+        role: defender
+        position: [0.45, 0.35]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.40, 0.40]
+      - id: cone2
+        type: cone
+        position: [0.40, 0.45]
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+
+i18n:
+  fr:
+    name: "Rotations defensives 3c3"
+    description: "3 attaquants, 3 defenseurs. A penetre tandis que son defenseur le laisse passer volontairement. B1, C1 tournent pour arreter A : l'un aide sur le ballon, l'autre couvre la passe. Travail du timing des rotations defensives, de la communication et de l'interception en rotation."
+    tags:
+      - defense
+      - rotation
+      - aide-defensive
+      - communication
+      - defense-collective
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "A avec ballon au sommet"
+          - "B sur l'aile droite, C sur l'aile gauche"
+          - "A1 defend A (va le laisser passer)"
+          - "B1 et C1 defendent B et C en position d'aide"
+      - label: "Rotation"
+        instructions:
+          - "A penetre vers le panier"
+          - "A1 laisse A passer (simule un debordement)"
+          - "B1 ou C1 tourne en aide sur A (selon la direction)"
+          - "L'autre defenseur tourne pour couvrir la passe"
+          - "A peut aller au panier ou passer a B ou C"
+          - "Les defenseurs doivent communiquer : 'aide !' et 'rotation !'"
+      - label: "Exercice d'interception"
+        instructions:
+          - "Le passeur E passe a A2 qui dribble vers les plots"
+          - "D4 est positionne pres des plots"
+          - "Quand A2 arrive aux plots, il passe a A3"
+          - "D4 essaie d'intercepter la passe vers A3"
+          - "Enseigne la lecture de la passe en rotation defensive"
+          - "Variante : travailler en 3c3 live apres maitrise des rotations"

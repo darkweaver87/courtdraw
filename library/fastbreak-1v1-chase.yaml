@@ -1,0 +1,106 @@
+name: "1v1 Fast Break Chase"
+description: "2 players, 1 ball. Coach passes to the attacker at half court. Defender starts behind and must chase. Attacker tries to score before the defender catches up. Develops speed with the ball and finishing under pressure."
+court_type: full_court
+court_standard: fiba
+duration: 8m
+intensity: 5
+category: offense
+tags:
+  - fast-break
+  - 1v1
+  - speed
+  - finishing
+  - transition
+
+sequences:
+  - label: "Setup"
+    instructions:
+      - "Attacker (A) at half court on one side"
+      - "Defender (D) at half court on the other side"
+      - "Coach with ball at center circle"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.30, 0.55]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.70, 0.55]
+    accessories: []
+    actions: []
+
+  - label: "Chase"
+    ball_carrier: a1
+    instructions:
+      - "Coach passes to A"
+      - "A catches and attacks at full speed"
+      - "D sprints to chase and recover"
+      - "A has 2-3 step advantage"
+      - "A must score before D catches up"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.40, 0.30]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.55, 0.35]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.40, 0.30]
+
+  - label: "Finish"
+    ball_carrier: a1
+    instructions:
+      - "A finishes at the basket (layup or floater)"
+      - "If D recovers, A must use a move to score"
+      - "Rotation: A becomes D, D goes to back of A line"
+      - "Variant: D must touch sideline before chasing"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.45, 0.10]
+      - id: d1
+        label: "D"
+        role: defender
+        position: [0.55, 0.15]
+    accessories: []
+    actions:
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Contre-attaque 1c1 poursuite"
+    description: "2 joueurs, 1 ballon. Le coach passe a l'attaquant a mi-terrain. Le defenseur part derriere et doit rattraper. L'attaquant essaie de marquer avant que le defenseur ne le rattrape. Travail de la vitesse avec ballon et de la finition sous pression."
+    tags:
+      - contre-attaque
+      - 1c1
+      - vitesse
+      - finition
+      - transition
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "Attaquant (A) a mi-terrain d'un cote"
+          - "Defenseur (D) a mi-terrain de l'autre cote"
+          - "Coach avec ballon au rond central"
+      - label: "Poursuite"
+        instructions:
+          - "Le coach passe a A"
+          - "A attrape et attaque a pleine vitesse"
+          - "D sprinte pour rattraper"
+          - "A a 2-3 pas d'avance"
+          - "A doit marquer avant que D ne rattrape"
+      - label: "Finition"
+        instructions:
+          - "A finit au panier (tir en course ou floater)"
+          - "Si D recupere, A doit utiliser un mouvement pour marquer"
+          - "Rotation : A devient D, D va a la fin de la file A"
+          - "Variante : D doit toucher la ligne de touche avant de poursuivre"

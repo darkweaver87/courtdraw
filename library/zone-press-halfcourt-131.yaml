@@ -1,0 +1,171 @@
+name: "Half Court 1-3-1 Zone Press"
+description: "Progressive 1-3-1 half court zone press drill with 9 exercises. Starts with 1v2 trap setup, adds wing trap, interior contest, high post coverage, then chained traps. Point system: 3 pts if attack breaks trap, 2 pts for successful pass, 4 pts for defense on turnover. Develops half court trapping coordination."
+court_type: half_court
+court_standard: fiba
+duration: 15m
+intensity: 4
+category: defense
+tags:
+  - defense
+  - zone-press
+  - trap
+  - half-court
+  - coordination
+
+sequences:
+  - label: "First Trap Setup"
+    ball_carrier: a1
+    instructions:
+      - "A with ball, defenders 1 and 2"
+      - "A can pass between cones to score (2 pts) or along sideline (2 pts)"
+      - "1 must orient A toward 2 for a trap"
+      - "Scoring: basket = 2 pts, pass through = 2 pts"
+      - "If trapped: defenders win the point"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: d1
+        label: "1"
+        role: defender
+        position: [0.48, 0.50]
+      - id: d2
+        label: "2"
+        role: defender
+        position: [0.35, 0.45]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.40, 0.50]
+      - id: cone2
+        type: cone
+        position: [0.60, 0.50]
+    actions: []
+
+  - label: "Wing Trap"
+    ball_carrier: a1
+    instructions:
+      - "A passes to B, 2 orients B toward baseline"
+      - "B closes the door on B, forcing stop or reverse"
+      - "1 comes behind B for the trap"
+      - "If B scores: 2 pts attackers"
+      - "If 1 and 2 trap successfully: 2 pts defense"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.80, 0.40]
+      - id: d1
+        label: "1"
+        role: defender
+        position: [0.48, 0.50]
+      - id: d2
+        label: "2"
+        role: defender
+        position: [0.75, 0.38]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.40, 0.50]
+      - id: cone2
+        type: cone
+        position: [0.60, 0.50]
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+
+  - label: "Chained Traps 5v4"
+    ball_carrier: a1
+    instructions:
+      - "5 attackers vs 4 defenders in 1-3-1 setup"
+      - "1 orients A for trap with 3"
+      - "A passes to B: 3 orients B toward baseline, 5 covers low post"
+      - "B passes to C: trap by 2 and 5, 4 covers high post, 1 covers return pass"
+      - "A can go right or left — defenders adjust"
+      - "When trapped, attacker can pass to any teammate"
+      - "Scoring: 3 pts if trap broken, 2 pts pass success, 4 pts turnover"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.15, 0.35]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.85, 0.35]
+      - id: e1
+        label: "E"
+        role: attacker
+        position: [0.50, 0.15]
+      - id: d1
+        label: "1"
+        role: defender
+        position: [0.50, 0.50]
+      - id: d2
+        label: "2"
+        role: defender
+        position: [0.65, 0.35]
+      - id: d3
+        label: "3"
+        role: defender
+        position: [0.35, 0.35]
+      - id: d4
+        label: "4"
+        role: defender
+        position: [0.50, 0.20]
+    accessories:
+      - id: cone1
+        type: cone
+        position: [0.40, 0.50]
+      - id: cone2
+        type: cone
+        position: [0.60, 0.50]
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+
+i18n:
+  fr:
+    name: "Zone press demi-terrain 1-3-1"
+    description: "Exercice progressif de zone press 1-3-1 demi-terrain avec 9 exercices. Commence en 1c2 avec mise en place de la trappe, ajoute trappe sur l'ailier, contestation interieure, couverture du poste haut, puis enchainement de trappes. Bareme : 3 pts si la prise a 2 est dejouee, 2 pts passe reussie, 4 pts pour la defense sur perte de balle. Travail de la coordination des prises a deux demi-terrain."
+    tags:
+      - defense
+      - zone-press
+      - trappe
+      - demi-terrain
+      - coordination
+    sequences:
+      - label: "Mise en place 1ere trappe"
+        instructions:
+          - "A porteur de balle, defenseurs 1 et 2"
+          - "A peut passer entre les plots pour marquer (2 pts) ou longer la touche (2 pts)"
+          - "1 doit orienter A vers 2 pour une prise a deux"
+          - "Bareme : panier = 2 pts, passe reussie = 2 pts"
+          - "Si trappe : les defenseurs gagnent le point"
+      - label: "Trappe sur l'ailier"
+        instructions:
+          - "A passe a B, 2 oriente B vers la ligne de fond"
+          - "B ferme la porte sur B, forcant arret ou reverse"
+          - "1 revient dans le dos de B pour la trappe"
+          - "Si B marque : 2 pts attaque"
+          - "Si 1 et 2 trappent : 2 pts defense"
+      - label: "Enchainement de trappes 5c4"
+        instructions:
+          - "5 attaquants contre 4 defenseurs en 1-3-1"
+          - "1 oriente A pour trappe avec 3"
+          - "A passe a B : 3 oriente B vers la ligne de fond, 5 couvre le poste bas"
+          - "B passe a C : trappe de 2 et 5, 4 couvre le poste haut, 1 couvre le retour de passe"
+          - "A peut aller a droite ou a gauche — les defenseurs s'adaptent"
+          - "Quand trappe, l'attaquant peut passer a n'importe quel partenaire"
+          - "Bareme : 3 pts si prise dejouee, 2 pts passe reussie, 4 pts perte de balle"

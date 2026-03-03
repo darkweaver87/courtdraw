@@ -1,0 +1,137 @@
+name: "V-Cut / Backdoor 1v1"
+description: "1 attacker, 1 defender, 1 passer with ball, 2 cones. A must receive the ball 3 times using V-cuts or backdoor cuts. On the 4th reception, A plays 1v1. Basket = 2 pts, interception = 2 pts. First to 10 points."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: offense
+tags:
+  - getting-open
+  - v-cut
+  - backdoor
+  - 1v1
+  - fundamentals
+
+sequences:
+  - label: "Setup"
+    ball_carrier: p1
+    instructions:
+      - "1 attacker (A), 1 defender (B), 1 passer (P) with ball"
+      - "2 cones marking the getting-open zone"
+      - "A must use V-cuts or backdoor to get open"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.65, 0.50]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.60, 0.48]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.50, 0.80]
+    accessories:
+      - type: cone
+        id: cn1
+        position: [0.55, 0.35]
+      - type: cone
+        id: cn2
+        position: [0.75, 0.55]
+    actions: []
+
+  - label: "Get Open"
+    ball_carrier: a1
+    instructions:
+      - "A uses V-cut: drive defender toward basket, change pace and direction to wing"
+      - "Or A uses backdoor: fake to wing, cut to basket"
+      - "A must receive 3 times before playing 1v1"
+      - "A can touch a cone to force B to react"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.75, 0.45]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.70, 0.43]
+      - id: p1
+        label: "P"
+        role: attacker
+        position: [0.50, 0.80]
+    accessories:
+      - type: cone
+        id: cn1
+        position: [0.55, 0.35]
+      - type: cone
+        id: cn2
+        position: [0.75, 0.55]
+    actions:
+      - type: cut
+        from: a1
+        to: [0.75, 0.45]
+      - type: pass
+        from: p1
+        to: a1
+
+  - label: "1v1"
+    ball_carrier: a1
+    instructions:
+      - "On 4th reception, A plays 1v1 against B"
+      - "Basket = 2 points, interception = 2 points"
+      - "First to 10 points wins"
+      - "Rotation: A→D→P→A"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.70, 0.40]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.65, 0.38]
+    accessories:
+      - type: cone
+        id: cn1
+        position: [0.55, 0.35]
+      - type: cone
+        id: cn2
+        position: [0.75, 0.55]
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.55, 0.20]
+      - type: shot_jumpshot
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Demarquage en V / backdoor + 1c1"
+    description: "1 attaquant, 1 defenseur, 1 passeur avec ballon, 2 plots. A doit recevoir le ballon 3 fois en utilisant des coupes en V ou backdoor. A la 4eme reception, A joue le 1c1. Panier = 2 pts, interception = 2 pts. Premier a 10 points."
+    tags:
+      - demarquage
+      - coupe-en-v
+      - backdoor
+      - 1c1
+      - fondamentaux
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 attaquant (A), 1 defenseur (B), 1 passeur (P) avec ballon"
+          - "2 plots delimitant la zone de demarquage"
+          - "A doit utiliser des coupes en V ou backdoor pour se demarquer"
+      - label: "Demarquage"
+        instructions:
+          - "A utilise la coupe en V : amener le defenseur vers le panier, changer de rythme et direction vers l'aile"
+          - "Ou A utilise le backdoor : feinter vers l'aile, couper vers le panier"
+          - "A doit recevoir 3 fois avant de jouer le 1c1"
+          - "A peut toucher un plot pour forcer la reaction de B"
+      - label: "1c1"
+        instructions:
+          - "A la 4eme reception, A joue le 1c1 contre B"
+          - "Panier = 2 points, interception = 2 points"
+          - "Premier a 10 points gagne"
+          - "Rotation : A→D→P→A"

@@ -1,0 +1,118 @@
+name: "Passing Under Pressure"
+description: "3-player drill. A is pressed by C and must pass to B. When B receives, A attacks C to get the return pass. Develops off-angle passing under defensive pressure."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 2
+category: offense
+tags:
+  - passing
+  - pressure
+  - 3-players
+  - off-angle
+  - fundamentals
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "Groups of 3 players with 1 ball"
+      - "A has the ball, C pressures A"
+      - "B is the passing target on the wing"
+      - "No lob passes allowed, hold ball max 5 seconds"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.65]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.80, 0.50]
+      - id: c1
+        label: "C"
+        role: defender
+        position: [0.55, 0.62]
+    accessories: []
+    actions: []
+
+  - label: "Pass"
+    ball_carrier: b1
+    instructions:
+      - "A pressed by C must pass to B"
+      - "A uses off-angle pass to avoid the defender"
+      - "Work on fixing the defender then passing away from pressure"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.65]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.80, 0.50]
+      - id: c1
+        label: "C"
+        role: defender
+        position: [0.60, 0.58]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: b1
+
+  - label: "Return"
+    ball_carrier: a1
+    instructions:
+      - "When B receives, A attacks C (v-cut or backdoor)"
+      - "C watches the ball — A slips behind for the return pass"
+      - "B passes back to A who finishes or resets"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.55, 0.35]
+      - id: b1
+        label: "B"
+        role: attacker
+        position: [0.80, 0.50]
+      - id: c1
+        label: "C"
+        role: defender
+        position: [0.60, 0.45]
+    accessories: []
+    actions:
+      - type: cut
+        from: a1
+        to: [0.55, 0.35]
+      - type: pass
+        from: b1
+        to: a1
+
+i18n:
+  fr:
+    name: "Passe sous pression"
+    description: "Exercice a 3 joueurs. A est presse par C et doit passer a B. Quand B recoit, A attaque C pour recevoir la passe en retour. Travail du desaxe de la passe sous pression defensive."
+    tags:
+      - passe
+      - pression
+      - 3-joueurs
+      - desaxe
+      - fondamentaux
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "Groupes de 3 joueurs avec 1 ballon"
+          - "A a le ballon, C presse A"
+          - "B est la cible de passe sur l'aile"
+          - "Interdire les passes lobees, garder le ballon 5 secondes max"
+      - label: "Passe"
+        instructions:
+          - "A presse par C doit passer a B"
+          - "A utilise une passe desaxee pour eviter le defenseur"
+          - "Travailler la fixation du defenseur puis la passe a l'oppose de la pression"
+      - label: "Retour"
+        instructions:
+          - "Quand B recoit, A attaque C (coupe en V ou backdoor)"
+          - "C regarde le ballon — A se faufile pour la passe en retour"
+          - "B repasse a A qui finit ou relance"

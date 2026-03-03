@@ -1,0 +1,145 @@
+name: "Escalating Numbers Transition"
+description: "Starts 1v1, then adds players progressively: 2v1, 3v2, 4v3, 5v4, 5v5. After each play, a new player enters from each side. Develops transition play at every numerical situation. Continuous until 5v5 then reset."
+court_type: full_court
+court_standard: fiba
+duration: 15m
+intensity: 5
+category: offense
+tags:
+  - transition
+  - numbers
+  - escalating
+  - decision-making
+  - conditioning
+
+sequences:
+  - label: "1v1 Start"
+    ball_carrier: a1
+    instructions:
+      - "1 attacker vs 1 defender"
+      - "Attacker tries to score"
+      - "After the play (score or stop), a new player enters each side"
+    players:
+      - id: a1
+        label: "A1"
+        role: attacker
+        position: [0.50, 0.55]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.50, 0.20]
+    accessories: []
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.50, 0.25]
+
+  - label: "2v1 → 3v2"
+    ball_carrier: d1
+    instructions:
+      - "After 1v1: D1 gets ball, +1 attacker enters → 2v1 going back"
+      - "After 2v1: defense gets ball, +1 each side → 3v2"
+      - "Keep filling lanes, quick decisions"
+      - "No stopping between plays"
+    players:
+      - id: d1
+        label: "D1"
+        role: attacker
+        position: [0.40, 0.55]
+      - id: a2
+        label: "A2"
+        role: attacker
+        position: [0.60, 0.55]
+      - id: a1
+        label: "A1"
+        role: defender
+        position: [0.50, 0.80]
+    accessories: []
+    actions:
+      - type: dribble
+        from: d1
+        to: [0.40, 0.55]
+      - type: pass
+        from: d1
+        to: a2
+
+  - label: "5v5 Climax"
+    instructions:
+      - "Continue escalating: 4v3, 5v4, then 5v5"
+      - "At 5v5, play for 2 possessions then reset to 1v1"
+      - "Key: transition mentality at every stage"
+      - "No walking — constant intensity"
+      - "Variant: start from 2v2 for younger players"
+    players:
+      - id: a1
+        label: "1"
+        role: attacker
+        position: [0.50, 0.25]
+      - id: a2
+        label: "2"
+        role: attacker
+        position: [0.20, 0.20]
+      - id: a3
+        label: "3"
+        role: attacker
+        position: [0.80, 0.20]
+      - id: a4
+        label: "4"
+        role: attacker
+        position: [0.35, 0.35]
+      - id: a5
+        label: "5"
+        role: attacker
+        position: [0.65, 0.35]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.40, 0.15]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.60, 0.15]
+      - id: d3
+        label: "D3"
+        role: defender
+        position: [0.50, 0.10]
+      - id: d4
+        label: "D4"
+        role: defender
+        position: [0.30, 0.25]
+      - id: d5
+        label: "D5"
+        role: defender
+        position: [0.70, 0.25]
+    accessories: []
+    actions: []
+
+i18n:
+  fr:
+    name: "Transition en surnombre progressif"
+    description: "Commence en 1c1, puis ajout progressif de joueurs : 2c1, 3c2, 4c3, 5c4, 5c5. Apres chaque action, un nouveau joueur entre de chaque cote. Travail de la transition a chaque situation de surnombre. Continu jusqu'au 5c5 puis remise a zero."
+    tags:
+      - transition
+      - surnombre
+      - progressif
+      - prise-de-decision
+      - condition-physique
+    sequences:
+      - label: "Debut 1c1"
+        instructions:
+          - "1 attaquant contre 1 defenseur"
+          - "L'attaquant essaie de marquer"
+          - "Apres l'action (panier ou arret), un nouveau joueur entre de chaque cote"
+      - label: "2c1 → 3c2"
+        instructions:
+          - "Apres le 1c1 : D1 recupère le ballon, +1 attaquant entre → 2c1 dans l'autre sens"
+          - "Apres le 2c1 : la defense recupère, +1 de chaque cote → 3c2"
+          - "Remplir les couloirs, decisions rapides"
+          - "Pas d'arret entre les actions"
+      - label: "5c5 point culminant"
+        instructions:
+          - "Continuer : 4c3, 5c4, puis 5c5"
+          - "A 5c5, jouer 2 possessions puis reset en 1c1"
+          - "Cle : mentalite de transition a chaque etape"
+          - "Pas de marche — intensite constante"
+          - "Variante : commencer en 2c2 pour les plus jeunes"

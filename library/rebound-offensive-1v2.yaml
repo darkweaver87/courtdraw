@@ -1,0 +1,92 @@
+name: "Offensive Rebound 1v2 from Free Throw"
+description: "1 attacker vs 2 defenders near the basket. Coach shoots from free throw line. A fights for offensive rebound against D1 and D2 who box out. If A gets the rebound, plays to score. Develops aggressiveness and positioning for offensive rebounds."
+court_type: half_court
+court_standard: fiba
+duration: 10m
+intensity: 4
+category: offense
+tags:
+  - rebound
+  - offensive
+  - 1v2
+  - aggressiveness
+  - positioning
+
+sequences:
+  - label: "Setup"
+    instructions:
+      - "1 attacker (A), 2 defenders (D1, D2)"
+      - "Coach at free throw line with ball"
+      - "D1 and D2 near the basket, A between them"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.25]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.40, 0.20]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.60, 0.20]
+    accessories:
+      - type: cone
+        id: coach
+        position: [0.50, 0.38]
+    actions: []
+
+  - label: "Rebound & Score"
+    ball_carrier: a1
+    instructions:
+      - "Coach shoots from free throw line"
+      - "D1 and D2 box out A"
+      - "A fights for position and offensive rebound"
+      - "If A gets the rebound, immediate put-back or play to score"
+      - "Rotate after each attempt"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.15]
+      - id: d1
+        label: "D1"
+        role: defender
+        position: [0.40, 0.15]
+      - id: d2
+        label: "D2"
+        role: defender
+        position: [0.60, 0.15]
+    accessories: []
+    actions:
+      - type: cut
+        from: a1
+        to: [0.50, 0.15]
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Rebond offensif 1c2 depuis les lancers-francs"
+    description: "1 attaquant contre 2 defenseurs pres du panier. Le coach tire depuis la ligne des lancers-francs. A se bat pour le rebond offensif contre D1 et D2 qui bloquent. Si A recupere le rebond, il joue pour marquer. Travail de l'agressivite et du positionnement au rebond offensif."
+    tags:
+      - rebond
+      - offensif
+      - 1c2
+      - agressivite
+      - positionnement
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 attaquant (A), 2 defenseurs (D1, D2)"
+          - "Coach a la ligne des lancers-francs avec le ballon"
+          - "D1 et D2 pres du panier, A entre eux"
+      - label: "Rebond et score"
+        instructions:
+          - "Le coach tire depuis la ligne des lancers-francs"
+          - "D1 et D2 bloquent A au rebond"
+          - "A se bat pour le positionnement et le rebond offensif"
+          - "Si A recupere le rebond, remise immediate ou jeu pour marquer"
+          - "Rotation apres chaque tentative"

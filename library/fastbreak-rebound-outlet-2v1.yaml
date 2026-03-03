@@ -1,0 +1,125 @@
+name: "Rebound Outlet to 2v1 Fast Break"
+description: "3 players, 1 ball. A throws ball off backboard, B contests the rebound pass. C outlets to wing. If B doesn't intercept, C and A run 2v1 against B on the other basket. Develops defensive rebound outlet and fast break transition."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 4
+category: offense
+tags:
+  - fast-break
+  - rebound
+  - outlet
+  - 2v1
+  - transition
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "A throws ball against backboard"
+      - "B (defender) tries to intercept the outlet"
+      - "C positions for the outlet pass on the wing"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.88]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.45, 0.85]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.20, 0.80]
+    accessories: []
+    actions: []
+
+  - label: "Rebound & Outlet"
+    ball_carrier: c1
+    instructions:
+      - "A rebounds, pivots to protect ball"
+      - "B contests the outlet pass to C"
+      - "A must find C with a clean outlet (bounce pass preferred)"
+      - "If B intercepts, B scores immediately"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.85]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.35, 0.82]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.15, 0.75]
+    accessories: []
+    actions:
+      - type: pass
+        from: a1
+        to: c1
+
+  - label: "2v1 Attack"
+    ball_carrier: c1
+    instructions:
+      - "C receives outlet and pushes the ball up court"
+      - "A fills the opposite lane"
+      - "B recovers to defend (2v1)"
+      - "C and A attack the far basket"
+      - "Rotation: A→B→C→A"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.70, 0.30]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.50, 0.25]
+      - id: c1
+        label: "C"
+        role: attacker
+        position: [0.30, 0.25]
+    accessories: []
+    actions:
+      - type: dribble
+        from: c1
+        to: [0.30, 0.25]
+      - type: pass
+        from: c1
+        to: a1
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Rebond sortie de balle puis 2c1"
+    description: "3 joueurs, 1 ballon. A lance le ballon contre la planche, B conteste la sortie de balle. C se decale pour la sortie de balle sur l'aile. Si B n'intercepte pas, C et A jouent le 2c1 contre B sur l'autre panier. Travail du rebond defensif, de la sortie de balle et de la transition en contre-attaque."
+    tags:
+      - contre-attaque
+      - rebond
+      - sortie-de-balle
+      - 2c1
+      - transition
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "A lance le ballon contre la planche"
+          - "B (defenseur) essaie d'intercepter la sortie de balle"
+          - "C se positionne pour la sortie de balle sur l'aile"
+      - label: "Rebond et sortie de balle"
+        instructions:
+          - "A prend le rebond, pivote pour proteger le ballon"
+          - "B conteste la sortie de balle vers C"
+          - "A doit trouver C avec une sortie propre (passe a terre preferee)"
+          - "Si B intercepte, B marque immediatement"
+      - label: "Attaque 2c1"
+        instructions:
+          - "C recoit la sortie et pousse le ballon"
+          - "A remplit le couloir oppose"
+          - "B recupere en defense (2c1)"
+          - "C et A attaquent le panier oppose"
+          - "Rotation : A→B→C→A"

@@ -1,0 +1,105 @@
+name: "On-Ball Defense Orientation with Cones"
+description: "1 attacker, 1 defender, 5 cones forming gates. Defender orients attacker toward specific gates using defensive positioning. A cannot stop or go backwards. Once A passes through the target gate, plays 1v1. Develops defensive steering and pressure."
+court_type: full_court
+court_standard: fiba
+duration: 10m
+intensity: 3
+category: defense
+tags:
+  - defense
+  - on-ball
+  - orientation
+  - pressure
+  - footwork
+
+sequences:
+  - label: "Setup"
+    ball_carrier: a1
+    instructions:
+      - "1 attacker (A) with ball, 1 defender (B)"
+      - "5 cones forming gates across half court"
+      - "B must steer A through the target gate (P4-P5)"
+      - "A cannot stop or move backwards"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.50, 0.90]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.50, 0.85]
+    accessories:
+      - type: cone
+        id: p1
+        position: [0.15, 0.70]
+      - type: cone
+        id: p2
+        position: [0.30, 0.70]
+      - type: cone
+        id: p3
+        position: [0.50, 0.70]
+      - type: cone
+        id: p4
+        position: [0.70, 0.70]
+      - type: cone
+        id: p5
+        position: [0.85, 0.70]
+    actions: []
+
+  - label: "Steer & 1v1"
+    ball_carrier: a1
+    instructions:
+      - "B uses defensive positioning to orient A toward the target gate"
+      - "B positions between ball and basket, on the dribbling hand side"
+      - "Once A passes through the gate, play 1v1 to the basket"
+      - "If A gets past B, B sprints to recover ahead of A"
+      - "5 reps per player per position"
+    players:
+      - id: a1
+        label: "A"
+        role: attacker
+        position: [0.65, 0.55]
+      - id: b1
+        label: "B"
+        role: defender
+        position: [0.60, 0.50]
+    accessories:
+      - type: cone
+        id: p4
+        position: [0.70, 0.70]
+      - type: cone
+        id: p5
+        position: [0.85, 0.70]
+    actions:
+      - type: dribble
+        from: a1
+        to: [0.55, 0.20]
+      - type: shot_layup
+        from: a1
+        to: [0.50, 0.05]
+
+i18n:
+  fr:
+    name: "Defense sur porteur - orientation avec plots"
+    description: "1 attaquant, 1 defenseur, 5 plots formant des portes. Le defenseur oriente l'attaquant vers des portes specifiques en utilisant son placement defensif. A ne peut ni s'arreter ni reculer. Une fois la porte franchie, jouer le 1c1. Travail de l'orientation et de la pression defensive."
+    tags:
+      - defense
+      - sur-porteur
+      - orientation
+      - pression
+      - jeu-de-jambes
+    sequences:
+      - label: "Mise en place"
+        instructions:
+          - "1 attaquant (A) avec ballon, 1 defenseur (B)"
+          - "5 plots formant des portes sur le demi-terrain"
+          - "B doit orienter A vers la porte cible (P4-P5)"
+          - "A ne peut ni s'arreter ni reculer"
+      - label: "Orientation et 1c1"
+        instructions:
+          - "B utilise son placement defensif pour orienter A vers la porte cible"
+          - "B se positionne entre le ballon et le panier, cote main de dribble"
+          - "Une fois la porte franchie, jouer le 1c1 vers le panier"
+          - "Si A depasse B, B sprinte pour se replacer devant A"
+          - "5 repetitions par joueur par poste"
