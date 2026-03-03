@@ -37,6 +37,7 @@ var (
 	Sync      = mustIcon(icons.NotificationSync)
 	Today     = mustIcon(icons.ActionToday)
 	Calendar  = mustIcon(icons.ActionDateRange)
+	Recent    = mustIcon(icons.ActionHistory)
 )
 
 func mustIcon(data []byte) *widget.Icon {

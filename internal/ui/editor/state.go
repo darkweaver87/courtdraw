@@ -40,6 +40,8 @@ type EditorState struct {
 
 	// ToolRole is the player role when ActiveTool == ToolPlayer.
 	ToolRole model.PlayerRole
+	// ToolQueue is true when the player tool creates a queue player.
+	ToolQueue bool
 	// ToolActionType is the action type when ActiveTool == ToolAction.
 	ToolActionType model.ActionType
 	// ToolAccessoryType is the accessory type when ActiveTool == ToolAccessory.
@@ -87,6 +89,15 @@ func (s *EditorState) SetTool(tool ToolType) {
 func (s *EditorState) SetPlayerTool(role model.PlayerRole) {
 	s.ActiveTool = ToolPlayer
 	s.ToolRole = role
+	s.ToolQueue = false
+	s.ActionFrom = nil
+}
+
+// SetQueueTool activates the player placement tool in queue mode.
+func (s *EditorState) SetQueueTool() {
+	s.ActiveTool = ToolPlayer
+	s.ToolRole = model.RoleAttacker
+	s.ToolQueue = true
 	s.ActionFrom = nil
 }
 

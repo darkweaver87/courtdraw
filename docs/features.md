@@ -108,10 +108,38 @@ Icons are PNG or SVG files in `assets/icons/`. They can be replaced for custom s
 - Browse exercises from `library/` directory (shipped with the repo)
 - Importing copies the YAML file to `~/.courtdraw/exercises/`
 - The user can then modify their local copy
+- Community exercises can also be **opened directly** without importing (read-only from library)
 
 ### Export
 
 - Any exercise from `~/.courtdraw/exercises/` can be contributed back to the repo via a standard git workflow (copy YAML to `library/`, open PR)
+
+## Localization
+
+- Exercise instructions, names, descriptions, and tags are localized based on the current app language
+- The `i18n` field in YAML exercise files provides translations per language
+- When opening, importing, or resolving exercises, the `Localized(lang)` method is applied
+- Community exercises with French translations display correctly when the app is set to French
+
+## Dropdown Selectors
+
+- Properties panel fields (role, callout, court standard, court type, category) use popup dropdown lists instead of cycling on click
+- The session composer category filter also uses a popup dropdown
+- Popup renders as a centered floating panel with scrollable options via `op.Defer` for z-ordering
+
+## Recent Files
+
+- The file toolbar includes a **Recent** button (clock icon) between Open and Save
+- Clicking Recent shows the exercise list overlay with the 10 most recently opened/saved exercises
+- Recent files are persisted in `~/.courtdraw/settings.yaml`
+
+## Exercise Preview
+
+- The Session tab includes a central preview column (~35%) between the library and session panels
+- Clicking an exercise in the library selects it and shows an animated preview in the center column
+- Multi-sequence exercises play in a continuous loop; single-sequence exercises show a static court rendering
+- The preview displays exercise name, description, category, duration, and intensity
+- Below the preview, contextual management buttons appear based on the exercise's sync status
 
 ## PDF Generation
 
@@ -154,7 +182,7 @@ Layout overflows to additional pages automatically.
 ## Tags & Filtering
 
 - Tags are free-text strings assigned to exercises
-- The exercise library panel in the session composer supports:
+- The exercise library panel in the session tab supports:
   - Text search (matches name, description, tags)
   - Category dropdown filter
   - Clickable tag chips to filter by tag

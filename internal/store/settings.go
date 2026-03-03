@@ -11,8 +11,9 @@ import (
 
 // Settings holds application-level preferences.
 type Settings struct {
-	Language     string `yaml:"language"`
-	PdfExportDir string `yaml:"pdf_export_dir,omitempty"`
+	Language     string   `yaml:"language"`
+	PdfExportDir string   `yaml:"pdf_export_dir,omitempty"`
+	RecentFiles  []string `yaml:"recent_files,omitempty"`
 }
 
 // LoadSettings reads settings from baseDir/settings.yaml.

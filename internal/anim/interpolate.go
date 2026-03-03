@@ -83,6 +83,7 @@ func InterpolateFrame(fromSeq, toSeq *model.Sequence, t float64) AnimatedFrame {
 					Label:    tp.Label,
 					Role:     tp.Role,
 					Position: InterpolatePosition(fp.Position, tp.Position, t),
+					Callout:  tp.Callout,
 					Type:     fp.Type,
 					Count:    fp.Count,
 				},

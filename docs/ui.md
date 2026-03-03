@@ -5,13 +5,13 @@
 The app uses a **two-tab** interface:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  CourtDraw     [ Exercise Editor | Session Composer ]   │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│                   (active tab content)                   │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│  CourtDraw                  [ Exercise Editor | Session ]             │
+├───────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│                        (active tab content)                           │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Tab 1: Exercise Editor
@@ -146,105 +146,78 @@ Animation plays directly on the court canvas. Elements smoothly move from their 
 
 - **New**: create blank exercise (select court type/standard first)
 - **Open**: pick from `~/.courtdraw/exercises/`
+- **Recent**: open from a list of the 10 most recently opened/saved exercises
 - **Import from library**: browse community exercises from `library/`, copies to `~/.courtdraw/exercises/`
 - **Save**: write to `~/.courtdraw/exercises/<name>.yaml`
 - **Duplicate**: save as new exercise with different name
 
-## Tab 2: Session Composer
+## Tab 2: Session
+
+Three-column layout merging the exercise library, preview, and session composition into a single tab.
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  CourtDraw     [ Exercise Editor | ● Session Composer ]      │
-├────────────────────────────┬─────────────────────────────────┤
-│                            │                                 │
-│  EXERCISE LIBRARY          │  SESSION                        │
-│                            │                                 │
-│  Search: [____________]    │  Title: [High Intensity U13  ]  │
-│  Category: [All      ▼]   │  Subtitle: [1v1 aggression.. ]  │
-│  Tags: [defense] [1v1]    │  Age group: [U13/U15         ]  │
-│                            │                                 │
-│  ┌──────────────────────┐  │  ──────────────────────────     │
-│  │ 🏀 Gauntlet         │  │                                 │
-│  │   warmup · 12min ●●○│  │  1. [≡] 🏀 Gauntlet    12min   │
-│  ├──────────────────────┤  │  2. [≡] 🏀 Double C-O  15min   │
-│  │ 🏀 Double Close-Out │  │  3. [≡] 🏀 1v1 Grinder 15min   │
-│  │   defense · 15min●●●│  │     ↳ 🏀 1v1 Grinder 10s       │
-│  ├──────────────────────┤  │  4. [≡] 🏀 King o/t C  15min   │
-│  │ 🏀 1v1 Grinder      │  │  5. [≡] 🏀 2v1 Waves   13min   │
-│  │   defense · 15min●●●│  │  6. [≡] 🏀 5v5 Match   20min   │
-│  ├──────────────────────┤  │  7. [≡] 🏀 Cool Down    5min   │
-│  │ 🏀 King of the Court│  │                                 │
-│  │   scrimmage·15min●●●│  │         Total: ~1h35            │
-│  ├──────────────────────┤  │                                 │
-│  │ 🏀 2v1 Waves        │  │  [+ Add Exercise]               │
-│  │   transition·13m ●●○│  │                                 │
-│  └──────────────────────┘  │  ──────────────────────────     │
-│                            │  Coach notes:                   │
-│  [+ Add] or drag ──────>  │  • Hydration: 1min water break  │
-│                            │  • Adapt if fatigue             │
-│                            │  [+ Add note]                   │
-│                            │                                 │
-│                            │  Philosophy:                    │
-│                            │  [Intensity doesn't come from.. │
-│                            │                              ]  │
-│                            │                                 │
-│                            │  [📄 Generate PDF]              │
-│                            │                                 │
-├────────────────────────────┴─────────────────────────────────┤
-│  Preview: (court thumbnail of selected exercise)             │
-└──────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ [New] [Open] [Save] [Refresh]                               [PDF]   │
+├────────────────────┬─────────────────────┬───────────────────────────┤
+│  Library           │  Preview            │  Session                  │
+│  (~30%)            │  (~35%)             │  (~35%)                  │
+│  [Search..]        │  [+ Add to session] │  Title: ___              │
+│  [All|Local|...]   │                     │  Date: ___               │
+│  [Category ▼]      │  ┌───────────────┐  │  Subtitle: ___           │
+│                    │  │   court       │  │  Age Group: ___          │
+│  Ex1   Local       │  │   preview     │  │                          │
+│  Ex2   Community   │  │   (animated)  │  │  Exercises:              │
+│ >Ex3   Modified    │  └───────────────┘  │  1. Ex1    x             │
+│  Ex4   Synced      │  "Exercise Name"    │  2. Ex3    x             │
+│  ...               │  Cat · 15m ●●○      │  Total: 30m              │
+│                    │                     │                          │
+│                    │  [Open] [Import]    │  Coach Notes              │
+│                    │  [Contribute] [Del] │  Philosophy               │
+└────────────────────┴─────────────────────┴───────────────────────────┘
 ```
 
-### Left Panel: Exercise Library
+### Toolbar
 
-- Lists all exercises from `~/.courtdraw/exercises/`
-- Each entry shows: name, category, duration, intensity dots
-- **Filter bar**: text search, category dropdown, tag chips
-- **Add**: click button or drag exercise to the session list
+- **[New]**: create a blank session
+- **[Open]**: pick from `~/.courtdraw/sessions/`
+- **[Save]**: write to `~/.courtdraw/sessions/<title>.yaml`
+- **[Refresh]**: reload exercise library
+- **[PDF]**: generate session sheet PDF (right-aligned)
+- Save icon highlights when session is modified
 
-### Right Panel: Session
+### Left Column: Library (~30%)
 
-- **Metadata**: title, subtitle, age group (text inputs)
-- **Exercise list**: ordered list of exercise references
-  - **[≡]** drag handle for reordering
-  - Variants appear indented with `↳` prefix
-  - Right-click / long-press: add variant, remove from session
-  - Click: select (shows preview in bottom panel)
-- **Total duration**: auto-calculated from exercise durations
-- **[+ Add Exercise]**: opens exercise picker or allows drag from library
-- **Coach notes**: editable list of notes
+- Lists all exercises (local + community) merged and sorted
+- Search bar with text filter
+- Status filter chips: All, Local, Community, Synced, Modified
+- Category dropdown filter
+- Each row shows: display name + sync status badge (compact)
+- Clicking a row selects it and loads the preview in the center column
+
+### Center Column: Preview (~35%)
+
+- **[+ Add to session]** button at top — adds selected exercise to the session list
+- **Animated court preview** in the middle — loops through sequences, static for single-sequence exercises
+- Shows exercise metadata (name, description, category, duration, intensity)
+- **Management buttons** at bottom, contextual based on sync status:
+  - **Always**: Open (in editor)
+  - **Remote only**: Import
+  - **Local only**: Contribute, Delete
+  - **Synced**: Delete
+  - **Modified**: Update, Contribute, Delete
+
+### Right Column: Session (~35%)
+
+- **Metadata editors**: title, date (with today/calendar buttons), subtitle, age group
+- **Exercise list**: ordered entries with remove buttons, total duration
+- **Coach notes**: editable list with add/remove
 - **Philosophy**: multiline text field
-- **[Generate PDF]**: generates and saves/shares the session sheet PDF
+- "No session loaded" placeholder when empty
 
-### Adding Exercises to Session
+### Session List Overlay
 
-1. **Click [+ Add]** on a library exercise → appends to session list
-2. **Drag** from library panel → drop in session list at desired position
-3. **[+ Add Exercise]** button in session panel → shows exercise picker overlay
-
-### Reordering
-
-- Drag **[≡]** handles to reorder exercises in the session
-- Variants stay attached to their parent exercise when reordering
-
-### Variants
-
-- Right-click an exercise in the session list → "Add variant"
-- Pick another exercise from the library
-- It appears indented under the parent: `↳ variant-name`
-- In the PDF, variants are displayed as sub-items of the parent exercise
-
-### Bottom Panel: Preview
-
-- When an exercise is selected in the session list, shows its court thumbnail (sequence 1)
-- Click the preview to open the exercise in the Exercise Editor tab
-
-### Session File Operations
-
-- **New**: blank session
-- **Open**: pick from `~/.courtdraw/sessions/`
-- **Save**: write to `~/.courtdraw/sessions/<title>.yaml`
-- **Generate PDF**: render session to PDF, save or share
+- Modal overlay for picking a session to open (triggered by Open button)
+- Shows list of saved session names from `~/.courtdraw/sessions/`
 
 ## Responsive Behavior
 

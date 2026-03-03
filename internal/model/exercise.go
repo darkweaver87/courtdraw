@@ -16,6 +16,7 @@ type Exercise struct {
 	Duration      string        `yaml:"duration,omitempty"`
 	Intensity     Intensity     `yaml:"intensity,omitempty"`
 	Category      Category      `yaml:"category,omitempty"`
+	AgeGroup      AgeGroup      `yaml:"age_group,omitempty"`
 	Tags          []string      `yaml:"tags,omitempty"`
 	Sequences     []Sequence    `yaml:"sequences"`
 	I18n          map[string]ExerciseI18n `yaml:"i18n,omitempty"`
@@ -33,6 +34,24 @@ type ExerciseI18n struct {
 type SequenceI18n struct {
 	Label        string   `yaml:"label,omitempty"`
 	Instructions []string `yaml:"instructions,omitempty"`
+}
+
+// EnsureI18n returns the ExerciseI18n entry for the given language,
+// creating it if necessary. Callers should use SetI18n to write back changes
+// since Go maps return copies for struct values.
+func (e *Exercise) EnsureI18n(lang string) ExerciseI18n {
+	if e.I18n == nil {
+		e.I18n = make(map[string]ExerciseI18n)
+	}
+	return e.I18n[lang]
+}
+
+// SetI18n sets the ExerciseI18n entry for the given language.
+func (e *Exercise) SetI18n(lang string, tr ExerciseI18n) {
+	if e.I18n == nil {
+		e.I18n = make(map[string]ExerciseI18n)
+	}
+	e.I18n[lang] = tr
 }
 
 // Localized returns a shallow copy of the exercise with translated text fields
@@ -86,13 +105,14 @@ type Sequence struct {
 
 // Player is a person on the court.
 type Player struct {
-	ID        string     `yaml:"id"`
-	Label     string     `yaml:"label,omitempty"`
-	Role      PlayerRole `yaml:"role"`
-	Position  Position   `yaml:"position"`
-	Type      string     `yaml:"type,omitempty"`      // "queue" for queued players
-	Count     int        `yaml:"count,omitempty"`     // number of players in queue
-	Direction string     `yaml:"direction,omitempty"` // queue direction
+	ID        string      `yaml:"id"`
+	Label     string      `yaml:"label,omitempty"`
+	Role      PlayerRole  `yaml:"role"`
+	Position  Position    `yaml:"position"`
+	Callout   CalloutType `yaml:"callout,omitempty"`
+	Type      string      `yaml:"type,omitempty"`      // "queue" for queued players
+	Count     int         `yaml:"count,omitempty"`     // number of players in queue
+	Direction string      `yaml:"direction,omitempty"` // queue direction
 }
 
 // Action represents a movement or event between elements.

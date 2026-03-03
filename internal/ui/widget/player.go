@@ -8,11 +8,13 @@ import (
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
+	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 
 	"github.com/darkweaver87/courtdraw/internal/court"
+	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
@@ -24,6 +26,18 @@ const (
 )
 
 var highlightColor = color.NRGBA{R: 0xff, G: 0xff, B: 0x00, A: 0xcc} // yellow
+
+// roleLabelI18n returns the short translated label for a player role.
+// Uses i18n keys "role.<role>" (e.g. "role.point_guard" → "MJ" in French).
+func roleLabelI18n(role model.PlayerRole) string {
+	key := "role." + string(role)
+	label := i18n.T(key)
+	// If key is not found (returned as-is), fall back to model.RoleLabel.
+	if label == key {
+		return model.RoleLabel(role)
+	}
+	return label
+}
 
 const (
 	ballRadius      = 6
@@ -74,10 +88,10 @@ func DrawPlayerWithOpacity(gtx layout.Context, th *material.Theme, vp *court.Vie
 	outlineCol := color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: alpha}
 	court.DrawCircleOutline(gtx.Ops, center, playerRadius, playerOutlineWidth, outlineCol)
 
-	// label text
+	// label text — translate default role labels, keep custom ones
 	label := player.Label
-	if label == "" {
-		label = model.RoleLabel(player.Role)
+	if label == "" || label == model.RoleLabel(player.Role) {
+		label = roleLabelI18n(player.Role)
 	}
 
 	lbl := material.Label(th, unit.Sp(11), label)
@@ -147,10 +161,10 @@ func DrawPlayerWithLabel(gtx layout.Context, th *material.Theme, vp *court.Viewp
 	court.DrawCircleOutline(gtx.Ops, center, playerRadius, playerOutlineWidth,
 		color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
 
-	// label text
+	// label text — translate default role labels, keep custom ones
 	label := player.Label
-	if label == "" {
-		label = model.RoleLabel(player.Role)
+	if label == "" || label == model.RoleLabel(player.Role) {
+		label = roleLabelI18n(player.Role)
 	}
 
 	// render label centered on the player circle
@@ -191,16 +205,84 @@ func DrawPlayerWithLabel(gtx layout.Context, th *material.Theme, vp *court.Viewp
 	}
 }
 
+// DrawCallout draws a speech bubble with the player's callout text above the player.
+func DrawCallout(gtx layout.Context, th *material.Theme, vp *court.Viewport, player *model.Player) {
+	if player.Callout == "" {
+		return
+	}
+	drawCalloutAt(gtx, th, vp, player, 0xff)
+}
+
+// DrawCalloutWithOpacity draws a speech bubble with the given opacity.
+func DrawCalloutWithOpacity(gtx layout.Context, th *material.Theme, vp *court.Viewport, player *model.Player, opacity float64) {
+	if player.Callout == "" || opacity <= 0 {
+		return
+	}
+	drawCalloutAt(gtx, th, vp, player, uint8(opacity*255))
+}
+
+func drawCalloutAt(gtx layout.Context, th *material.Theme, vp *court.Viewport, player *model.Player, alpha uint8) {
+	label := i18n.T("callout." + string(player.Callout))
+	center := vp.RelToPixel(player.Position)
+
+	// Measure text.
+	lbl := material.Label(th, unit.Sp(9), label)
+	lbl.Color = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: alpha}
+	lbl.Alignment = text.Middle
+
+	macro := op.Record(gtx.Ops)
+	labelGtx := gtx
+	labelGtx.Constraints = layout.Constraints{
+		Max: image.Pt(80, 20),
+	}
+	dims := lbl.Layout(labelGtx)
+	call := macro.Stop()
+
+	padX := 4
+	padY := 2
+	bubbleW := dims.Size.X + padX*2
+	bubbleH := dims.Size.Y + padY*2
+
+	// Position: centered above the player circle.
+	bubbleX := int(center.X) - bubbleW/2
+	bubbleY := int(center.Y) - playerRadius - 6 - bubbleH
+
+	// Draw rounded background.
+	bgCol := color.NRGBA{R: 0x20, G: 0x20, B: 0x20, A: uint8(float64(alpha) * 0.85)}
+	bgRect := clip.RRect{
+		Rect: image.Rect(bubbleX, bubbleY, bubbleX+bubbleW, bubbleY+bubbleH),
+		NE:   3, NW: 3, SE: 3, SW: 3,
+	}
+	bgStack := bgRect.Push(gtx.Ops)
+	paint.Fill(gtx.Ops, bgCol)
+	bgStack.Pop()
+
+	// Draw text.
+	textX := bubbleX + padX
+	textY := bubbleY + padY
+	clipStack := clip.Rect{
+		Min: image.Pt(textX, textY),
+		Max: image.Pt(textX+dims.Size.X, textY+dims.Size.Y),
+	}.Push(gtx.Ops)
+	transStack := op.Offset(image.Pt(textX, textY)).Push(gtx.Ops)
+	call.Add(gtx.Ops)
+	transStack.Pop()
+	clipStack.Pop()
+}
+
 func drawQueue(ops *op.Ops, vp *court.Viewport, player *model.Player) {
 	center := vp.RelToPixel(player.Position)
 	count := player.Count
 	if count > 4 {
 		count = 4
 	}
+	col := model.RoleColor(player.Role)
+	// Lighten for queue circles (less prominent than the main player).
+	col.A = 0xaa
 	for i := 1; i < count; i++ {
 		offset := float32(i) * queueSpacing
 		qCenter := f32.Point{X: center.X, Y: center.Y + offset}
-		court.DrawCircleFill(ops, qCenter, queueRadius, model.ColorNeutral)
+		court.DrawCircleFill(ops, qCenter, queueRadius, col)
 		court.DrawCircleOutline(ops, qCenter, queueRadius, 1,
 			color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xaa})
 	}

@@ -57,20 +57,20 @@ type App struct {
 	playback      *anim.Playback
 	animControls  uiwidget.AnimControls
 
-	sessionComposer *uiwidget.SessionComposer
-	library         *store.Library
+	sessionTab *uiwidget.SessionTab
+	library    *store.Library
 	libraryOverlay  *uiwidget.LibraryOverlay
-
-	exerciseManager *uiwidget.ExerciseManager
-	mgrNeedsRefresh bool
 
 	window         *gioapp.Window
 	pendingPDFPath chan string
 
 	activeTab          int
-	tabClickables      [3]widget.Clickable
+	tabClickables      [2]widget.Clickable
 	langClick          widget.Clickable
-	composerNeedsRefresh bool
+	sessionNeedsRefresh bool
+
+	editLang       string
+	editLangClicks [2]widget.Clickable
 }
 
 // NewApp creates a new App instance.
@@ -83,15 +83,15 @@ func NewApp(th *material.Theme, st store.Store, libraryDir string) *App {
 		propsPanel:      uiwidget.NewPropertiesPanel(),
 		instrPanel:      uiwidget.NewInstructionsPanel(),
 		exerciseList:    uiwidget.NewExerciseListOverlay(),
-		sessionComposer: uiwidget.NewSessionComposer(),
-		libraryOverlay:  uiwidget.NewLibraryOverlay(),
-		exerciseManager: uiwidget.NewExerciseManager(),
+		sessionTab:     uiwidget.NewSessionTab(),
+		libraryOverlay: uiwidget.NewLibraryOverlay(),
 		pendingPDFPath: make(chan string, 1),
 	}
 	if libraryDir != "" {
 		a.library = store.NewLibrary(libraryDir)
 	}
 	a.editorState.ActiveTool = editor.ToolSelect
+	a.editLang = "en"
 	return a
 }
 
@@ -139,10 +139,7 @@ func (a *App) Layout(gtx layout.Context) layout.Dimensions {
 			if a.activeTab != i {
 				a.activeTab = i
 				if i == 1 {
-					a.composerNeedsRefresh = true
-				}
-				if i == 2 {
-					a.mgrNeedsRefresh = true
+					a.sessionNeedsRefresh = true
 				}
 			}
 		}
@@ -205,13 +202,9 @@ func (a *App) layoutTabBar(gtx layout.Context) layout.Dimensions {
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return a.layoutTab(gtx, 0, i18n.T("tab.exercise_editor"))
 		}),
-		// session composer tab
+		// session tab
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return a.layoutTab(gtx, 1, i18n.T("tab.session_composer"))
-		}),
-		// exercise manager tab
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return a.layoutTab(gtx, 2, i18n.T("tab.exercise_manager"))
+			return a.layoutTab(gtx, 1, i18n.T("tab.session"))
 		}),
 		// spacer
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
@@ -251,9 +244,7 @@ func (a *App) layoutContent(gtx layout.Context) layout.Dimensions {
 	case 0:
 		return a.layoutExerciseEditor(gtx)
 	case 1:
-		return a.layoutSessionComposer(gtx)
-	case 2:
-		return a.layoutExerciseManager(gtx)
+		return a.layoutSessionTab(gtx)
 	default:
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	}
@@ -267,6 +258,13 @@ func (a *App) layoutExerciseEditor(gtx layout.Context) layout.Dimensions {
 			a.handleFileAction(action)
 			return dims
 		}),
+		// Edit language bar.
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if a.exercise == nil {
+				return layout.Dimensions{}
+			}
+			return a.layoutEditLangBar(gtx)
+		}),
 		// Rest of the editor (or empty state).
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			if a.exercise == nil {
@@ -279,6 +277,58 @@ func (a *App) layoutExerciseEditor(gtx layout.Context) layout.Dimensions {
 			return a.layoutEditorContent(gtx)
 		}),
 	)
+}
+
+func (a *App) layoutEditLangBar(gtx layout.Context) layout.Dimensions {
+	barH := gtx.Dp(unit.Dp(24))
+	bg := color.NRGBA{R: 0x2a, G: 0x2a, B: 0x2a, A: 0xff}
+	paint.FillShape(gtx.Ops, bg, clip.Rect{Max: image.Pt(gtx.Constraints.Max.X, barH)}.Op())
+
+	langs := [2]string{"en", "fr"}
+
+	// Handle clicks.
+	for i := range a.editLangClicks {
+		if a.editLangClicks[i].Clicked(gtx) && a.editLang != langs[i] {
+			a.editLang = langs[i]
+			a.propsPanel.SyncFromExercise()
+			a.instrPanel.ForceResync()
+		}
+	}
+
+	return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return layout.Inset{Left: unit.Dp(8), Right: unit.Dp(8)}.Layout(gtx,
+				func(gtx layout.Context) layout.Dimensions {
+					lbl := material.Label(a.theme, unit.Sp(11), i18n.T("edit_lang.label")+":")
+					lbl.Color = theme.ColorTabText
+					return lbl.Layout(gtx)
+				},
+			)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return a.layoutLangBtn(gtx, 0, "EN")
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return a.layoutLangBtn(gtx, 1, "FR")
+		}),
+	)
+}
+
+func (a *App) layoutLangBtn(gtx layout.Context, idx int, label string) layout.Dimensions {
+	langs := [2]string{"en", "fr"}
+	col := theme.ColorTabText
+	if a.editLang == langs[idx] {
+		col = theme.ColorTabActive
+	}
+	return material.Clickable(gtx, &a.editLangClicks[idx], func(gtx layout.Context) layout.Dimensions {
+		return layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4), Top: unit.Dp(2), Bottom: unit.Dp(2)}.Layout(gtx,
+			func(gtx layout.Context) layout.Dimensions {
+				lbl := material.Label(a.theme, unit.Sp(12), label)
+				lbl.Color = col
+				return lbl.Layout(gtx)
+			},
+		)
+	})
 }
 
 func (a *App) layoutEditorContent(gtx layout.Context) layout.Dimensions {
@@ -328,7 +378,7 @@ func (a *App) layoutEditorContent(gtx layout.Context) layout.Dimensions {
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					gtx.Constraints.Max.X = gtx.Dp(unit.Dp(220))
 					gtx.Constraints.Min.X = gtx.Constraints.Max.X
-					return a.propsPanel.Layout(gtx, a.theme, a.exercise, &a.editorState, seqIdx)
+					return a.propsPanel.Layout(gtx, a.theme, a.exercise, &a.editorState, seqIdx, a.editLang)
 				}),
 			)
 		}),
@@ -339,7 +389,7 @@ func (a *App) layoutEditorContent(gtx layout.Context) layout.Dimensions {
 		}),
 		// Bottom: instructions panel.
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return a.instrPanel.Layout(gtx, a.theme, currentSeq, seqIdx, &a.editorState)
+			return a.instrPanel.Layout(gtx, a.theme, currentSeq, seqIdx, &a.editorState, a.exercise, a.editLang)
 		}),
 	)
 
@@ -361,15 +411,15 @@ func (a *App) layoutEditorContent(gtx layout.Context) layout.Dimensions {
 	return dims
 }
 
-func (a *App) layoutSessionComposer(gtx layout.Context) layout.Dimensions {
+func (a *App) layoutSessionTab(gtx layout.Context) layout.Dimensions {
 	// Only refresh library when flagged dirty (tab switch, save, import).
-	if a.composerNeedsRefresh {
-		a.refreshLibraryForComposer()
-		a.composerNeedsRefresh = false
+	if a.sessionNeedsRefresh {
+		a.sessionTab.SetExercises(a.buildManagedExercises())
+		a.sessionNeedsRefresh = false
 	}
 
 	// Re-resolve exercises when the session list changes (e.g. after adding/removing).
-	if a.sessionComposer.Modified() {
+	if a.sessionTab.Modified() {
 		a.resolveSessionExercises()
 	}
 
@@ -380,87 +430,39 @@ func (a *App) layoutSessionComposer(gtx layout.Context) layout.Dimensions {
 	default:
 	}
 
-	// Handle session actions.
-	action := a.sessionComposer.HandleActions(gtx)
-	switch action {
-	case uiwidget.SessionActionNew:
+	// Handle session tab events.
+	ev := a.sessionTab.HandleActions(gtx)
+	switch ev.Action {
+	case uiwidget.SessionTabActionNew:
 		a.NewSession()
-	case uiwidget.SessionActionOpen:
+	case uiwidget.SessionTabActionOpen:
 		a.showOpenSessionDialog()
-	case uiwidget.SessionActionSave:
+	case uiwidget.SessionTabActionSave:
 		a.saveSession()
-	case uiwidget.SessionActionGenerate:
+	case uiwidget.SessionTabActionGenerate:
 		a.showPdfExportDialog()
+	case uiwidget.SessionTabActionRefresh:
+		a.sessionTab.SetExercises(a.buildManagedExercises())
+	case uiwidget.SessionTabActionOpenExercise:
+		a.openExercise(ev.Name)
+		a.activeTab = 0
+	case uiwidget.SessionTabActionUpdate:
+		a.updateExerciseFromRemote(ev.Name)
+	case uiwidget.SessionTabActionContribute:
+		a.contributeExercise(ev.Name)
+	case uiwidget.SessionTabActionDeleteExercise:
+		a.deleteExercise(ev.Name)
 	}
 
 	// Handle session list overlay selection.
-	if a.sessionComposer != nil {
-		slo := a.sessionComposer.SessionListOverlay()
-		if slo != nil && slo.OnSelect != "" {
-			name := slo.OnSelect
-			slo.OnSelect = ""
-			a.openSession(name)
-		}
+	slo := a.sessionTab.SessionListOverlay()
+	if slo != nil && slo.OnSelect != "" {
+		name := slo.OnSelect
+		slo.OnSelect = ""
+		a.openSession(name)
 	}
 
-	return a.sessionComposer.Layout(gtx, a.theme)
-}
-
-func (a *App) refreshLibraryForComposer() {
-	var allNames []string
-	var allExercises []*model.Exercise
-	seen := make(map[string]bool)
-	lang := string(i18n.CurrentLang())
-
-	// Index community i18n data for merging into local exercises.
-	communityI18n := make(map[string]map[string]model.ExerciseI18n)
-	if a.library != nil {
-		if libNames, err := a.library.ListExercises(); err == nil {
-			for _, name := range libNames {
-				if libEx, err := a.library.LoadExercise(name); err == nil && libEx.I18n != nil {
-					communityI18n[name] = libEx.I18n
-				}
-			}
-		}
-	}
-
-	// Local exercises first.
-	names, err := a.store.ListExercises()
-	if err == nil {
-		for _, name := range names {
-			ex, err := a.store.LoadExercise(name)
-			if err == nil {
-				if ex.I18n == nil {
-					if ci, ok := communityI18n[name]; ok {
-						ex.I18n = ci
-					}
-				}
-				allNames = append(allNames, name)
-				allExercises = append(allExercises, ex.Localized(lang))
-				seen[name] = true
-			}
-		}
-	}
-
-	// Community library exercises (not already local).
-	if a.library != nil {
-		libNames, err := a.library.ListExercises()
-		if err == nil {
-			for _, name := range libNames {
-				if seen[name] {
-					continue
-				}
-				ex, err := a.library.LoadExercise(name)
-				if err == nil {
-					allNames = append(allNames, name)
-					allExercises = append(allExercises, ex.Localized(lang))
-				}
-			}
-		}
-	}
-
-	a.sessionComposer.SetLibrary(allNames, allExercises)
-	a.resolveSessionExercises()
+	return a.sessionTab.Layout(gtx, a.theme)
 }
 
 // loadExerciseAny tries loading from local store first, then community library.
@@ -476,19 +478,20 @@ func (a *App) loadExerciseAny(name string) (*model.Exercise, error) {
 }
 
 func (a *App) resolveSessionExercises() {
-	if a.sessionComposer.Session() == nil {
+	if a.sessionTab.Session() == nil {
 		return
 	}
+	lang := string(i18n.CurrentLang())
 	resolved := make(map[string]*model.Exercise)
-	for _, entry := range a.sessionComposer.Session().Exercises {
+	for _, entry := range a.sessionTab.Session().Exercises {
 		if _, ok := resolved[entry.Exercise]; !ok {
 			ex, err := a.loadExerciseAny(entry.Exercise)
 			if err == nil {
-				resolved[entry.Exercise] = ex
+				resolved[entry.Exercise] = ex.Localized(lang)
 			}
 		}
 	}
-	a.sessionComposer.SetResolvedExercises(resolved)
+	a.sessionTab.SetResolvedExercises(resolved)
 }
 
 // NewSession creates a blank session.
@@ -497,7 +500,7 @@ func (a *App) NewSession() {
 		Title: i18n.T("default.session_name"),
 		Date:  time.Now().Format("2006-01-02"),
 	}
-	a.sessionComposer.SetSession(s)
+	a.sessionTab.SetSession(s)
 }
 
 func (a *App) showOpenSessionDialog() {
@@ -506,7 +509,7 @@ func (a *App) showOpenSessionDialog() {
 		log.Printf("list sessions: %v", err)
 		return
 	}
-	slo := a.sessionComposer.SessionListOverlay()
+	slo := a.sessionTab.SessionListOverlay()
 	if slo != nil {
 		slo.Show(names)
 	}
@@ -518,11 +521,11 @@ func (a *App) openSession(name string) {
 		log.Printf("load session %s: %v", name, err)
 		return
 	}
-	a.sessionComposer.SetSession(s)
+	a.sessionTab.SetSession(s)
 }
 
 func (a *App) saveSession() {
-	s := a.sessionComposer.Session()
+	s := a.sessionTab.Session()
 	if s == nil {
 		return
 	}
@@ -530,11 +533,11 @@ func (a *App) saveSession() {
 		log.Printf("save session: %v", err)
 		return
 	}
-	a.sessionComposer.ClearModified()
+	a.sessionTab.ClearModified()
 }
 
 func (a *App) showPdfExportDialog() {
-	s := a.sessionComposer.Session()
+	s := a.sessionTab.Session()
 	if s == nil {
 		log.Printf("no session to generate PDF for")
 		return
@@ -588,7 +591,7 @@ func (a *App) showPdfExportDialog() {
 }
 
 func (a *App) generatePDFTo(path string) {
-	s := a.sessionComposer.Session()
+	s := a.sessionTab.Session()
 	if s == nil {
 		log.Printf("no session to generate PDF for")
 		return
@@ -630,7 +633,48 @@ func (a *App) handleFileAction(action uiwidget.FileAction) {
 		a.duplicateExercise()
 	case uiwidget.FileActionImport:
 		a.showImportDialog()
+	case uiwidget.FileActionRecent:
+		a.showRecentFiles()
 	}
+}
+
+// recordRecentFile adds name to the front of the recent files list (max 10).
+func (a *App) recordRecentFile(name string) {
+	ys, ok := a.store.(*store.YAMLStore)
+	if !ok {
+		return
+	}
+	settings, err := ys.LoadSettings()
+	if err != nil {
+		return
+	}
+	// Remove existing entry.
+	filtered := make([]string, 0, len(settings.RecentFiles))
+	for _, n := range settings.RecentFiles {
+		if n != name {
+			filtered = append(filtered, n)
+		}
+	}
+	// Prepend.
+	settings.RecentFiles = append([]string{name}, filtered...)
+	// Cap at 10.
+	if len(settings.RecentFiles) > 10 {
+		settings.RecentFiles = settings.RecentFiles[:10]
+	}
+	ys.SaveSettings(settings)
+}
+
+// showRecentFiles shows the exercise list overlay with recent file names.
+func (a *App) showRecentFiles() {
+	ys, ok := a.store.(*store.YAMLStore)
+	if !ok {
+		return
+	}
+	settings, err := ys.LoadSettings()
+	if err != nil || len(settings.RecentFiles) == 0 {
+		return
+	}
+	a.exerciseList.Show(settings.RecentFiles)
 }
 
 // NewExercise creates a blank exercise and sets it as current.
@@ -656,12 +700,13 @@ func (a *App) showOpenDialog() {
 }
 
 func (a *App) openExercise(name string) {
-	ex, err := a.store.LoadExercise(name)
+	ex, err := a.loadExerciseAny(name)
 	if err != nil {
 		log.Printf("load exercise %s: %v", name, err)
 		return
 	}
 	a.SetExercise(ex)
+	a.recordRecentFile(name)
 }
 
 func (a *App) saveExercise() {
@@ -673,8 +718,8 @@ func (a *App) saveExercise() {
 		return
 	}
 	a.editorState.ClearModified()
-	a.composerNeedsRefresh = true
-	a.mgrNeedsRefresh = true
+	a.sessionNeedsRefresh = true
+	a.recordRecentFile(store.ToKebab(a.exercise.Name))
 }
 
 func (a *App) showImportDialog() {
@@ -708,8 +753,8 @@ func (a *App) importExercise(name string) {
 	}
 	// Open the imported exercise.
 	a.SetExercise(ex)
-	a.composerNeedsRefresh = true
-	a.mgrNeedsRefresh = true
+	a.sessionNeedsRefresh = true
+	a.recordRecentFile(store.ToKebab(ex.Name))
 	log.Printf("imported exercise: %s", ex.Name)
 }
 
@@ -729,6 +774,28 @@ func (a *App) duplicateExercise() {
 	}
 	dup.Tags = make([]string, len(a.exercise.Tags))
 	copy(dup.Tags, a.exercise.Tags)
+	if a.exercise.I18n != nil {
+		dup.I18n = make(map[string]model.ExerciseI18n, len(a.exercise.I18n))
+		for lang, tr := range a.exercise.I18n {
+			cp := model.ExerciseI18n{Name: tr.Name, Description: tr.Description}
+			if len(tr.Tags) > 0 {
+				cp.Tags = make([]string, len(tr.Tags))
+				copy(cp.Tags, tr.Tags)
+			}
+			if len(tr.Sequences) > 0 {
+				cp.Sequences = make([]model.SequenceI18n, len(tr.Sequences))
+				for i, s := range tr.Sequences {
+					si := model.SequenceI18n{Label: s.Label}
+					if len(s.Instructions) > 0 {
+						si.Instructions = make([]string, len(s.Instructions))
+						copy(si.Instructions, s.Instructions)
+					}
+					cp.Sequences[i] = si
+				}
+			}
+			dup.I18n[lang] = cp
+		}
+	}
 	dup.Sequences = make([]model.Sequence, len(a.exercise.Sequences))
 	for i, seq := range a.exercise.Sequences {
 		ns := model.Sequence{Label: seq.Label}
@@ -744,32 +811,6 @@ func (a *App) duplicateExercise() {
 	}
 	a.SetExercise(dup)
 	a.editorState.MarkModified()
-}
-
-// --- Exercise Manager ---
-
-func (a *App) layoutExerciseManager(gtx layout.Context) layout.Dimensions {
-	if a.mgrNeedsRefresh {
-		a.exerciseManager.SetExercises(a.buildManagedExercises())
-		a.mgrNeedsRefresh = false
-	}
-
-	ev := a.exerciseManager.HandleActions(gtx)
-	switch ev.Action {
-	case uiwidget.MgrActionRefresh:
-		a.exerciseManager.SetExercises(a.buildManagedExercises())
-	case uiwidget.MgrActionOpen:
-		a.openExercise(ev.Name)
-		a.activeTab = 0
-	case uiwidget.MgrActionImport:
-		a.importExerciseByName(ev.Name)
-	case uiwidget.MgrActionUpdate:
-		a.updateExerciseFromRemote(ev.Name)
-	case uiwidget.MgrActionContribute:
-		a.contributeExercise(ev.Name)
-	}
-
-	return a.exerciseManager.Layout(gtx, a.theme)
 }
 
 func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
@@ -828,7 +869,9 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 
 		displayName := name
 		category := ""
+		ageGroup := ""
 		duration := ""
+		var tags []string
 		if local != nil {
 			// Merge community i18n into local if missing.
 			if local.I18n == nil && remote != nil && remote.I18n != nil {
@@ -837,12 +880,16 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 			loc := local.Localized(lang)
 			displayName = loc.Name
 			category = string(local.Category)
+			ageGroup = string(local.AgeGroup)
 			duration = local.Duration
+			tags = loc.Tags
 		} else if remote != nil {
 			loc := remote.Localized(lang)
 			displayName = loc.Name
 			category = string(remote.Category)
+			ageGroup = string(remote.AgeGroup)
 			duration = remote.Duration
+			tags = loc.Tags
 		}
 
 		items = append(items, uiwidget.ManagedExercise{
@@ -852,7 +899,9 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 			RemoteEx:    remote,
 			DisplayName: displayName,
 			Category:    category,
+			AgeGroup:    ageGroup,
 			Duration:    duration,
+			Tags:        tags,
 		})
 	}
 	return items
@@ -868,24 +917,6 @@ func exercisesEqual(a, b *model.Exercise) bool {
 	return string(dataA) == string(dataB)
 }
 
-// importExerciseByName imports a community exercise by kebab-case name.
-func (a *App) importExerciseByName(name string) {
-	if a.library == nil {
-		return
-	}
-	ex, err := a.library.LoadExercise(name)
-	if err != nil {
-		log.Printf("load library exercise %s: %v", name, err)
-		return
-	}
-	if err := a.store.SaveExercise(ex); err != nil {
-		log.Printf("save imported exercise: %v", err)
-		return
-	}
-	a.mgrNeedsRefresh = true
-	a.composerNeedsRefresh = true
-	log.Printf("imported exercise: %s", ex.Name)
-}
 
 // updateExerciseFromRemote overwrites local with community version.
 func (a *App) updateExerciseFromRemote(name string) {
@@ -905,8 +936,7 @@ func (a *App) updateExerciseFromRemote(name string) {
 	if a.exercise != nil && store.ToKebab(a.exercise.Name) == name {
 		a.SetExercise(ex)
 	}
-	a.mgrNeedsRefresh = true
-	a.composerNeedsRefresh = true
+	a.sessionNeedsRefresh = true
 	log.Printf("updated exercise from community: %s", name)
 }
 
@@ -952,6 +982,42 @@ func (a *App) contributeExercise(name string) {
 	if err := openBrowser(ghURL); err != nil {
 		log.Printf("open browser: %v", err)
 	}
+}
+
+// deleteExercise removes a local exercise file.
+func (a *App) deleteExercise(name string) {
+	if err := a.store.DeleteExercise(name); err != nil {
+		log.Printf("delete exercise %s: %v", name, err)
+		return
+	}
+	// If the deleted exercise is currently open, clear the editor.
+	if a.exercise != nil && store.ToKebab(a.exercise.Name) == name {
+		a.SetExercise(nil)
+	}
+	// Remove from recent files.
+	a.removeRecentFile(name)
+	a.sessionNeedsRefresh = true
+	log.Printf("deleted exercise: %s", name)
+}
+
+// removeRecentFile removes a name from the recent files list.
+func (a *App) removeRecentFile(name string) {
+	ys, ok := a.store.(*store.YAMLStore)
+	if !ok {
+		return
+	}
+	settings, err := ys.LoadSettings()
+	if err != nil {
+		return
+	}
+	filtered := make([]string, 0, len(settings.RecentFiles))
+	for _, n := range settings.RecentFiles {
+		if n != name {
+			filtered = append(filtered, n)
+		}
+	}
+	settings.RecentFiles = filtered
+	ys.SaveSettings(settings)
 }
 
 // stripDiacritics removes combining marks (accents) from a string.

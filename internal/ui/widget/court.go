@@ -279,6 +279,10 @@ func (cw *CourtWidget) handlePress(src input.Source, state *editor.EditorState, 
 			Role:     state.ToolRole,
 			Position: relPos,
 		}
+		if state.ToolQueue {
+			p.Type = "queue"
+			p.Count = 3
+		}
 		seq.Players = append(seq.Players, p)
 		idx := len(seq.Players) - 1
 		state.Select(editor.SelectPlayer, idx, cw.seqIndex)
@@ -475,6 +479,11 @@ func (cw *CourtWidget) drawSequence(gtx layout.Context, th *material.Theme, seq 
 		DrawPlayerWithLabel(gtx, th, &cw.viewport, &seq.Players[i], selected, hasBall)
 	}
 
+	// Draw callouts above players.
+	for i := range seq.Players {
+		DrawCallout(gtx, th, &cw.viewport, &seq.Players[i])
+	}
+
 	// Draw "action from" indicator: highlight the first-click player.
 	if state.ActionFrom != nil {
 		for i := range seq.Players {
@@ -518,6 +527,57 @@ func (cw *CourtWidget) LayoutAnimated(gtx layout.Context, th *material.Theme, fr
 	return layout.Dimensions{Size: size}
 }
 
+// LayoutStatic renders the court and current sequence elements without
+// any pointer interaction or selection — suitable for preview panels.
+func (cw *CourtWidget) LayoutStatic(gtx layout.Context, th *material.Theme) layout.Dimensions {
+	if cw.exercise == nil {
+		return layout.Dimensions{Size: gtx.Constraints.Max}
+	}
+
+	cw.updateGeometry()
+	size := gtx.Constraints.Max
+
+	cw.viewport = court.ComputeViewport(
+		cw.exercise.CourtType,
+		cw.geom,
+		image.Pt(size.X, size.Y),
+		10,
+	)
+
+	// Draw court.
+	switch cw.exercise.CourtStandard {
+	case model.NBA:
+		court.DrawNBACourt(gtx.Ops, cw.exercise.CourtType, &cw.viewport, cw.geom)
+	default:
+		court.DrawFIBACourt(gtx.Ops, cw.exercise.CourtType, &cw.viewport, cw.geom)
+	}
+
+	// Draw elements of current sequence.
+	seq := cw.currentSequence()
+	if seq != nil {
+		cw.drawStaticSequence(gtx, th, seq)
+	}
+
+	return layout.Dimensions{Size: size}
+}
+
+// drawStaticSequence renders sequence elements without selection highlighting.
+func (cw *CourtWidget) drawStaticSequence(gtx layout.Context, th *material.Theme, seq *model.Sequence) {
+	for i := range seq.Accessories {
+		DrawAccessory(gtx.Ops, &cw.viewport, &seq.Accessories[i], false)
+	}
+	for i := range seq.Actions {
+		DrawAction(gtx.Ops, &cw.viewport, &seq.Actions[i], seq.Players)
+	}
+	for i := range seq.Players {
+		hasBall := seq.BallCarrier != "" && seq.Players[i].ID == seq.BallCarrier
+		DrawPlayerWithLabel(gtx, th, &cw.viewport, &seq.Players[i], false, hasBall)
+	}
+	for i := range seq.Players {
+		DrawCallout(gtx, th, &cw.viewport, &seq.Players[i])
+	}
+}
+
 // drawAnimatedFrame renders an interpolated frame on the court.
 func (cw *CourtWidget) drawAnimatedFrame(gtx layout.Context, th *material.Theme, frame *anim.AnimatedFrame) {
 	// Accessories (bottom layer).
@@ -538,6 +598,11 @@ func (cw *CourtWidget) drawAnimatedFrame(gtx layout.Context, th *material.Theme,
 	// Players (top layer) with opacity — ball drawn separately during animation.
 	for i := range frame.Players {
 		DrawPlayerWithOpacity(gtx, th, &cw.viewport, &frame.Players[i].Player, frame.Players[i].Opacity, false)
+	}
+
+	// Draw callouts above animated players.
+	for i := range frame.Players {
+		DrawCalloutWithOpacity(gtx, th, &cw.viewport, &frame.Players[i].Player, frame.Players[i].Opacity)
 	}
 
 	// Draw ball at interpolated position.

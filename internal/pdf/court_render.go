@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
+	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
@@ -27,6 +28,16 @@ func drawCourtDiagram(pdf *fpdf.Fpdf, x, y, w, h float64, ex *model.Exercise, se
 		cr.drawActions(seq)
 		cr.drawPlayers(seq)
 	}
+}
+
+// roleLabelI18n returns the short translated label for a player role.
+func roleLabelI18n(role model.PlayerRole) string {
+	key := "role." + string(role)
+	label := i18n.T(key)
+	if label == key {
+		return model.RoleLabel(role)
+	}
+	return label
 }
 
 func (cr *courtRenderer) drawBackground() {
@@ -144,10 +155,10 @@ func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
 		cr.pdf.SetLineWidth(0.3)
 		cr.pdf.Circle(px, py, r, "D")
 
-		// Label.
+		// Label — translate default role labels.
 		label := p.Label
-		if label == "" {
-			label = model.RoleLabel(p.Role)
+		if label == "" || label == model.RoleLabel(p.Role) {
+			label = roleLabelI18n(p.Role)
 		}
 		cr.pdf.SetFont("Helvetica", "B", 5)
 		cr.pdf.SetTextColor(255, 255, 255)
@@ -163,6 +174,15 @@ func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
 			cr.pdf.SetDrawColor(0, 0, 0)
 			cr.pdf.SetLineWidth(0.15)
 			cr.pdf.Circle(ballX, ballY, 0.8, "D")
+		}
+
+		// Callout label above player.
+		if p.Callout != "" {
+			calloutLabel := i18n.T("callout." + string(p.Callout))
+			cr.pdf.SetFont("Helvetica", "B", 4)
+			cr.pdf.SetTextColor(60, 60, 60)
+			strW := cr.pdf.GetStringWidth(calloutLabel)
+			cr.pdf.Text(px-strW/2, py-r-1.5, calloutLabel)
 		}
 	}
 }

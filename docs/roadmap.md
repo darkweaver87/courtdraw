@@ -72,3 +72,28 @@ Goal: import from community, cross-platform builds.
 31. Ship initial community exercise collection in `library/`
 
 Deliverable: production-ready app with community exercises.
+
+## Phase 7 — UX Improvements
+
+Goal: polish the user experience based on coach feedback.
+
+32. Localized instructions — exercise names, descriptions, and instructions display in the current app language
+33. Recent files — toolbar button shows last 10 opened/saved exercises, persisted in settings
+34. Dropdown selectors — role, callout, category, court standard/type use popup lists instead of cycling
+35. Community exercises without import — "Open" button on remote-only exercises in the manager
+36. Exercise preview — animated court preview in the exercise manager's right panel
+
+Deliverable: smoother, more intuitive UX for coaches.
+
+## Phase 8 — Tab Consolidation
+
+Goal: simplify navigation by merging exercise manager and session composer.
+
+37. Merge Exercise Manager + Session Composer into a single "Session" tab with 3-column layout (library | preview | session)
+38. Remove the third tab — app now has 2 tabs: Exercise Editor and Session
+39. Unified toolbar with session file operations (New, Open, Save, Refresh, PDF)
+40. Library column with search, status filter chips, category dropdown
+41. Preview column with "Add to session" button, animated court preview, and contextual management buttons
+42. Session column with metadata editors, exercise list, coach notes, philosophy
+
+Deliverable: streamlined 2-tab UX with all exercise management and session composition in one view.

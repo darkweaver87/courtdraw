@@ -164,10 +164,12 @@ func (tp *ToolPalette) Layout(gtx layout.Context, th *material.Theme, state *edi
 			active := state.ActiveTool == editor.ToolSelect
 			return tp.layoutToolButton(gtx, th, &tp.selectTool, active)
 		case "player":
-			active := state.ActiveTool == editor.ToolPlayer && state.ToolRole == tp.playerRoles[item.index]
-			// Special case for Queue (index 8): treat as attacker with queue type.
+			var active bool
 			if item.index == 8 {
-				active = false // Queue tool not yet implemented — show but inactive
+				// Queue tool: active when in queue mode.
+				active = state.ActiveTool == editor.ToolPlayer && state.ToolQueue
+			} else {
+				active = state.ActiveTool == editor.ToolPlayer && !state.ToolQueue && state.ToolRole == tp.playerRoles[item.index]
 			}
 			return tp.layoutToolButton(gtx, th, &tp.playerTools[item.index], active)
 		case "action":
@@ -191,10 +193,10 @@ func (tp *ToolPalette) handleClicks(gtx layout.Context, state *editor.EditorStat
 	for i := range tp.playerTools {
 		if tp.playerTools[i].clickable.Clicked(gtx) {
 			if i == 8 {
-				// Queue — skip for now.
-				continue
+				state.SetQueueTool()
+			} else {
+				state.SetPlayerTool(tp.playerRoles[i])
 			}
-			state.SetPlayerTool(tp.playerRoles[i])
 		}
 	}
 	for i := range tp.actionTools {

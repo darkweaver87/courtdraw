@@ -26,12 +26,14 @@ const (
 	FileActionSave
 	FileActionDuplicate
 	FileActionImport
+	FileActionRecent
 )
 
-// FileToolbar provides New, Open, Save, Duplicate, Import buttons.
+// FileToolbar provides New, Open, Recent, Save, Duplicate, Import buttons.
 type FileToolbar struct {
 	newClick       widget.Clickable
 	openClick      widget.Clickable
+	recentClick    widget.Clickable
 	saveClick      widget.Clickable
 	duplicateClick widget.Clickable
 	importClick    widget.Clickable
@@ -46,6 +48,9 @@ func (ft *FileToolbar) Layout(gtx layout.Context, th *material.Theme, modified b
 	}
 	if ft.openClick.Clicked(gtx) {
 		action = FileActionOpen
+	}
+	if ft.recentClick.Clicked(gtx) {
+		action = FileActionRecent
 	}
 	if ft.saveClick.Clicked(gtx) {
 		action = FileActionSave
@@ -74,6 +79,9 @@ func (ft *FileToolbar) Layout(gtx layout.Context, th *material.Theme, modified b
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return icon.IconBtnTooltip(gtx, th, &ft.openClick, icon.Open, theme.ColorTabText, i18n.T("tooltip.open"))
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return icon.IconBtnTooltip(gtx, th, &ft.recentClick, icon.Recent, theme.ColorTabText, i18n.T("tooltip.recent"))
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return icon.IconBtnTooltip(gtx, th, &ft.saveClick, icon.Save, saveColor, i18n.T("tooltip.save"))

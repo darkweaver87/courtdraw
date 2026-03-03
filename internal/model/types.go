@@ -77,6 +77,19 @@ const (
 	CategoryCooldown   Category = "cooldown"
 )
 
+// AgeGroup classifies the target age group for an exercise.
+type AgeGroup string
+
+const (
+	AgeGroupU9     AgeGroup = "u9"
+	AgeGroupU11    AgeGroup = "u11"
+	AgeGroupU13    AgeGroup = "u13"
+	AgeGroupU15    AgeGroup = "u15"
+	AgeGroupU17    AgeGroup = "u17"
+	AgeGroupU19    AgeGroup = "u19"
+	AgeGroupSenior AgeGroup = "senior"
+)
+
 // Intensity levels (0–3).
 type Intensity int
 
@@ -86,6 +99,28 @@ const (
 	IntensityMedium Intensity = 2
 	IntensityMax    Intensity = 3
 )
+
+// CalloutType defines a predefined shout a player makes during a sequence.
+type CalloutType string
+
+const (
+	CalloutBlock  CalloutType = "block"
+	CalloutShoot  CalloutType = "shoot"
+	CalloutHere   CalloutType = "here"
+	CalloutScreen CalloutType = "screen"
+	CalloutSwitch CalloutType = "switch"
+	CalloutHelp   CalloutType = "help"
+	CalloutBall   CalloutType = "ball"
+	CalloutGo     CalloutType = "go"
+)
+
+// AllCallouts returns all callout types in cycle order.
+func AllCallouts() []CalloutType {
+	return []CalloutType{
+		CalloutBlock, CalloutShoot, CalloutHere, CalloutScreen,
+		CalloutSwitch, CalloutHelp, CalloutBall, CalloutGo,
+	}
+}
 
 // Color palette from spec.
 var (

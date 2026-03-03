@@ -70,6 +70,14 @@ func (s *YAMLStore) SaveExercise(exercise *model.Exercise) error {
 	return os.WriteFile(path, data, 0644)
 }
 
+func (s *YAMLStore) DeleteExercise(name string) error {
+	path := filepath.Join(s.exercisesDir, name+".yaml")
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("delete exercise %s: %w", name, err)
+	}
+	return nil
+}
+
 func (s *YAMLStore) ListSessions() ([]string, error) {
 	return listYAML(s.sessionsDir)
 }
