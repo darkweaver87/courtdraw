@@ -147,6 +147,7 @@ jobs:
           GOARCH: ${{ matrix.arch }}
           CGO_ENABLED: "1"
           CC: ${{ matrix.cc }}
+          PKG_CONFIG_PATH: ${{ matrix.os == 'linux' && matrix.arch == 'arm64' && '/usr/lib/aarch64-linux-gnu/pkgconfig' || '' }}
         run: |
           binary=courtdraw
           if [ "${{ matrix.os }}" = "windows" ]; then
