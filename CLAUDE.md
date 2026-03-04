@@ -37,6 +37,13 @@ go test ./...
 # Build for Android/iOS (requires gogio)
 gogio -target android ./cmd/courtdraw
 gogio -target ios ./cmd/courtdraw
+
+# CI/CD — trigger manual run
+gh workflow run ci.yaml
+
+# CI/CD — create a release (triggers build + release)
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 ## Project Layout
@@ -53,4 +60,5 @@ library/             Community exercise collection (YAML)
 assets/icons/        Accessory and action icons (PNG/SVG)
 assets/fonts/        Embedded fonts
 docs/                Specifications
+.github/workflows/   CI/CD (GitHub Actions)
 ```

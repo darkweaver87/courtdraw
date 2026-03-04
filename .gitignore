@@ -1,0 +1,24 @@
+# Binaries
+courtdraw
+courtdraw.exe
+*.apk
+*.aar
+
+# IDE
+.idea/
+.vscode/
+
+# Serena
+.serena/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated files
+*.pdf
+__pycache__/
+*.pyc
+
+# Build
+/dist/

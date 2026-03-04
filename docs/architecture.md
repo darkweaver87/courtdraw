@@ -127,3 +127,40 @@ cmd/courtdraw  →  internal/ui  →  internal/model
 - `store` depends on `model` and a YAML library
 - `court`, `anim`, `pdf` depend on `model` only
 - `ui` orchestrates everything
+
+## CI/CD
+
+GitHub Actions pipeline in `.github/workflows/ci.yaml`.
+
+**Triggers**: `workflow_dispatch` (manual) and `push tags: v*` (release).
+
+### Pipeline
+
+```
+test → build-desktop (matrix 5 targets) ─┐
+     → build-android                     ─┤→ release (if tag v*)
+```
+
+### Jobs
+
+| Job | Runner | Description |
+|-----|--------|-------------|
+| `test` | ubuntu-latest | `go test ./...` + `go vet ./...` |
+| `build-desktop` | matrix | Cross-compile for 5 desktop targets (CGO_ENABLED=1) |
+| `build-android` | ubuntu-latest | `gogio -target android` → APK |
+| `release` | ubuntu-latest | `softprops/action-gh-release@v2` with auto release notes |
+
+### Build Targets
+
+| OS | Arch | Runner | Notes |
+|----|------|--------|-------|
+| Linux | amd64 | ubuntu-latest | Native gcc |
+| Linux | arm64 | ubuntu-latest | Cross-compile with `aarch64-linux-gnu-gcc` |
+| macOS | arm64 | macos-latest | Native (Apple Silicon runner) |
+| macOS | amd64 | macos-latest | Cross-arch via `GOARCH=amd64` |
+| Windows | amd64 | windows-latest | Native gcc |
+| Android | — | ubuntu-latest | `gogio` → APK |
+
+### Artifacts
+
+Each build produces an artifact (`courtdraw-{os}-{arch}.tar.gz` or `.zip` for Windows, `.apk` for Android) containing the binary and the `library/` directory. On tag push, all artifacts are uploaded to a GitHub Release.
