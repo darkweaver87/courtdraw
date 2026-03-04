@@ -85,7 +85,11 @@ func run() {
 	var ops op.Ops
 	frameCount := 0
 	for {
-		switch e := w.Event().(type) {
+		e := w.Event()
+		if frameCount < 5 {
+			log.Printf("courtdraw: event type=%T", e)
+		}
+		switch e := e.(type) {
 		case app.DestroyEvent:
 			if e.Err != nil {
 				log.Fatalf("window error: %v", e.Err)
