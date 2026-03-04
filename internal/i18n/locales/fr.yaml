@@ -128,6 +128,10 @@ overlay.import_library: "Importer depuis la bibliothèque"
 overlay.no_community: "Aucun exercice communautaire trouvé"
 overlay.open_session: "Ouvrir une séance"
 overlay.no_sessions: "Aucune séance trouvée"
+overlay.delete_session: "Supprimer"
+overlay.confirm_delete: "Confirmer ?"
+overlay.recent_exercises: "Exercices récents"
+overlay.recent_sessions: "Séances récentes"
 overlay.close: "X"
 
 # Compositeur de séance

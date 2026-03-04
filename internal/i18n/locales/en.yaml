@@ -128,6 +128,10 @@ overlay.import_library: "Import from Library"
 overlay.no_community: "No community exercises found"
 overlay.open_session: "Open Session"
 overlay.no_sessions: "No sessions found"
+overlay.delete_session: "Delete"
+overlay.confirm_delete: "Confirm?"
+overlay.recent_exercises: "Recent Exercises"
+overlay.recent_sessions: "Recent Sessions"
 overlay.close: "X"
 
 # Session composer

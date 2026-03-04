@@ -3,6 +3,7 @@ package widget
 import (
 	"image"
 	"image/color"
+	"math"
 
 	"gioui.org/f32"
 	"gioui.org/layout"
@@ -46,6 +47,43 @@ const (
 	ballOffsetY     = 8
 )
 
+// drawDirectionArrow draws a small white semi-transparent triangle inside the
+// player circle, pointing in the direction of rotation (0° = up / facing basket).
+func drawDirectionArrow(ops *op.Ops, center f32.Point, rotation float64, alpha uint8) {
+	rad := rotation * math.Pi / 180
+	cos := float32(math.Cos(rad))
+	sin := float32(math.Sin(rad))
+
+	r := float32(playerRadius)
+	// Triangle proportions relative to circle radius.
+	tipDist := r * 0.75  // tip distance from center
+	halfW := r * 0.3     // half-width of base
+
+	// Rotate a local point by rotation angle.
+	rotate := func(lx, ly float32) f32.Point {
+		return f32.Point{
+			X: center.X + lx*sin + ly*(-cos),
+			Y: center.Y + lx*cos + ly*sin,
+		}
+	}
+
+	// Triangle: tip at top (along rotation direction), base behind.
+	tip := rotate(0, -tipDist)
+	left := rotate(-halfW, tipDist*0.3)
+	right := rotate(halfW, tipDist*0.3)
+
+	var path clip.Path
+	path.Begin(ops)
+	path.MoveTo(tip)
+	path.LineTo(left)
+	path.LineTo(right)
+	path.Close()
+
+	outline := clip.Outline{Path: path.End()}.Op()
+	a := uint8(float64(alpha) * 0.6)
+	paint.FillShape(ops, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: a}, outline)
+}
+
 var ballColor = color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff} // #f4a261 orange
 
 // DrawBall draws a small orange basketball circle at the given pixel position.
@@ -87,6 +125,9 @@ func DrawPlayerWithOpacity(gtx layout.Context, th *material.Theme, vp *court.Vie
 	// white outline
 	outlineCol := color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: alpha}
 	court.DrawCircleOutline(gtx.Ops, center, playerRadius, playerOutlineWidth, outlineCol)
+
+	// Direction arrow.
+	drawDirectionArrow(gtx.Ops, center, player.Rotation, alpha)
 
 	// label text — translate default role labels, keep custom ones
 	label := player.Label
@@ -160,6 +201,9 @@ func DrawPlayerWithLabel(gtx layout.Context, th *material.Theme, vp *court.Viewp
 	// white outline
 	court.DrawCircleOutline(gtx.Ops, center, playerRadius, playerOutlineWidth,
 		color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+
+	// Direction arrow.
+	drawDirectionArrow(gtx.Ops, center, player.Rotation, 0xff)
 
 	// label text — translate default role labels, keep custom ones
 	label := player.Label

@@ -41,6 +41,9 @@ func (l *Library) ListExercises() ([]string, error) {
 			continue
 		}
 		name := e.Name()
+		if isIndexFile(name) {
+			continue
+		}
 		if strings.HasSuffix(name, ".yaml") || strings.HasSuffix(name, ".yml") {
 			names = append(names, strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml"))
 		}

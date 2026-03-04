@@ -229,6 +229,11 @@ func (pp *PropertiesPanel) playerPropsItems(_ layout.Context, th *material.Theme
 		return pp.layoutReadonly(gtx, th, i18n.T("props.position"), posStr)
 	})
 
+	// Rotation (read-only).
+	items = append(items, func(gtx layout.Context) layout.Dimensions {
+		return pp.layoutReadonly(gtx, th, i18n.T("props.rotation"), fmt.Sprintf("%.0f°", p.Rotation))
+	})
+
 	return items
 }
 

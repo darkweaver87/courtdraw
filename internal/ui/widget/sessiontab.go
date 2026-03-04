@@ -8,7 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"gioui.org/io/event"
+	"gioui.org/io/pointer"
 	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
@@ -65,6 +68,8 @@ const (
 	SessionTabActionUpdate                          // update from remote
 	SessionTabActionContribute                      // contribute exercise
 	SessionTabActionDeleteExercise                  // delete local exercise
+	SessionTabActionDeleteSession                   // delete session
+	SessionTabActionRecent                          // recent sessions dialog
 )
 
 // SessionTabEvent is returned when the user performs an action.
@@ -121,7 +126,9 @@ type SessionTab struct {
 	resolvedExercises map[string]*model.Exercise
 
 	sessionList   widget.List
-	removeClicks  [maxSessionItems]widget.Clickable
+	removeClicks   [maxSessionItems]widget.Clickable
+	moveUpClicks   [maxSessionItems]widget.Clickable
+	moveDownClicks [maxSessionItems]widget.Clickable
 
 	titleEditor    widget.Editor
 	dateEditor     widget.Editor
@@ -139,6 +146,7 @@ type SessionTab struct {
 	// File operations.
 	newClick      widget.Clickable
 	openClick     widget.Clickable
+	recentClick   widget.Clickable
 	saveClick     widget.Clickable
 	generateClick widget.Clickable
 
@@ -152,6 +160,16 @@ type SessionTab struct {
 	// Scroll for session panel.
 	sessionScrollList widget.List
 
+	// Drag-and-drop reordering of exercises.
+	dragHandleTags [maxSessionItems]bool // pointer event tags (address = tag)
+	dragExIdx      int                   // exercise index being dragged (-1 = none)
+	dragActive     bool                  // drag in progress (past threshold)
+	dragPID        pointer.ID            // pointer ID for the active drag
+	dragStartY     float32               // Y at press (in list-local coords)
+	dragDropTarget int                   // target slot index (-1 = none)
+	dragRowYs      [maxSessionItems]int  // cumulative Y offset of each exercise row
+	dragRowHeights [maxSessionItems]int  // height of each exercise row (px)
+
 	initialized bool
 }
 
@@ -160,6 +178,8 @@ func NewSessionTab() *SessionTab {
 	st := &SessionTab{
 		resolvedExercises:  make(map[string]*model.Exercise),
 		sessionListOverlay: NewSessionListOverlay(),
+		dragExIdx:          -1,
+		dragDropTarget:     -1,
 	}
 	st.scrollList.Axis = layout.Vertical
 	st.searchEditor.SingleLine = true
@@ -180,6 +200,7 @@ func (st *SessionTab) SetSession(s *model.Session) {
 	st.session = s
 	st.metaSynced = false
 	st.modified = false
+	st.resetDrag()
 }
 
 // Session returns the current session.
@@ -215,6 +236,9 @@ func (st *SessionTab) HandleActions(gtx layout.Context) SessionTabEvent {
 	}
 	if st.openClick.Clicked(gtx) {
 		return SessionTabEvent{Action: SessionTabActionOpen}
+	}
+	if st.recentClick.Clicked(gtx) {
+		return SessionTabEvent{Action: SessionTabActionRecent}
 	}
 	if st.saveClick.Clicked(gtx) {
 		return SessionTabEvent{Action: SessionTabActionSave}
@@ -359,6 +383,9 @@ func (st *SessionTab) layoutToolbar(gtx layout.Context, th *material.Theme) layo
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return icon.IconBtnTooltip(gtx, th, &st.openClick, icon.Open, theme.ColorTabText, i18n.T("tooltip.open"))
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return icon.IconBtnTooltip(gtx, th, &st.recentClick, icon.Recent, theme.ColorTabText, i18n.T("tooltip.recent"))
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return icon.IconBtnTooltip(gtx, th, &st.saveClick, icon.Save, saveColor, i18n.T("tooltip.save"))
@@ -759,6 +786,9 @@ func (st *SessionTab) layoutSessionPanel(gtx layout.Context, th *material.Theme)
 		})
 	}
 
+	// Process drag-and-drop pointer events for exercise reordering.
+	st.handleExerciseDrag(gtx)
+
 	// Sync editors.
 	if !st.metaSynced {
 		st.titleEditor.SetText(st.session.Title)
@@ -802,13 +832,23 @@ func (st *SessionTab) layoutSessionPanel(gtx layout.Context, th *material.Theme)
 	for i := 0; i < exCount; i++ {
 		idx := i
 		entry := &st.session.Exercises[idx]
+		if idx > 0 && st.moveUpClicks[idx].Clicked(gtx) {
+			st.session.Exercises[idx], st.session.Exercises[idx-1] = st.session.Exercises[idx-1], st.session.Exercises[idx]
+			st.modified = true
+			break
+		}
+		if idx < exCount-1 && st.moveDownClicks[idx].Clicked(gtx) {
+			st.session.Exercises[idx], st.session.Exercises[idx+1] = st.session.Exercises[idx+1], st.session.Exercises[idx]
+			st.modified = true
+			break
+		}
 		if st.removeClicks[idx].Clicked(gtx) {
 			st.session.Exercises = append(st.session.Exercises[:idx], st.session.Exercises[idx+1:]...)
 			st.modified = true
 			break
 		}
 		items = append(items, func(gtx layout.Context) layout.Dimensions {
-			return st.layoutSessionExercise(gtx, th, idx, entry)
+			return st.layoutSessionExercise(gtx, th, idx, exCount, entry)
 		})
 		for vi := range entry.Variants {
 			vIdx := vi
@@ -1049,17 +1089,47 @@ func (st *SessionTab) dateField(gtx layout.Context, th *material.Theme) []func(l
 	}
 }
 
-func (st *SessionTab) layoutSessionExercise(gtx layout.Context, th *material.Theme, idx int, entry *model.ExerciseEntry) layout.Dimensions {
-	return layout.Inset{
+func (st *SessionTab) layoutSessionExercise(gtx layout.Context, th *material.Theme, idx, total int, entry *model.ExerciseEntry) layout.Dimensions {
+	disabledCol := color.NRGBA{R: 0x50, G: 0x50, B: 0x50, A: 0xff}
+	handleCol := color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xff}
+
+	// Draw drop indicator line above this row when dragging up to here.
+	dropLineH := 0
+	if st.dragActive && st.dragDropTarget == idx && st.dragExIdx > idx {
+		dropCol := color.NRGBA{R: 0x40, G: 0x80, B: 0xff, A: 0xff}
+		dropLineH = gtx.Dp(unit.Dp(2))
+		paint.FillShape(gtx.Ops, dropCol,
+			clip.Rect{Max: image.Pt(gtx.Constraints.Max.X, dropLineH)}.Op())
+	}
+
+	dims := layout.Inset{
 		Top: unit.Dp(2), Bottom: unit.Dp(2),
-		Left: unit.Dp(8), Right: unit.Dp(8),
+		Left: unit.Dp(4), Right: unit.Dp(8),
 	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+			// Drag handle.
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				sz := gtx.Dp(icon.IconSize)
+				dims := layout.Inset{
+					Top: unit.Dp(4), Bottom: unit.Dp(4),
+					Left: unit.Dp(2), Right: unit.Dp(2),
+				}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					gtx.Constraints = layout.Exact(image.Pt(sz, sz))
+					return icon.DragHandle.Layout(gtx, handleCol)
+				})
+				// Register pointer area on the drag handle.
+				area := clip.Rect{Max: dims.Size}.Push(gtx.Ops)
+				event.Op(gtx.Ops, &st.dragHandleTags[idx])
+				area.Pop()
+				return dims
+			}),
+			// Index label.
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				lbl := material.Label(th, unit.Sp(11), fmt.Sprintf("%d.", idx+1))
 				lbl.Color = theme.ColorTabText
 				return lbl.Layout(gtx)
 			}),
+			// Exercise name + duration.
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Inset{Left: unit.Dp(4)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					name := entry.Exercise
@@ -1081,10 +1151,40 @@ func (st *SessionTab) layoutSessionExercise(gtx layout.Context, th *material.The
 				return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, 0)}
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				col := theme.ColorTabText
+				if idx == 0 {
+					col = disabledCol
+				}
+				return icon.IconBtn(gtx, &st.moveUpClicks[idx], icon.MoveUp, col)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				col := theme.ColorTabText
+				if idx >= total-1 {
+					col = disabledCol
+				}
+				return icon.IconBtn(gtx, &st.moveDownClicks[idx], icon.MoveDown, col)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return icon.IconBtn(gtx, &st.removeClicks[idx], icon.Close, color.NRGBA{R: 0xff, G: 0x60, B: 0x60, A: 0xff})
 			}),
 		)
 	})
+
+	// Record row height for drop target computation.
+	if idx < maxSessionItems {
+		st.dragRowHeights[idx] = dims.Size.Y
+	}
+
+	// Draw drop indicator line below this row when dragging down to here.
+	if st.dragActive && st.dragDropTarget == idx && st.dragExIdx < idx {
+		dropCol := color.NRGBA{R: 0x40, G: 0x80, B: 0xff, A: 0xff}
+		lineH := gtx.Dp(unit.Dp(2))
+		paint.FillShape(gtx.Ops, dropCol,
+			clip.Rect{Max: image.Pt(gtx.Constraints.Max.X, lineH)}.Op())
+		dims.Size.Y += lineH
+	}
+
+	return dims
 }
 
 func (st *SessionTab) layoutVariant(gtx layout.Context, th *material.Theme, variant *model.ExerciseEntry) layout.Dimensions {
@@ -1129,6 +1229,133 @@ func (st *SessionTab) addExerciseByRef(ref string) {
 		}
 	}
 	st.session.Exercises = append(st.session.Exercises, model.ExerciseEntry{Exercise: ref})
+	st.modified = true
+}
+
+// --- Drag-and-drop helpers ---
+
+// resetDrag clears all drag state.
+func (st *SessionTab) resetDrag() {
+	st.dragExIdx = -1
+	st.dragActive = false
+	st.dragDropTarget = -1
+}
+
+// handleExerciseDrag processes pointer events on drag handle tags.
+func (st *SessionTab) handleExerciseDrag(gtx layout.Context) {
+	if st.session == nil {
+		return
+	}
+	exCount := len(st.session.Exercises)
+	if exCount > maxSessionItems {
+		exCount = maxSessionItems
+	}
+	for i := 0; i < exCount; i++ {
+		for {
+			ev, ok := gtx.Event(pointer.Filter{
+				Target: &st.dragHandleTags[i],
+				Kinds:  pointer.Press | pointer.Drag | pointer.Release | pointer.Cancel,
+			})
+			if !ok {
+				break
+			}
+			e, ok := ev.(pointer.Event)
+			if !ok {
+				continue
+			}
+			switch e.Kind {
+			case pointer.Press:
+				if !(e.Buttons == pointer.ButtonPrimary || e.Source == pointer.Touch) {
+					continue
+				}
+				st.dragExIdx = i
+				st.dragPID = e.PointerID
+				st.dragStartY = e.Position.Y
+				st.dragActive = false
+				st.dragDropTarget = -1
+				gtx.Execute(pointer.GrabCmd{Tag: &st.dragHandleTags[i], ID: e.PointerID})
+			case pointer.Drag:
+				if st.dragExIdx != i || e.PointerID != st.dragPID {
+					continue
+				}
+				deltaY := e.Position.Y - st.dragStartY
+				if !st.dragActive {
+					if deltaY > 5 || deltaY < -5 {
+						st.dragActive = true
+					} else {
+						continue
+					}
+				}
+				st.dragDropTarget = st.computeDropTarget(i, deltaY, exCount)
+				gtx.Execute(op.InvalidateCmd{})
+			case pointer.Release:
+				if st.dragExIdx != i || e.PointerID != st.dragPID {
+					continue
+				}
+				if st.dragActive && st.dragDropTarget >= 0 && st.dragDropTarget != st.dragExIdx {
+					st.applyDragReorder()
+				}
+				st.resetDrag()
+			case pointer.Cancel:
+				st.resetDrag()
+			}
+		}
+	}
+}
+
+// computeDropTarget calculates which slot the dragged exercise should land in.
+func (st *SessionTab) computeDropTarget(fromIdx int, deltaY float32, exCount int) int {
+	// Accumulate row heights to determine target index.
+	target := fromIdx
+	if deltaY > 0 {
+		// Dragging down.
+		accum := float32(0)
+		for j := fromIdx + 1; j < exCount; j++ {
+			h := st.dragRowHeights[j]
+			if h <= 0 {
+				h = 30
+			}
+			accum += float32(h)
+			if deltaY < accum-float32(h)/2 {
+				break
+			}
+			target = j
+		}
+	} else {
+		// Dragging up.
+		accum := float32(0)
+		for j := fromIdx - 1; j >= 0; j-- {
+			h := st.dragRowHeights[j]
+			if h <= 0 {
+				h = 30
+			}
+			accum -= float32(h)
+			if deltaY > accum+float32(h)/2 {
+				break
+			}
+			target = j
+		}
+	}
+	return target
+}
+
+// applyDragReorder moves the exercise from dragExIdx to dragDropTarget.
+func (st *SessionTab) applyDragReorder() {
+	from := st.dragExIdx
+	to := st.dragDropTarget
+	if from == to || from < 0 || to < 0 {
+		return
+	}
+	exs := st.session.Exercises
+	if from >= len(exs) || to >= len(exs) {
+		return
+	}
+	// Remove from source.
+	item := exs[from]
+	exs = append(exs[:from], exs[from+1:]...)
+	// Insert at target.
+	exs = append(exs[:to], append([]model.ExerciseEntry{item}, exs[to:]...)...)
+	st.session.Exercises = exs
 	st.modified = true
 }
 
@@ -1311,31 +1538,55 @@ func nextCategoryWithAll(current model.Category) model.Category {
 
 // SessionListOverlay is a modal overlay for picking a session to open.
 type SessionListOverlay struct {
-	Visible    bool
-	OnSelect   string
-	names      []string
-	itemClicks [maxSessionItems]widget.Clickable
-	closeClick widget.Clickable
-	scrollList widget.List
+	Visible          bool
+	OnSelect         string
+	OnDelete         string
+	OnRemove         string // set when a recent entry is removed (not file deletion)
+	names            []string
+	recentMode       bool
+	confirmDeleteIdx int // -1 = none, >= 0 = row pending confirmation
+	itemClicks       [maxSessionItems]widget.Clickable
+	deleteClicks     [maxSessionItems]widget.Clickable
+	confirmClicks    [maxSessionItems]widget.Clickable
+	cancelClicks     [maxSessionItems]widget.Clickable
+	removeClicks     [maxSessionItems]widget.Clickable
+	closeClick       widget.Clickable
+	scrollList       widget.List
 }
 
 // NewSessionListOverlay creates an initialized overlay.
 func NewSessionListOverlay() *SessionListOverlay {
-	slo := &SessionListOverlay{}
+	slo := &SessionListOverlay{confirmDeleteIdx: -1}
 	slo.scrollList.Axis = layout.Vertical
 	return slo
 }
 
-// Show makes the overlay visible with the given session names.
+// Show makes the overlay visible with the given session names (open mode).
 func (slo *SessionListOverlay) Show(names []string) {
 	slo.names = names
 	slo.Visible = true
+	slo.recentMode = false
 	slo.OnSelect = ""
+	slo.OnDelete = ""
+	slo.OnRemove = ""
+	slo.confirmDeleteIdx = -1
+}
+
+// ShowRecent makes the overlay visible in recent mode.
+func (slo *SessionListOverlay) ShowRecent(names []string) {
+	slo.names = names
+	slo.Visible = true
+	slo.recentMode = true
+	slo.OnSelect = ""
+	slo.OnDelete = ""
+	slo.OnRemove = ""
+	slo.confirmDeleteIdx = -1
 }
 
 // Hide closes the overlay.
 func (slo *SessionListOverlay) Hide() {
 	slo.Visible = false
+	slo.confirmDeleteIdx = -1
 }
 
 // Layout renders the overlay and returns the selected session name, if any.
@@ -1347,8 +1598,32 @@ func (slo *SessionListOverlay) Layout(gtx layout.Context, th *material.Theme) (l
 	selected := ""
 	for i := 0; i < len(slo.names) && i < maxSessionItems; i++ {
 		if slo.itemClicks[i].Clicked(gtx) {
-			selected = slo.names[i]
-			slo.Hide()
+			if slo.confirmDeleteIdx != i {
+				selected = slo.names[i]
+				slo.Hide()
+			}
+		}
+		if slo.recentMode {
+			if slo.removeClicks[i].Clicked(gtx) {
+				slo.OnRemove = slo.names[i]
+				slo.names = append(slo.names[:i], slo.names[i+1:]...)
+				break
+			}
+		} else {
+			if slo.deleteClicks[i].Clicked(gtx) {
+				slo.confirmDeleteIdx = i
+			}
+			if slo.confirmDeleteIdx == i {
+				if slo.confirmClicks[i].Clicked(gtx) {
+					slo.OnDelete = slo.names[i]
+					slo.names = append(slo.names[:i], slo.names[i+1:]...)
+					slo.confirmDeleteIdx = -1
+					break
+				}
+				if slo.cancelClicks[i].Clicked(gtx) {
+					slo.confirmDeleteIdx = -1
+				}
+			}
 		}
 	}
 	if slo.closeClick.Clicked(gtx) {
@@ -1359,6 +1634,11 @@ func (slo *SessionListOverlay) Layout(gtx layout.Context, th *material.Theme) (l
 	area := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
 	paint.FillShape(gtx.Ops, dimBg, clip.Rect{Max: gtx.Constraints.Max}.Op())
 	area.Pop()
+
+	headerKey := "overlay.open_session"
+	if slo.recentMode {
+		headerKey = "overlay.recent_sessions"
+	}
 
 	return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		panelW := gtx.Dp(unit.Dp(300))
@@ -1374,7 +1654,7 @@ func (slo *SessionListOverlay) Layout(gtx layout.Context, th *material.Theme) (l
 					func(gtx layout.Context) layout.Dimensions {
 						return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
 							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-								lbl := material.Label(th, unit.Sp(14), i18n.T("overlay.open_session"))
+								lbl := material.Label(th, unit.Sp(14), i18n.T(headerKey))
 								lbl.Color = theme.ColorTabActive
 								return lbl.Layout(gtx)
 							}),
@@ -1398,19 +1678,88 @@ func (slo *SessionListOverlay) Layout(gtx layout.Context, th *material.Theme) (l
 					})
 				}
 				return material.List(th, &slo.scrollList).Layout(gtx, count, func(gtx layout.Context, idx int) layout.Dimensions {
-					return material.Clickable(gtx, &slo.itemClicks[idx], func(gtx layout.Context) layout.Dimensions {
-						return layout.Inset{
-							Top: unit.Dp(4), Bottom: unit.Dp(4),
-							Left: unit.Dp(12), Right: unit.Dp(12),
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							lbl := material.Label(th, unit.Sp(13), slo.names[idx])
-							lbl.Color = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
-							return lbl.Layout(gtx)
-						})
-					})
+					if slo.recentMode {
+						return slo.layoutRecentRow(gtx, th, idx)
+					}
+					if slo.confirmDeleteIdx == idx {
+						return slo.layoutConfirmRow(gtx, th, idx)
+					}
+					return slo.layoutNormalRow(gtx, th, idx)
 				})
 			}),
 		)
 		return dims
 	}), selected
+}
+
+// layoutNormalRow renders a session row with name + delete button.
+func (slo *SessionListOverlay) layoutNormalRow(gtx layout.Context, th *material.Theme, idx int) layout.Dimensions {
+	return layout.Inset{
+		Top: unit.Dp(2), Bottom: unit.Dp(2),
+		Left: unit.Dp(12), Right: unit.Dp(8),
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+			layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+				return material.Clickable(gtx, &slo.itemClicks[idx], func(gtx layout.Context) layout.Dimensions {
+					return layout.Inset{Top: unit.Dp(4), Bottom: unit.Dp(4)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						lbl := material.Label(th, unit.Sp(13), slo.names[idx])
+						lbl.Color = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+						return lbl.Layout(gtx)
+					})
+				})
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return icon.IconBtn(gtx, &slo.deleteClicks[idx], icon.Delete, color.NRGBA{R: 0xff, G: 0x60, B: 0x60, A: 0xff})
+			}),
+		)
+	})
+}
+
+// layoutConfirmRow renders a confirmation row: "Confirm?" + confirm/cancel buttons.
+func (slo *SessionListOverlay) layoutConfirmRow(gtx layout.Context, th *material.Theme, idx int) layout.Dimensions {
+	confirmBg := color.NRGBA{R: 0x50, G: 0x20, B: 0x20, A: 0xff}
+	return layout.Inset{
+		Top: unit.Dp(2), Bottom: unit.Dp(2),
+		Left: unit.Dp(12), Right: unit.Dp(8),
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		paint.FillShape(gtx.Ops, confirmBg, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+			layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+				return layout.Inset{Top: unit.Dp(4), Bottom: unit.Dp(4), Left: unit.Dp(4)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					lbl := material.Label(th, unit.Sp(12), i18n.T("overlay.confirm_delete"))
+					lbl.Color = color.NRGBA{R: 0xff, G: 0x80, B: 0x80, A: 0xff}
+					return lbl.Layout(gtx)
+				})
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return icon.IconBtn(gtx, &slo.confirmClicks[idx], icon.Delete, color.NRGBA{R: 0xff, G: 0x40, B: 0x40, A: 0xff})
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return icon.IconBtn(gtx, &slo.cancelClicks[idx], icon.Close, theme.ColorTabText)
+			}),
+		)
+	})
+}
+
+// layoutRecentRow renders a row in recent mode with a remove button.
+func (slo *SessionListOverlay) layoutRecentRow(gtx layout.Context, th *material.Theme, idx int) layout.Dimensions {
+	return layout.Inset{
+		Top: unit.Dp(2), Bottom: unit.Dp(2),
+		Left: unit.Dp(12), Right: unit.Dp(8),
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+			layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+				return material.Clickable(gtx, &slo.itemClicks[idx], func(gtx layout.Context) layout.Dimensions {
+					return layout.Inset{Top: unit.Dp(4), Bottom: unit.Dp(4)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						lbl := material.Label(th, unit.Sp(13), slo.names[idx])
+						lbl.Color = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+						return lbl.Layout(gtx)
+					})
+				})
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return icon.IconBtn(gtx, &slo.removeClicks[idx], icon.Close, theme.ColorTabText)
+			}),
+		)
+	})
 }

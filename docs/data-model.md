@@ -295,6 +295,58 @@ exercises:
 
 Exercise references are resolved by looking up `<name>.yaml` in `~/.courtdraw/exercises/`.
 
+## Exercise Index
+
+Auto-generated metadata cache stored as `~/.courtdraw/exercises/index.yaml`:
+
+```yaml
+version: 1
+entries:
+  - file: "3v2-jeu-a-trois"
+    name: "3v2 Jeu à trois"
+    category: "offense"
+    age_group: "u13"
+    court_type: "half_court"
+    duration: "15m"
+    tags: ["3v2", "passing"]
+    modified: "2026-03-04T10:30:00Z"
+    last_opened: "2026-03-04T14:22:00Z"
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `file` | string | Kebab-case filename without extension |
+| `name` | string | Exercise display name |
+| `category` | string | Exercise category |
+| `age_group` | string | Target age group |
+| `court_type` | string | `half_court` or `full_court` |
+| `duration` | string | Estimated duration |
+| `tags` | []string | Free tags |
+| `modified` | timestamp | Last save time |
+| `last_opened` | timestamp | Last time exercise was opened (for recent files) |
+
+## Session Index
+
+Auto-generated metadata cache stored as `~/.courtdraw/sessions/index.yaml`:
+
+```yaml
+version: 1
+entries:
+  - file: "seance-2026-03-03"
+    title: "Séance"
+    date: "2026-03-03"
+    modified: "2026-03-03T18:30:00Z"
+    last_opened: "2026-03-03T20:00:00Z"
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `file` | string | Kebab-case filename without extension |
+| `title` | string | Session title |
+| `date` | string | Session date |
+| `modified` | timestamp | Last save time |
+| `last_opened` | timestamp | Last time session was opened (for recent sessions) |
+
 ## Coordinate System
 
 All positions use **relative coordinates**:

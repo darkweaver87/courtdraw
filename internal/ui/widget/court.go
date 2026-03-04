@@ -2,6 +2,7 @@ package widget
 
 import (
 	"image"
+	"image/color"
 	"math"
 
 	"gioui.org/f32"
@@ -20,6 +21,12 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/ui/editor"
 )
 
+// Rotation handle constants.
+const (
+	rotationHandleDist   = 24 // pixels from element center to handle center
+	rotationHandleRadius = 5  // pixels radius of the handle circle
+)
+
 // CourtWidget renders a basketball court with exercise elements.
 type CourtWidget struct {
 	exercise *model.Exercise
@@ -33,6 +40,7 @@ type CourtWidget struct {
 	dragPlayerIdx int
 	dragAccIdx    int
 	dragActive    bool
+	dragRotating  bool
 }
 
 // SetExercise sets the exercise to display.
@@ -177,6 +185,7 @@ func (cw *CourtWidget) handlePointer(gtx layout.Context, state *editor.EditorSta
 			cw.dragActive = false
 			cw.dragPlayerIdx = -1
 			cw.dragAccIdx = -1
+			cw.dragRotating = false
 		}
 	}
 }
@@ -243,12 +252,22 @@ func (cw *CourtWidget) handlePress(src input.Source, state *editor.EditorState, 
 	cw.dragActive = false
 	cw.dragPlayerIdx = -1
 	cw.dragAccIdx = -1
+	cw.dragRotating = false
 
 	// Request keyboard focus so Delete/Backspace work.
 	src.Execute(key.FocusCmd{Tag: cw})
 
 	switch state.ActiveTool {
 	case editor.ToolNone, editor.ToolSelect:
+		// Check rotation handle first (before element hit tests).
+		if cw.hitTestRotationHandle(seq, state, pos) {
+			cw.dragRotating = true
+			cw.dragActive = true
+			state.IsRotating = true
+			src.Execute(op.InvalidateCmd{})
+			return
+		}
+
 		// Hit test: try to select an element.
 		if pi := cw.hitTestPlayer(seq, pos); pi >= 0 {
 			state.Select(editor.SelectPlayer, pi, cw.seqIndex)
@@ -375,6 +394,49 @@ func (cw *CourtWidget) handleDrag(src input.Source, state *editor.EditorState, s
 	if !cw.dragActive {
 		return
 	}
+
+	// Rotation drag: compute angle from element center to cursor.
+	if cw.dragRotating {
+		sel := state.SelectedElement
+		if sel == nil {
+			return
+		}
+		var center f32.Point
+		switch sel.Kind {
+		case editor.SelectPlayer:
+			if sel.Index < len(seq.Players) {
+				center = cw.viewport.RelToPixel(seq.Players[sel.Index].Position)
+			}
+		case editor.SelectAccessory:
+			if sel.Index < len(seq.Accessories) {
+				center = cw.viewport.RelToPixel(seq.Accessories[sel.Index].Position)
+			}
+		default:
+			return
+		}
+		dx := float64(pos.X - center.X)
+		dy := float64(pos.Y - center.Y)
+		angle := math.Atan2(dx, -dy) * 180 / math.Pi
+		// Normalize to [0, 360).
+		if angle < 0 {
+			angle += 360
+		}
+		// Snap to 15° increments.
+		angle = math.Round(angle/15) * 15
+		if angle >= 360 {
+			angle -= 360
+		}
+		switch sel.Kind {
+		case editor.SelectPlayer:
+			seq.Players[sel.Index].Rotation = angle
+		case editor.SelectAccessory:
+			seq.Accessories[sel.Index].Rotation = angle
+		}
+		state.MarkModified()
+		src.Execute(op.InvalidateCmd{})
+		return
+	}
+
 	relPos := clampPosition(cw.viewport.PixelToRel(pos))
 
 	if cw.dragPlayerIdx >= 0 && cw.dragPlayerIdx < len(seq.Players) {
@@ -394,7 +456,9 @@ func (cw *CourtWidget) handleRelease(src input.Source, state *editor.EditorState
 	cw.dragActive = false
 	cw.dragPlayerIdx = -1
 	cw.dragAccIdx = -1
+	cw.dragRotating = false
 	state.IsDragging = false
+	state.IsRotating = false
 	src.Execute(op.InvalidateCmd{})
 }
 
@@ -458,6 +522,60 @@ func (cw *CourtWidget) removeActionsForPlayer(seq *model.Sequence, playerID stri
 	seq.Actions = filtered
 }
 
+// rotationHandlePos computes the pixel position of the rotation handle for a given
+// element center and rotation angle (degrees).
+func rotationHandlePos(center f32.Point, rotation float64) f32.Point {
+	rad := rotation * math.Pi / 180
+	return f32.Point{
+		X: center.X + float32(math.Sin(rad))*rotationHandleDist,
+		Y: center.Y - float32(math.Cos(rad))*rotationHandleDist,
+	}
+}
+
+// hitTestRotationHandle checks if pos hits the rotation handle of the currently selected element.
+func (cw *CourtWidget) hitTestRotationHandle(seq *model.Sequence, state *editor.EditorState, pos f32.Point) bool {
+	sel := state.SelectedElement
+	if sel == nil || sel.SeqIndex != cw.seqIndex {
+		return false
+	}
+	var center f32.Point
+	var rotation float64
+	switch sel.Kind {
+	case editor.SelectPlayer:
+		if sel.Index >= len(seq.Players) {
+			return false
+		}
+		center = cw.viewport.RelToPixel(seq.Players[sel.Index].Position)
+		rotation = seq.Players[sel.Index].Rotation
+	case editor.SelectAccessory:
+		if sel.Index >= len(seq.Accessories) {
+			return false
+		}
+		center = cw.viewport.RelToPixel(seq.Accessories[sel.Index].Position)
+		rotation = seq.Accessories[sel.Index].Rotation
+	default:
+		return false
+	}
+	handleCenter := rotationHandlePos(center, rotation)
+	dx := pos.X - handleCenter.X
+	dy := pos.Y - handleCenter.Y
+	dist := math.Sqrt(float64(dx*dx + dy*dy))
+	return dist <= rotationHandleRadius+4 // slight tolerance
+}
+
+// drawRotationHandle draws the rotation handle (line + yellow circle) for the selected element.
+func (cw *CourtWidget) drawRotationHandle(ops *op.Ops, center f32.Point, rotation float64) {
+	handleCenter := rotationHandlePos(center, rotation)
+	// Stem line from element to handle.
+	court.DrawLine(ops, center, handleCenter, 1.0,
+		color.NRGBA{R: 0xff, G: 0xff, B: 0x00, A: 0x99})
+	// Handle circle.
+	court.DrawCircleFill(ops, handleCenter, rotationHandleRadius,
+		color.NRGBA{R: 0xff, G: 0xff, B: 0x00, A: 0xcc})
+	court.DrawCircleOutline(ops, handleCenter, rotationHandleRadius, 1.0,
+		color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xcc})
+}
+
 func (cw *CourtWidget) drawSequence(gtx layout.Context, th *material.Theme, seq *model.Sequence, state *editor.EditorState) {
 	sel := state.SelectedElement
 
@@ -492,6 +610,24 @@ func (cw *CourtWidget) drawSequence(gtx layout.Context, th *material.Theme, seq 
 				court.DrawCircleOutline(gtx.Ops, center, playerRadius+6, 2,
 					colorPass)
 				break
+			}
+		}
+	}
+
+	// Draw rotation handle for selected element.
+	if sel != nil && sel.SeqIndex == cw.seqIndex {
+		switch sel.Kind {
+		case editor.SelectPlayer:
+			if sel.Index < len(seq.Players) {
+				p := &seq.Players[sel.Index]
+				center := cw.viewport.RelToPixel(p.Position)
+				cw.drawRotationHandle(gtx.Ops, center, p.Rotation)
+			}
+		case editor.SelectAccessory:
+			if sel.Index < len(seq.Accessories) {
+				a := &seq.Accessories[sel.Index]
+				center := cw.viewport.RelToPixel(a.Position)
+				cw.drawRotationHandle(gtx.Ops, center, a.Rotation)
 			}
 		}
 	}

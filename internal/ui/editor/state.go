@@ -55,6 +55,7 @@ type EditorState struct {
 
 	// Drag state.
 	IsDragging   bool
+	IsRotating   bool
 	DragStartPos model.Position
 
 	// Modified tracks unsaved changes.

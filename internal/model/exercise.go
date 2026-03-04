@@ -109,6 +109,7 @@ type Player struct {
 	Label     string      `yaml:"label,omitempty"`
 	Role      PlayerRole  `yaml:"role"`
 	Position  Position    `yaml:"position"`
+	Rotation  float64     `yaml:"rotation,omitempty"` // degrees, 0 = facing basket
 	Callout   CalloutType `yaml:"callout,omitempty"`
 	Type      string      `yaml:"type,omitempty"`      // "queue" for queued players
 	Count     int         `yaml:"count,omitempty"`     // number of players in queue

@@ -127,11 +127,41 @@ Icons are PNG or SVG files in `assets/icons/`. They can be replaced for custom s
 - The session composer category filter also uses a popup dropdown
 - Popup renders as a centered floating panel with scrollable options via `op.Defer` for z-ordering
 
-## Recent Files
+## Exercise & Session Management (Overlays)
 
-- The file toolbar includes a **Recent** button (clock icon) between Open and Save
-- Clicking Recent shows the exercise list overlay with the 10 most recently opened/saved exercises
-- Recent files are persisted in `~/.courtdraw/settings.yaml`
+Both the Open Exercise and Open Session overlays follow the same pattern:
+- Each row shows the file name with a **delete button** (red trash icon)
+- Clicking delete shows a **confirmation row** ("Confirm?" with confirm/cancel) before deleting the file
+- Clicking the name opens the file
+
+### Recent Files
+
+Both exercises and sessions have a **Recent** button (clock icon) in their toolbar:
+- Clicking Recent shows the overlay in **recent mode** with the 10 most recently opened/saved items
+- Recent items are tracked via `last_opened` timestamps in the index (`index.yaml`)
+- In recent mode, each row has a grey X button to **remove from recents** (does **not** delete the file)
+- The file remains accessible via the Open button (full list)
+- Legacy `recent_files` entries in `settings.yaml` are automatically migrated to the exercise index on startup
+
+## Index Files
+
+- Each directory (`exercises/`, `sessions/`) contains an `index.yaml` that caches metadata
+- The index is loaded on startup and updated on every save/delete operation
+- If `index.yaml` is missing or corrupt, it is rebuilt automatically by scanning all YAML files
+- Atomic writes (`.tmp` + rename) prevent corruption
+- The index enables fast listing without reading every exercise/session file
+
+## Exercise Deletion
+
+- From the Open Exercise overlay or the Session tab library column
+- Confirming removes the exercise YAML file and its index entry
+- If the deleted exercise is currently open in the editor, the editor is cleared
+
+## Session Deletion
+
+- From the Open Session overlay
+- Confirming removes the session YAML file and its index entry
+- If the deleted session is currently open, a blank session is created
 
 ## Exercise Preview
 

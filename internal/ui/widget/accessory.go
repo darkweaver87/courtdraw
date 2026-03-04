@@ -50,7 +50,7 @@ func DrawAccessory(ops *op.Ops, vp *court.Viewport, acc *model.Accessory, select
 
 	switch acc.Type {
 	case model.AccessoryCone:
-		drawCone(ops, center)
+		drawCone(ops, center, acc.Rotation)
 	case model.AccessoryAgilityLadder:
 		drawLadder(ops, center, acc.Rotation)
 	case model.AccessoryChair:
@@ -58,12 +58,23 @@ func DrawAccessory(ops *op.Ops, vp *court.Viewport, acc *model.Accessory, select
 	}
 }
 
-// drawCone draws a triangle (cone marker).
-func drawCone(ops *op.Ops, center f32.Point) {
+// drawCone draws a triangle (cone marker) with rotation.
+func drawCone(ops *op.Ops, center f32.Point, rotation float64) {
 	s := float32(coneSize)
-	top := f32.Point{X: center.X, Y: center.Y - s}
-	left := f32.Point{X: center.X - s*0.7, Y: center.Y + s*0.5}
-	right := f32.Point{X: center.X + s*0.7, Y: center.Y + s*0.5}
+	rad := rotation * math.Pi / 180
+	cos := float32(math.Cos(rad))
+	sin := float32(math.Sin(rad))
+
+	rotate := func(lx, ly float32) f32.Point {
+		return f32.Point{
+			X: center.X + lx*cos - ly*sin,
+			Y: center.Y + lx*sin + ly*cos,
+		}
+	}
+
+	top := rotate(0, -s)
+	left := rotate(-s*0.7, s*0.5)
+	right := rotate(s*0.7, s*0.5)
 
 	var path clip.Path
 	path.Begin(ops)

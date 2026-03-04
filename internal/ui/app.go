@@ -160,6 +160,20 @@ func (a *App) Layout(gtx layout.Context) layout.Dimensions {
 			if !a.exerciseList.Visible {
 				return layout.Dimensions{}
 			}
+			// Handle exercise deletion from overlay.
+			if a.exerciseList.OnDelete != "" {
+				name := a.exerciseList.OnDelete
+				a.exerciseList.OnDelete = ""
+				a.deleteExercise(name)
+			}
+			// Handle recent file removal.
+			if a.exerciseList.OnRemove != "" {
+				name := a.exerciseList.OnRemove
+				a.exerciseList.OnRemove = ""
+				if ys, ok := a.store.(*store.YAMLStore); ok {
+					ys.ClearRecentFile(name)
+				}
+			}
 			dims, selected := a.exerciseList.Layout(gtx, a.theme)
 			if selected != "" {
 				a.openExercise(selected)
@@ -452,14 +466,30 @@ func (a *App) layoutSessionTab(gtx layout.Context) layout.Dimensions {
 		a.contributeExercise(ev.Name)
 	case uiwidget.SessionTabActionDeleteExercise:
 		a.deleteExercise(ev.Name)
+	case uiwidget.SessionTabActionRecent:
+		a.showRecentSessions()
 	}
 
-	// Handle session list overlay selection.
+	// Handle session list overlay selection and deletion.
 	slo := a.sessionTab.SessionListOverlay()
-	if slo != nil && slo.OnSelect != "" {
-		name := slo.OnSelect
-		slo.OnSelect = ""
-		a.openSession(name)
+	if slo != nil {
+		if slo.OnDelete != "" {
+			name := slo.OnDelete
+			slo.OnDelete = ""
+			a.deleteSession(name)
+		}
+		if slo.OnRemove != "" {
+			name := slo.OnRemove
+			slo.OnRemove = ""
+			if ys, ok := a.store.(*store.YAMLStore); ok {
+				ys.ClearRecentSession(name)
+			}
+		}
+		if slo.OnSelect != "" {
+			name := slo.OnSelect
+			slo.OnSelect = ""
+			a.openSession(name)
+		}
 	}
 
 	return a.sessionTab.Layout(gtx, a.theme)
@@ -515,6 +545,21 @@ func (a *App) showOpenSessionDialog() {
 	}
 }
 
+func (a *App) showRecentSessions() {
+	ys, ok := a.store.(*store.YAMLStore)
+	if !ok {
+		return
+	}
+	recent := ys.RecentSessions(10)
+	if len(recent) == 0 {
+		return
+	}
+	slo := a.sessionTab.SessionListOverlay()
+	if slo != nil {
+		slo.ShowRecent(recent)
+	}
+}
+
 func (a *App) openSession(name string) {
 	s, err := a.store.LoadSession(name)
 	if err != nil {
@@ -522,6 +567,9 @@ func (a *App) openSession(name string) {
 		return
 	}
 	a.sessionTab.SetSession(s)
+	if ys, ok := a.store.(*store.YAMLStore); ok {
+		ys.RecordRecentSession(name)
+	}
 }
 
 func (a *App) saveSession() {
@@ -534,6 +582,25 @@ func (a *App) saveSession() {
 		return
 	}
 	a.sessionTab.ClearModified()
+	name := store.SessionFileName(s)
+	if name != "" {
+		if ys, ok := a.store.(*store.YAMLStore); ok {
+			ys.RecordRecentSession(name)
+		}
+	}
+}
+
+func (a *App) deleteSession(name string) {
+	if err := a.store.DeleteSession(name); err != nil {
+		log.Printf("delete session %s: %v", name, err)
+		return
+	}
+	// If the deleted session is currently open, create a blank one.
+	s := a.sessionTab.Session()
+	if s != nil && store.SessionFileName(s) == name {
+		a.NewSession()
+	}
+	log.Printf("deleted session: %s", name)
 }
 
 func (a *App) showPdfExportDialog() {
@@ -638,30 +705,11 @@ func (a *App) handleFileAction(action uiwidget.FileAction) {
 	}
 }
 
-// recordRecentFile adds name to the front of the recent files list (max 10).
+// recordRecentFile marks an exercise as recently opened in the index.
 func (a *App) recordRecentFile(name string) {
-	ys, ok := a.store.(*store.YAMLStore)
-	if !ok {
-		return
+	if ys, ok := a.store.(*store.YAMLStore); ok {
+		ys.RecordRecentFile(name)
 	}
-	settings, err := ys.LoadSettings()
-	if err != nil {
-		return
-	}
-	// Remove existing entry.
-	filtered := make([]string, 0, len(settings.RecentFiles))
-	for _, n := range settings.RecentFiles {
-		if n != name {
-			filtered = append(filtered, n)
-		}
-	}
-	// Prepend.
-	settings.RecentFiles = append([]string{name}, filtered...)
-	// Cap at 10.
-	if len(settings.RecentFiles) > 10 {
-		settings.RecentFiles = settings.RecentFiles[:10]
-	}
-	ys.SaveSettings(settings)
 }
 
 // showRecentFiles shows the exercise list overlay with recent file names.
@@ -670,11 +718,11 @@ func (a *App) showRecentFiles() {
 	if !ok {
 		return
 	}
-	settings, err := ys.LoadSettings()
-	if err != nil || len(settings.RecentFiles) == 0 {
+	recent := ys.RecentFiles(10)
+	if len(recent) == 0 {
 		return
 	}
-	a.exerciseList.Show(settings.RecentFiles)
+	a.exerciseList.ShowRecent(recent)
 }
 
 // NewExercise creates a blank exercise and sets it as current.
@@ -998,30 +1046,8 @@ func (a *App) deleteExercise(name string) {
 	if a.exercise != nil && store.ToKebab(a.exercise.Name) == name {
 		a.SetExercise(nil)
 	}
-	// Remove from recent files.
-	a.removeRecentFile(name)
 	a.sessionNeedsRefresh = true
 	log.Printf("deleted exercise: %s", name)
-}
-
-// removeRecentFile removes a name from the recent files list.
-func (a *App) removeRecentFile(name string) {
-	ys, ok := a.store.(*store.YAMLStore)
-	if !ok {
-		return
-	}
-	settings, err := ys.LoadSettings()
-	if err != nil {
-		return
-	}
-	filtered := make([]string, 0, len(settings.RecentFiles))
-	for _, n := range settings.RecentFiles {
-		if n != name {
-			filtered = append(filtered, n)
-		}
-	}
-	settings.RecentFiles = filtered
-	ys.SaveSettings(settings)
 }
 
 // stripDiacritics removes combining marks (accents) from a string.

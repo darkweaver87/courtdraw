@@ -209,11 +209,34 @@ func TestToKebab(t *testing.T) {
 		{"  Spaces  ", "spaces"},
 		{"UPPERCASE", "uppercase"},
 		{"a--b", "a-b"},
+		{"Séance U13", "seance-u13"},
+		{"Échauffement défense", "echauffement-defense"},
+		{"à côté", "a-cote"},
 	}
 	for _, tt := range tests {
 		got := ToKebab(tt.input)
 		if got != tt.want {
 			t.Errorf("ToKebab(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestSessionFileName(t *testing.T) {
+	tests := []struct {
+		title string
+		date  string
+		want  string
+	}{
+		{"Séance", "2026-03-03", "seance-2026-03-03"},
+		{"Training U15", "2026-01-15", "training-u15-2026-01-15"},
+		{"Séance", "", "seance"},
+		{"", "2026-03-03", ""},
+	}
+	for _, tt := range tests {
+		s := &model.Session{Title: tt.title, Date: tt.date}
+		got := SessionFileName(s)
+		if got != tt.want {
+			t.Errorf("SessionFileName(title=%q, date=%q) = %q, want %q", tt.title, tt.date, got, tt.want)
 		}
 	}
 }

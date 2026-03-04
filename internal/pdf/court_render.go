@@ -220,6 +220,29 @@ func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
 		cr.pdf.SetLineWidth(0.3 * s)
 		cr.pdf.Circle(px, py, r, "D")
 
+		// Direction arrow inside the circle.
+		if p.Rotation != 0 {
+			rad := p.Rotation * math.Pi / 180
+			cos := math.Cos(rad)
+			sin := math.Sin(rad)
+			tipDist := r * 0.75
+			halfW := r * 0.3
+			rotate := func(lx, ly float64) (float64, float64) {
+				return px + lx*sin + ly*(-cos), py + lx*cos + ly*sin
+			}
+			tipX, tipY := rotate(0, -tipDist)
+			leftX, leftY := rotate(-halfW, tipDist*0.3)
+			rightX, rightY := rotate(halfW, tipDist*0.3)
+			cr.pdf.SetFillColor(255, 255, 255)
+			cr.pdf.SetAlpha(0.5, "Normal")
+			cr.pdf.MoveTo(tipX, tipY)
+			cr.pdf.LineTo(leftX, leftY)
+			cr.pdf.LineTo(rightX, rightY)
+			cr.pdf.ClosePath()
+			cr.pdf.DrawPath("F")
+			cr.pdf.SetAlpha(1.0, "Normal")
+		}
+
 		// Label — translate default role labels.
 		label := p.Label
 		if label == "" || label == model.RoleLabel(p.Role) {
@@ -265,28 +288,57 @@ func (cr *courtRenderer) drawAccessories(seq *model.Sequence) {
 	for i := range seq.Accessories {
 		acc := &seq.Accessories[i]
 		ax, ay := cr.relToMM(acc.Position)
+		rad := acc.Rotation * math.Pi / 180
+		cos := math.Cos(rad)
+		sin := math.Sin(rad)
+		rotate := func(lx, ly float64) (float64, float64) {
+			return ax + lx*cos - ly*sin, ay + lx*sin + ly*cos
+		}
 
 		switch acc.Type {
 		case model.AccessoryCone:
-			// Small triangle.
 			cs := 1.5 * s
 			cr.pdf.SetFillColor(255, 165, 0) // orange
-			cr.pdf.MoveTo(ax, ay-cs)
-			cr.pdf.LineTo(ax-cs*0.7, ay+cs*0.5)
-			cr.pdf.LineTo(ax+cs*0.7, ay+cs*0.5)
+			tx, ty := rotate(0, -cs)
+			lx, ly := rotate(-cs*0.7, cs*0.5)
+			rx, ry := rotate(cs*0.7, cs*0.5)
+			cr.pdf.MoveTo(tx, ty)
+			cr.pdf.LineTo(lx, ly)
+			cr.pdf.LineTo(rx, ry)
 			cr.pdf.ClosePath()
 			cr.pdf.DrawPath("F")
 		case model.AccessoryAgilityLadder:
-			// Small rectangle.
 			w, h := 2.0*s, 5.0*s
-			cr.pdf.SetFillColor(255, 215, 0) // gold
-			cr.pdf.Rect(ax-w/2, ay-h/2, w, h, "F")
+			cr.pdf.SetDrawColor(255, 215, 0) // gold
+			cr.pdf.SetLineWidth(0.3 * s)
+			// Rotated rectangle corners.
+			c0x, c0y := rotate(-w/2, -h/2)
+			c1x, c1y := rotate(w/2, -h/2)
+			c2x, c2y := rotate(w/2, h/2)
+			c3x, c3y := rotate(-w/2, h/2)
+			cr.pdf.Line(c0x, c0y, c1x, c1y)
+			cr.pdf.Line(c1x, c1y, c2x, c2y)
+			cr.pdf.Line(c2x, c2y, c3x, c3y)
+			cr.pdf.Line(c3x, c3y, c0x, c0y)
+			// Rungs.
+			rungs := 5
+			for ri := 1; ri < rungs; ri++ {
+				t := float64(ri) / float64(rungs)
+				rlx := c0x + (c3x-c0x)*t
+				rly := c0y + (c3y-c0y)*t
+				rrx := c1x + (c2x-c1x)*t
+				rry := c1y + (c2y-c1y)*t
+				cr.pdf.Line(rlx, rly, rrx, rry)
+			}
 		case model.AccessoryChair:
-			// Small L-shape.
 			cr.pdf.SetDrawColor(128, 128, 128)
 			cr.pdf.SetLineWidth(0.5 * s)
-			cr.pdf.Line(ax, ay-2*s, ax, ay+1*s)
-			cr.pdf.Line(ax, ay+1*s, ax+1.5*s, ay+1*s)
+			// L-shape: vertical (back) + horizontal (seat), rotated.
+			bx, by := rotate(0, -2*s)
+			mx, my := rotate(0, 1*s)
+			ex, ey := rotate(1.5*s, 1*s)
+			cr.pdf.Line(bx, by, mx, my)
+			cr.pdf.Line(mx, my, ex, ey)
 		}
 	}
 }

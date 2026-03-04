@@ -1,6 +1,8 @@
 package anim
 
 import (
+	"math"
+
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
@@ -40,6 +42,33 @@ func InterpolatePosition(from, to model.Position, t float64) model.Position {
 	}
 }
 
+// InterpolateRotation interpolates between two rotation angles (degrees) using
+// the shortest path around 360°.
+func InterpolateRotation(from, to, t float64) float64 {
+	// Normalize both to [0, 360).
+	from = math.Mod(from, 360)
+	if from < 0 {
+		from += 360
+	}
+	to = math.Mod(to, 360)
+	if to < 0 {
+		to += 360
+	}
+	diff := to - from
+	// Shortest path: if diff > 180, go the other way.
+	if diff > 180 {
+		diff -= 360
+	} else if diff < -180 {
+		diff += 360
+	}
+	result := from + diff*t
+	result = math.Mod(result, 360)
+	if result < 0 {
+		result += 360
+	}
+	return result
+}
+
 // InterpolateFrame computes an interpolated frame between two sequences.
 // t is the interpolation factor: 0.0 = fromSeq, 1.0 = toSeq.
 func InterpolateFrame(fromSeq, toSeq *model.Sequence, t float64) AnimatedFrame {
@@ -76,13 +105,14 @@ func InterpolateFrame(fromSeq, toSeq *model.Sequence, t float64) AnimatedFrame {
 	for i := range fromSeq.Players {
 		fp := &fromSeq.Players[i]
 		if tp, ok := toMap[fp.ID]; ok {
-			// Present in both: lerp.
+			// Present in both: lerp position and rotation.
 			ap := AnimatedPlayer{
 				Player: model.Player{
 					ID:       fp.ID,
 					Label:    tp.Label,
 					Role:     tp.Role,
 					Position: InterpolatePosition(fp.Position, tp.Position, t),
+					Rotation: InterpolateRotation(fp.Rotation, tp.Rotation, t),
 					Callout:  tp.Callout,
 					Type:     fp.Type,
 					Count:    fp.Count,
@@ -125,8 +155,15 @@ func InterpolateFrame(fromSeq, toSeq *model.Sequence, t float64) AnimatedFrame {
 	accSeen := make(map[string]bool)
 	for i := range fromSeq.Accessories {
 		fa := &fromSeq.Accessories[i]
-		if _, ok := toAccMap[fa.ID]; ok {
-			frame.Accessories = append(frame.Accessories, AnimatedAccessory{Accessory: *fa, Opacity: 1.0})
+		if ta, ok := toAccMap[fa.ID]; ok {
+			// Present in both: interpolate position and rotation.
+			interpAcc := model.Accessory{
+				Type:     ta.Type,
+				ID:       fa.ID,
+				Position: InterpolatePosition(fa.Position, ta.Position, t),
+				Rotation: InterpolateRotation(fa.Rotation, ta.Rotation, t),
+			}
+			frame.Accessories = append(frame.Accessories, AnimatedAccessory{Accessory: interpAcc, Opacity: 1.0})
 		} else {
 			frame.Accessories = append(frame.Accessories, AnimatedAccessory{Accessory: *fa, Opacity: 1.0 - t})
 		}

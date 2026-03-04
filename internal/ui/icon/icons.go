@@ -37,7 +37,10 @@ var (
 	Sync      = mustIcon(icons.NotificationSync)
 	Today     = mustIcon(icons.ActionToday)
 	Calendar  = mustIcon(icons.ActionDateRange)
-	Recent    = mustIcon(icons.ActionHistory)
+	Recent   = mustIcon(icons.ActionHistory)
+	MoveUp     = mustIcon(icons.NavigationArrowUpward)
+	MoveDown   = mustIcon(icons.NavigationArrowDownward)
+	DragHandle = mustIcon(icons.EditorDragHandle)
 )
 
 func mustIcon(data []byte) *widget.Icon {

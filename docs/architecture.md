@@ -26,13 +26,18 @@ All user data lives in `~/.courtdraw/`:
 ```
 ~/.courtdraw/
 ├── exercises/          # Exercise YAML files (flat)
+│   ├── index.yaml      # Exercise metadata index (auto-generated)
 │   ├── gauntlet.yaml
 │   ├── double-close-out.yaml
 │   └── king-of-the-court.yaml
-└── sessions/           # Session YAML files (flat)
-    ├── high-intensity-u13.yaml
-    └── shooting-fundamentals.yaml
+├── sessions/           # Session YAML files (flat)
+│   ├── index.yaml      # Session metadata index (auto-generated)
+│   ├── high-intensity-u13.yaml
+│   └── shooting-fundamentals.yaml
+└── settings.yaml       # App settings (language, PDF export dir)
 ```
+
+Each directory contains an `index.yaml` that caches metadata (name, category, tags, timestamps) for fast listing without scanning individual files. The index is rebuilt automatically if missing or corrupt.
 
 The community collection lives in the repo under `library/`:
 
@@ -62,6 +67,8 @@ courtdraw/
 │   ├── store/                       # YAML file persistence
 │   │   ├── store.go                 # Store interface
 │   │   ├── yaml.go                  # YAML read/write implementation
+│   │   ├── index.go                 # Index structs, load/save/rebuild
+│   │   ├── settings.go              # App settings persistence
 │   │   └── library.go              # Read-only access to library/ exercises
 │   ├── ui/                          # Gio UI layer
 │   │   ├── app.go                   # Root widget, tab navigation

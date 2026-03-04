@@ -184,6 +184,79 @@ func TestInterpolateFrame_BoundaryT1(t *testing.T) {
 	}
 }
 
+func TestInterpolateRotation(t *testing.T) {
+	tests := []struct {
+		name     string
+		from, to float64
+		t        float64
+		expected float64
+	}{
+		{"0 to 90 at 0.5", 0, 90, 0.5, 45},
+		{"350 to 10 wrap forward at 0.5", 350, 10, 0.5, 0},
+		{"10 to 350 wrap backward at 0.5", 10, 350, 0.5, 0},
+		{"same angle", 45, 45, 0.5, 45},
+		{"0 to 180 at 0.5", 0, 180, 0.5, 90},
+		{"full range at t=0", 0, 90, 0.0, 0},
+		{"full range at t=1", 0, 90, 1.0, 90},
+		{"270 to 90 at 0.5", 270, 90, 0.5, 180}, // 180° diff: both directions equal, algo goes clockwise
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := InterpolateRotation(tc.from, tc.to, tc.t)
+			if !almostEqual(result, tc.expected, 0.01) {
+				t.Errorf("InterpolateRotation(%v, %v, %v) = %v, want %v",
+					tc.from, tc.to, tc.t, result, tc.expected)
+			}
+		})
+	}
+}
+
+func TestInterpolateFrame_PlayerRotation(t *testing.T) {
+	from := &model.Sequence{
+		Players: []model.Player{
+			{ID: "p1", Role: model.RoleAttacker, Position: model.Position{0.5, 0.5}, Rotation: 0},
+		},
+	}
+	to := &model.Sequence{
+		Players: []model.Player{
+			{ID: "p1", Role: model.RoleAttacker, Position: model.Position{0.5, 0.5}, Rotation: 90},
+		},
+	}
+
+	frame := InterpolateFrame(from, to, 0.5)
+	if len(frame.Players) != 1 {
+		t.Fatalf("expected 1 player, got %d", len(frame.Players))
+	}
+	if !almostEqual(frame.Players[0].Rotation, 45, 0.01) {
+		t.Errorf("expected rotation 45, got %f", frame.Players[0].Rotation)
+	}
+}
+
+func TestInterpolateFrame_AccessoryPositionAndRotation(t *testing.T) {
+	from := &model.Sequence{
+		Accessories: []model.Accessory{
+			{ID: "acc1", Type: model.AccessoryCone, Position: model.Position{0.2, 0.3}, Rotation: 0},
+		},
+	}
+	to := &model.Sequence{
+		Accessories: []model.Accessory{
+			{ID: "acc1", Type: model.AccessoryCone, Position: model.Position{0.8, 0.7}, Rotation: 90},
+		},
+	}
+
+	frame := InterpolateFrame(from, to, 0.5)
+	if len(frame.Accessories) != 1 {
+		t.Fatalf("expected 1 accessory, got %d", len(frame.Accessories))
+	}
+	a := frame.Accessories[0]
+	if !almostEqual(a.Position[0], 0.5, 0.01) || !almostEqual(a.Position[1], 0.5, 0.01) {
+		t.Errorf("expected position (0.5, 0.5), got (%f, %f)", a.Position[0], a.Position[1])
+	}
+	if !almostEqual(a.Rotation, 45, 0.01) {
+		t.Errorf("expected rotation 45, got %f", a.Rotation)
+	}
+}
+
 func TestSnapshotFrame(t *testing.T) {
 	seq := &model.Sequence{
 		Players: []model.Player{

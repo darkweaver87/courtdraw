@@ -12,4 +12,5 @@ type Store interface {
 	ListSessions() ([]string, error)
 	LoadSession(name string) (*model.Session, error)
 	SaveSession(session *model.Session) error
+	DeleteSession(name string) error
 }
