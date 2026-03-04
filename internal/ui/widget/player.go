@@ -62,8 +62,8 @@ func drawDirectionArrow(ops *op.Ops, center f32.Point, rotation float64, alpha u
 	// Rotate a local point by rotation angle.
 	rotate := func(lx, ly float32) f32.Point {
 		return f32.Point{
-			X: center.X + lx*sin + ly*(-cos),
-			Y: center.Y + lx*cos + ly*sin,
+			X: center.X + lx*cos - ly*sin,
+			Y: center.Y + lx*sin + ly*cos,
 		}
 	}
 

@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
@@ -64,6 +65,11 @@ type EditorState struct {
 	// DeleteRequested is set when the user clicks the Delete tool while
 	// an element is selected. The court widget consumes this flag.
 	DeleteRequested bool
+
+	// Status bar fields.
+	StatusMsg   string
+	StatusLevel int // 0=info, 1=error
+	StatusAt    time.Time
 }
 
 // Select marks an element as selected.
@@ -114,6 +120,13 @@ func (s *EditorState) SetAccessoryTool(accessoryType model.AccessoryType) {
 	s.ActiveTool = ToolAccessory
 	s.ToolAccessoryType = accessoryType
 	s.ActionFrom = nil
+}
+
+// SetStatus sets the status bar message and level.
+func (s *EditorState) SetStatus(msg string, level int) {
+	s.StatusMsg = msg
+	s.StatusLevel = level
+	s.StatusAt = time.Now()
 }
 
 // MarkModified flags the exercise as having unsaved changes.

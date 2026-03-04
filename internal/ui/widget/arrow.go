@@ -89,6 +89,15 @@ func actionColor(at model.ActionType) color.NRGBA {
 	}
 }
 
+// DrawActionHighlight draws a wide semi-transparent yellow line behind an action
+// to indicate it is selected.
+func DrawActionHighlight(ops *op.Ops, vp *court.Viewport, action *model.Action, players []model.Player) {
+	from := resolveRef(vp, action.From, players)
+	to := resolveRef(vp, action.To, players)
+	col := color.NRGBA{R: 0xff, G: 0xff, B: 0x00, A: 0x66}
+	court.DrawLine(ops, from, to, arrowLineWidth+6, col)
+}
+
 // DrawAction draws an action (arrow/movement) between elements.
 func DrawAction(ops *op.Ops, vp *court.Viewport, action *model.Action, players []model.Player) {
 	from := resolveRef(vp, action.From, players)

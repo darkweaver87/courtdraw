@@ -237,6 +237,10 @@ age_group.u17: "U17"
 age_group.u19: "U19"
 age_group.senior: "Senior"
 
+# Status bar
+status.requires_ball: "Player must have the ball"
+status.pass_requires_player: "Pass target must be a player"
+
 # Court types
 court_type.half_court: "Half court"
 court_type.full_court: "Full court"

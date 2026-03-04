@@ -145,6 +145,15 @@ func RoleColor(role PlayerRole) color.NRGBA {
 	}
 }
 
+// RequiresBall returns true if the action type requires the player to have the ball.
+func RequiresBall(at ActionType) bool {
+	switch at {
+	case ActionPass, ActionDribble, ActionShotLayup, ActionShotPushup, ActionShotJump:
+		return true
+	}
+	return false
+}
+
 // RoleLabel returns the short display label for a player role.
 func RoleLabel(role PlayerRole) string {
 	switch role {

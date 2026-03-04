@@ -68,6 +68,29 @@ Queued players (waiting in line) render as smaller, greyed-out circles.
 | Contest | `contest` | Hand-up symbol at position |
 | Reverse | `reverse` | U-turn arrow |
 
+### Action Selection
+
+- **Select mode**: click the midpoint of an action arrow to select it (yellow highlight)
+- **Delete mode**: click the midpoint of an action arrow to delete it directly
+- **Keyboard**: press Delete/Backspace to remove the selected action
+- **Properties panel**: shows Type / From / To for the selected action
+
+### Ball Validation
+
+Actions that require ball possession (`pass`, `dribble`, `shot_layup`, `shot_pushup`, `shot_jumpshot`) are validated at creation:
+- The "from" player must be the current ball carrier, otherwise the action is rejected
+- A pass must target a player (not an empty position), otherwise the action is rejected
+- Sprint, cut, screen, close-out, contest, reverse do **not** require ball possession
+
+Validation errors are displayed in the **status bar** below the court.
+
+## Status Bar
+
+- Displays temporary messages (errors, info) below the court canvas
+- Auto-dismisses after 3 seconds
+- Error messages: dark red background
+- Info messages: dark grey background
+
 ## Accessories (MVP)
 
 | Accessory | ID | Icon file |

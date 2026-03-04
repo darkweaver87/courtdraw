@@ -123,6 +123,13 @@ func (st *SeqTimeline) addSequence(exercise *model.Exercise, court *CourtWidget,
 		// Deep-copy accessories.
 		newSeq.Accessories = make([]model.Accessory, len(current.Accessories))
 		copy(newSeq.Accessories, current.Accessories)
+		// Carry over ball possession, then apply pass transfers.
+		newSeq.BallCarrier = current.BallCarrier
+		for _, a := range current.Actions {
+			if a.Type == model.ActionPass && a.To.IsPlayer {
+				newSeq.BallCarrier = a.To.PlayerID
+			}
+		}
 	}
 
 	exercise.Sequences = append(exercise.Sequences, newSeq)

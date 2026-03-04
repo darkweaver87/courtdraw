@@ -56,6 +56,7 @@ type App struct {
 
 	playback      *anim.Playback
 	animControls  uiwidget.AnimControls
+	statusBar     uiwidget.StatusBar
 
 	sessionTab *uiwidget.SessionTab
 	library    *store.Library
@@ -395,6 +396,10 @@ func (a *App) layoutEditorContent(gtx layout.Context) layout.Dimensions {
 					return a.propsPanel.Layout(gtx, a.theme, a.exercise, &a.editorState, seqIdx, a.editLang)
 				}),
 			)
+		}),
+		// Status bar (auto-dismiss).
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return a.statusBar.Layout(gtx, a.theme, &a.editorState)
 		}),
 		// Animation controls.
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {

@@ -17,6 +17,7 @@ import (
 
 	"github.com/darkweaver87/courtdraw/internal/anim"
 	"github.com/darkweaver87/courtdraw/internal/court"
+	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/model"
 	"github.com/darkweaver87/courtdraw/internal/ui/editor"
 )
@@ -285,6 +286,11 @@ func (cw *CourtWidget) handlePress(src input.Source, state *editor.EditorState, 
 			src.Execute(op.InvalidateCmd{})
 			return
 		}
+		if actIdx := cw.hitTestAction(seq, pos); actIdx >= 0 {
+			state.Select(editor.SelectAction, actIdx, cw.seqIndex)
+			src.Execute(op.InvalidateCmd{})
+			return
+		}
 		// Clicked empty area: deselect.
 		state.Deselect()
 		src.Execute(op.InvalidateCmd{})
@@ -298,6 +304,11 @@ func (cw *CourtWidget) handlePress(src input.Source, state *editor.EditorState, 
 			Role:     state.ToolRole,
 			Position: relPos,
 		}
+		switch state.ToolRole {
+		case model.RoleAttacker, model.RolePointGuard, model.RoleShootingGuard,
+			model.RoleSmallForward, model.RolePowerForward, model.RoleCenter:
+			p.Rotation = 180 // face basket (bottom of court)
+		}
 		if state.ToolQueue {
 			p.Type = "queue"
 			p.Count = 3
@@ -309,19 +320,43 @@ func (cw *CourtWidget) handlePress(src input.Source, state *editor.EditorState, 
 		src.Execute(op.InvalidateCmd{})
 
 	case editor.ToolAction:
-		// Two-click flow: first click picks "from" player, second picks "to".
+		// If a player is already selected, use them as the action source.
 		if state.ActionFrom == nil {
-			// First click: must be a player.
+			sel := state.SelectedElement
+			if sel != nil && sel.Kind == editor.SelectPlayer &&
+				sel.SeqIndex == cw.seqIndex && sel.Index < len(seq.Players) {
+				id := seq.Players[sel.Index].ID
+				if model.RequiresBall(state.ToolActionType) && seq.BallCarrier != id {
+					state.SetStatus(i18n.T("status.requires_ball"), 1)
+					src.Execute(op.InvalidateCmd{})
+					return
+				}
+				state.ActionFrom = &id
+			}
+		}
+
+		if state.ActionFrom == nil {
+			// No player selected: first click picks the source player.
 			if pi := cw.hitTestPlayer(seq, pos); pi >= 0 {
 				id := seq.Players[pi].ID
+				// Validate ball possession for actions that require it (only when tracked).
+				if model.RequiresBall(state.ToolActionType) && seq.BallCarrier != id {
+					state.SetStatus(i18n.T("status.requires_ball"), 1)
+					src.Execute(op.InvalidateCmd{})
+					return
+				}
 				state.ActionFrom = &id
 			}
 		} else {
-			// Second click: can be a player or a position.
+			// Destination click: pass requires a player target.
 			toRef := model.ActionRef{}
 			if pi := cw.hitTestPlayer(seq, pos); pi >= 0 {
 				toRef.IsPlayer = true
 				toRef.PlayerID = seq.Players[pi].ID
+			} else if state.ToolActionType == model.ActionPass {
+				state.SetStatus(i18n.T("status.pass_requires_player"), 1)
+				src.Execute(op.InvalidateCmd{})
+				return
 			} else {
 				toRef.Position = clampPosition(cw.viewport.PixelToRel(pos))
 			}
@@ -331,9 +366,13 @@ func (cw *CourtWidget) handlePress(src input.Source, state *editor.EditorState, 
 				To:   toRef,
 			}
 			seq.Actions = append(seq.Actions, action)
-			// Auto-transfer ball carrier on pass to a player.
+			// Auto-transfer ball carrier on pass: takes effect in the next sequence
+			// (like a movement — the ball travels during the transition).
 			if state.ToolActionType == model.ActionPass && toRef.IsPlayer {
-				seq.BallCarrier = toRef.PlayerID
+				nextIdx := cw.seqIndex + 1
+				if nextIdx < len(cw.exercise.Sequences) {
+					cw.exercise.Sequences[nextIdx].BallCarrier = toRef.PlayerID
+				}
 			}
 			state.ActionFrom = nil
 			state.MarkModified()
@@ -585,8 +624,11 @@ func (cw *CourtWidget) drawSequence(gtx layout.Context, th *material.Theme, seq 
 		DrawAccessory(gtx.Ops, &cw.viewport, &seq.Accessories[i], selected)
 	}
 
-	// Draw actions (arrows).
+	// Draw actions (arrows) with optional selection highlight.
 	for i := range seq.Actions {
+		if sel != nil && sel.Kind == editor.SelectAction && sel.Index == i && sel.SeqIndex == cw.seqIndex {
+			DrawActionHighlight(gtx.Ops, &cw.viewport, &seq.Actions[i], seq.Players)
+		}
 		DrawAction(gtx.Ops, &cw.viewport, &seq.Actions[i], seq.Players)
 	}
 

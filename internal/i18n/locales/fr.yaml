@@ -237,6 +237,10 @@ age_group.u17: "U17"
 age_group.u19: "U19"
 age_group.senior: "Senior"
 
+# Barre de statut
+status.requires_ball: "Le joueur doit être en possession du ballon"
+status.pass_requires_player: "La cible de la passe doit être un joueur"
+
 # Types de terrain
 court_type.half_court: "Demi-terrain"
 court_type.full_court: "Tout terrain"

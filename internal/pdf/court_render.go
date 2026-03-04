@@ -228,7 +228,7 @@ func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
 			tipDist := r * 0.75
 			halfW := r * 0.3
 			rotate := func(lx, ly float64) (float64, float64) {
-				return px + lx*sin + ly*(-cos), py + lx*cos + ly*sin
+				return px + lx*cos - ly*sin, py + lx*sin + ly*cos
 			}
 			tipX, tipY := rotate(0, -tipDist)
 			leftX, leftY := rotate(-halfW, tipDist*0.3)
