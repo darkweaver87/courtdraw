@@ -104,10 +104,14 @@ jobs:
         if: matrix.os == 'linux' && matrix.arch == 'arm64'
         run: |
           sudo dpkg --add-architecture arm64
-          # Pin existing sources to amd64 only (handles both .list and .sources formats)
+          # Pin all existing sources to amd64 only
+          # Remove non-Ubuntu sources that don't carry arm64 packages
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          # .list files: add [arch=amd64] only to bare "deb " lines (skip those already with [...])
           for f in /etc/apt/sources.list.d/*.list; do
-            [ -f "$f" ] && sudo sed -i '/^deb /s/^deb /deb [arch=amd64] /' "$f" 2>/dev/null || true
+            [ -f "$f" ] && sudo sed -i '/^deb \[/!s/^deb /deb [arch=amd64] /' "$f" 2>/dev/null || true
           done
+          # .sources files: add Architectures if missing
           for f in /etc/apt/sources.list.d/*.sources; do
             [ -f "$f" ] && grep -q '^Architectures:' "$f" || sudo sed -i '/^Types:/a Architectures: amd64' "$f" 2>/dev/null || true
           done
