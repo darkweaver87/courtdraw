@@ -22,19 +22,16 @@ func main() {
 }
 
 func run() {
-	log.Println("courtdraw: run() started")
 	// init store
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatalf("home dir: %v", err)
 	}
-	log.Printf("courtdraw: homeDir=%s", homeDir)
 	baseDir := filepath.Join(homeDir, ".courtdraw")
 	st, err := store.NewYAMLStore(baseDir)
 	if err != nil {
 		log.Fatalf("init store: %v", err)
 	}
-	log.Println("courtdraw: store initialized")
 
 	// init i18n: load locales, then apply saved or system language
 	i18n.Load()
@@ -63,11 +60,9 @@ func run() {
 		}
 	}
 
-	log.Printf("courtdraw: libraryDir=%q", libraryDir)
 	// init theme and app
 	th := theme.NewTheme()
 	application := ui.NewApp(th, st, libraryDir)
-	log.Println("courtdraw: app created")
 
 	// start with a blank exercise and blank session
 	application.NewExercise()
@@ -81,25 +76,18 @@ func run() {
 		app.Size(unit.Dp(1200), unit.Dp(800)),
 	)
 
-	log.Println("courtdraw: entering event loop")
 	var ops op.Ops
-	frameCount := 0
 	for {
-		e := w.Event()
-		if frameCount < 5 {
-			log.Printf("courtdraw: event type=%T", e)
-		}
-		switch e := e.(type) {
+		switch e := w.Event().(type) {
 		case app.DestroyEvent:
 			if e.Err != nil {
 				log.Fatalf("window error: %v", e.Err)
 			}
 			os.Exit(0)
+		case app.ConfigEvent:
+			// Required on Android to trigger the first frame
+			w.Invalidate()
 		case app.FrameEvent:
-			frameCount++
-			if frameCount <= 3 {
-				log.Printf("courtdraw: frame %d, size=%v", frameCount, e.Size)
-			}
 			gtx := app.NewContext(&ops, e)
 			layout.Background{}.Layout(gtx,
 				func(gtx layout.Context) layout.Dimensions {
