@@ -24,13 +24,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libgl1-mesa-dev \
+            libegl1-mesa-dev \
             libxkbcommon-x11-dev \
             libwayland-dev \
             libx11-dev \
+            libx11-xcb-dev \
             libxcursor-dev \
             libxrandr-dev \
             libxinerama-dev \
             libxi-dev \
+            libxfixes-dev \
             libxxf86vm-dev \
             libvulkan-dev
 
@@ -84,13 +87,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libgl1-mesa-dev \
+            libegl1-mesa-dev \
             libxkbcommon-x11-dev \
             libwayland-dev \
             libx11-dev \
+            libx11-xcb-dev \
             libxcursor-dev \
             libxrandr-dev \
             libxinerama-dev \
             libxi-dev \
+            libxfixes-dev \
             libxxf86vm-dev \
             libvulkan-dev
 
@@ -106,13 +112,16 @@ jobs:
           sudo apt-get install -y \
             gcc-aarch64-linux-gnu \
             libgl1-mesa-dev:arm64 \
+            libegl1-mesa-dev:arm64 \
             libxkbcommon-x11-dev:arm64 \
             libwayland-dev:arm64 \
             libx11-dev:arm64 \
+            libx11-xcb-dev:arm64 \
             libxcursor-dev:arm64 \
             libxrandr-dev:arm64 \
             libxinerama-dev:arm64 \
             libxi-dev:arm64 \
+            libxfixes-dev:arm64 \
             libxxf86vm-dev:arm64 \
             libvulkan-dev:arm64
 
@@ -171,13 +180,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libgl1-mesa-dev \
+            libegl1-mesa-dev \
             libxkbcommon-x11-dev \
             libwayland-dev \
             libx11-dev \
+            libx11-xcb-dev \
             libxcursor-dev \
             libxrandr-dev \
             libxinerama-dev \
             libxi-dev \
+            libxfixes-dev \
             libxxf86vm-dev \
             libvulkan-dev
 
