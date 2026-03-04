@@ -1,6 +1,6 @@
 # Binaries
-courtdraw
-courtdraw.exe
+/courtdraw
+/courtdraw.exe
 *.apk
 *.aar
 
