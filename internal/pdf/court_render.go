@@ -14,11 +14,22 @@ type courtRenderer struct {
 	pdf *fpdf.Fpdf
 	// Diagram bounding box in mm.
 	x, y, w, h float64
+	// Element scale factor (1.0 = reference 60mm diagram, smaller for tiny diagrams).
+	es float64
 }
 
 // drawCourtDiagram renders the court background, markings, and a single sequence's elements.
 func drawCourtDiagram(pdf *fpdf.Fpdf, x, y, w, h float64, ex *model.Exercise, seqIdx int) {
-	cr := &courtRenderer{pdf: pdf, x: x, y: y, w: w, h: h}
+	// Scale decorative elements (players, lines, arrows) based on diagram size.
+	ref := math.Min(w, h)
+	es := ref / 60.0
+	if es > 1.0 {
+		es = 1.0
+	}
+	if es < 0.4 {
+		es = 0.4
+	}
+	cr := &courtRenderer{pdf: pdf, x: x, y: y, w: w, h: h, es: es}
 	cr.drawBackground()
 	cr.drawMarkings(ex.CourtType)
 
@@ -55,7 +66,7 @@ func (cr *courtRenderer) relToMM(pos model.Position) (float64, float64) {
 
 func (cr *courtRenderer) drawMarkings(courtType model.CourtType) {
 	cr.pdf.SetDrawColor(colorCourtLine[0], colorCourtLine[1], colorCourtLine[2])
-	cr.pdf.SetLineWidth(lineWidthThick)
+	cr.pdf.SetLineWidth(lineWidthThick * cr.es)
 
 	// Court outline.
 	cr.pdf.Rect(cr.x, cr.y, cr.w, cr.h, "D")
@@ -64,62 +75,99 @@ func (cr *courtRenderer) drawMarkings(courtType model.CourtType) {
 	if courtType == model.FullCourt {
 		midY := cr.y + cr.h/2
 		cr.pdf.Line(cr.x, midY, cr.x+cr.w, midY)
-		// Center circle.
-		cr.pdf.Circle(cr.x+cr.w/2, midY, cr.w*0.12, "D")
+		// Center circle (FIBA: 1.80m radius on 15m width).
+		cr.pdf.Circle(cr.x+cr.w/2, midY, cr.w*(1.80/15.0), "D")
 	}
 
 	// Basket end (bottom of diagram = top of court in model).
-	cr.drawBasketEnd(false)
+	cr.drawBasketEnd(false, courtType)
 	if courtType == model.FullCourt {
-		cr.drawBasketEnd(true)
+		cr.drawBasketEnd(true, courtType)
 	}
 }
 
-func (cr *courtRenderer) drawBasketEnd(mirrored bool) {
+func (cr *courtRenderer) drawBasketEnd(mirrored bool, courtType model.CourtType) {
 	centerX := cr.x + cr.w/2
 
-	// Paint/lane: ~32% of court width, ~20% of half-length.
-	laneW := cr.w * 0.32
-	laneH := cr.h * 0.20
+	// Real FIBA court dimensions → diagram mm.
+	// Court length depends on type: 14m (half) or 28m (full).
+	courtLen := 28.0
+	if courtType != model.FullCourt {
+		courtLen = 14.0
+	}
+	const courtWid = 15.0
+
+	xMM := func(m float64) float64 { return cr.w * (m / courtWid) }
+	yMM := func(m float64) float64 { return cr.h * (m / courtLen) }
+
+	laneW := xMM(4.90)
+	laneH := yMM(5.80)
+	basketOff := yMM(1.575)
+	bbOff := yMM(1.20)
+	rimR := xMM(0.225)
+	bbW := xMM(1.80)
+	tpR := xMM(6.75)
+	cornerDist := xMM(0.90)
+	ftR := xMM(1.80)
+
+	// fromBaseline converts a distance from the baseline to a PDF Y coordinate.
+	fromBaseline := func(dist float64) float64 {
+		if mirrored {
+			return cr.y + dist
+		}
+		return cr.y + cr.h - dist
+	}
+
+	basketY := fromBaseline(basketOff)
+
+	// Paint/lane.
 	if mirrored {
-		// Paint at top.
 		cr.pdf.Rect(centerX-laneW/2, cr.y, laneW, laneH, "D")
 	} else {
-		// Paint at bottom.
 		cr.pdf.Rect(centerX-laneW/2, cr.y+cr.h-laneH, laneW, laneH, "D")
 	}
 
-	// Free throw circle.
-	ftRadius := laneW / 2
+	// Free throw circle at end of lane.
+	cr.pdf.Circle(centerX, fromBaseline(laneH), ftR, "D")
+
+	// Backboard.
+	bbY := fromBaseline(bbOff)
+	cr.pdf.Line(centerX-bbW/2, bbY, centerX+bbW/2, bbY)
+
+	// Rim.
+	cr.pdf.Circle(centerX, basketY, rimR, "D")
+
+	// Three-point line: corner straight lines + arc.
+	cornerXL := cr.x + cornerDist
+	cornerXR := cr.x + cr.w - cornerDist
+	baselineY := fromBaseline(0)
+
+	// Where the arc meets the corner lines.
+	dx := centerX - cornerXL
+	dy2 := tpR*tpR - dx*dx
+	if dy2 < 0 {
+		dy2 = 0
+	}
+	arcMeet := math.Sqrt(dy2)
+
+	// Arc meet point Y — the arc extends into the court (away from baseline).
+	var arcMeetY float64
 	if mirrored {
-		cr.pdf.Circle(centerX, cr.y+laneH, ftRadius, "D")
+		arcMeetY = basketY + arcMeet
 	} else {
-		cr.pdf.Circle(centerX, cr.y+cr.h-laneH, ftRadius, "D")
+		arcMeetY = basketY - arcMeet
 	}
 
-	// Three-point arc (simplified as an arc).
-	arcRadius := cr.w * 0.44
-	if mirrored {
-		basketY := cr.y + cr.h*0.055
-		cr.drawArc(centerX, basketY, arcRadius, 200, 340)
-	} else {
-		basketY := cr.y + cr.h - cr.h*0.055
-		cr.drawArc(centerX, basketY, arcRadius, 20, 160)
-	}
+	// Corner straight lines from baseline to arc meet point.
+	cr.pdf.Line(cornerXL, baselineY, cornerXL, arcMeetY)
+	cr.pdf.Line(cornerXR, baselineY, cornerXR, arcMeetY)
 
-	// Basket (small circle + rectangle).
-	rimR := cr.w * 0.02
-	if mirrored {
-		basketY := cr.y + cr.h*0.055
-		cr.pdf.Circle(centerX, basketY, rimR, "D")
-		bbW := cr.w * 0.12
-		cr.pdf.Line(centerX-bbW/2, cr.y+cr.h*0.03, centerX+bbW/2, cr.y+cr.h*0.03)
-	} else {
-		basketY := cr.y + cr.h - cr.h*0.055
-		cr.pdf.Circle(centerX, basketY, rimR, "D")
-		bbW := cr.w * 0.12
-		cr.pdf.Line(centerX-bbW/2, cr.y+cr.h-cr.h*0.03, centerX+bbW/2, cr.y+cr.h-cr.h*0.03)
-	}
+	// Three-point arc from left meet point to right meet point.
+	leftDy := arcMeetY - basketY
+	rightDy := leftDy
+	startAngle := math.Atan2(leftDy, cornerXL-centerX) * 180 / math.Pi
+	endAngle := math.Atan2(rightDy, cornerXR-centerX) * 180 / math.Pi
+	cr.drawArc(centerX, basketY, tpR, startAngle, endAngle)
 }
 
 func (cr *courtRenderer) drawArc(cx, cy, r, startDeg, endDeg float64) {
@@ -140,10 +188,27 @@ func (cr *courtRenderer) drawArc(cx, cy, r, startDeg, endDeg float64) {
 }
 
 func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
+	s := cr.es
 	for i := range seq.Players {
 		p := &seq.Players[i]
 		px, py := cr.relToMM(p.Position)
-		r := 2.5 // player radius in mm
+		r := 2.5 * s
+
+		// Queue circles behind the main player.
+		if p.Type == "queue" && p.Count > 1 {
+			col := roleColorPDF(p.Role)
+			qCount := p.Count
+			if qCount > 4 {
+				qCount = 4
+			}
+			for qi := qCount - 1; qi >= 1; qi-- {
+				qy := py + float64(qi)*3.5*s
+				cr.pdf.SetFillColor(col[0], col[1], col[2])
+				cr.pdf.SetDrawColor(255, 255, 255)
+				cr.pdf.SetLineWidth(0.2 * s)
+				cr.pdf.Circle(px, qy, 1.5*s, "FD")
+			}
+		}
 
 		// Role color.
 		col := roleColorPDF(p.Role)
@@ -152,7 +217,7 @@ func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
 
 		// White outline.
 		cr.pdf.SetDrawColor(255, 255, 255)
-		cr.pdf.SetLineWidth(0.3)
+		cr.pdf.SetLineWidth(0.3 * s)
 		cr.pdf.Circle(px, py, r, "D")
 
 		// Label — translate default role labels.
@@ -160,34 +225,43 @@ func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
 		if label == "" || label == model.RoleLabel(p.Role) {
 			label = roleLabelI18n(p.Role)
 		}
-		cr.pdf.SetFont("Helvetica", "B", 5)
+		fontSize := 5.0 * s
+		if fontSize < 3.0 {
+			fontSize = 3.0
+		}
+		cr.pdf.SetFont("Helvetica", "B", fontSize)
 		cr.pdf.SetTextColor(255, 255, 255)
 		strW := cr.pdf.GetStringWidth(label)
-		cr.pdf.Text(px-strW/2, py+1.5, label)
+		cr.pdf.Text(px-strW/2, py+1.2*s, label)
 
 		// Ball indicator.
 		if seq.BallCarrier != "" && p.ID == seq.BallCarrier {
-			ballX := px + 1.8
-			ballY := py + 1.8
+			ballX := px + 1.8*s
+			ballY := py + 1.8*s
 			cr.pdf.SetFillColor(244, 162, 97) // #f4a261 orange
-			cr.pdf.Circle(ballX, ballY, 0.8, "F")
+			cr.pdf.Circle(ballX, ballY, 0.8*s, "F")
 			cr.pdf.SetDrawColor(0, 0, 0)
-			cr.pdf.SetLineWidth(0.15)
-			cr.pdf.Circle(ballX, ballY, 0.8, "D")
+			cr.pdf.SetLineWidth(0.15 * s)
+			cr.pdf.Circle(ballX, ballY, 0.8*s, "D")
 		}
 
 		// Callout label above player.
 		if p.Callout != "" {
 			calloutLabel := i18n.T("callout." + string(p.Callout))
-			cr.pdf.SetFont("Helvetica", "B", 4)
+			calloutSize := 4.0 * s
+			if calloutSize < 3.0 {
+				calloutSize = 3.0
+			}
+			cr.pdf.SetFont("Helvetica", "B", calloutSize)
 			cr.pdf.SetTextColor(60, 60, 60)
 			strW := cr.pdf.GetStringWidth(calloutLabel)
-			cr.pdf.Text(px-strW/2, py-r-1.5, calloutLabel)
+			cr.pdf.Text(px-strW/2, py-r-1.0*s, calloutLabel)
 		}
 	}
 }
 
 func (cr *courtRenderer) drawAccessories(seq *model.Sequence) {
+	s := cr.es
 	for i := range seq.Accessories {
 		acc := &seq.Accessories[i]
 		ax, ay := cr.relToMM(acc.Position)
@@ -195,29 +269,30 @@ func (cr *courtRenderer) drawAccessories(seq *model.Sequence) {
 		switch acc.Type {
 		case model.AccessoryCone:
 			// Small triangle.
-			s := 1.5
+			cs := 1.5 * s
 			cr.pdf.SetFillColor(255, 165, 0) // orange
-			cr.pdf.MoveTo(ax, ay-s)
-			cr.pdf.LineTo(ax-s*0.7, ay+s*0.5)
-			cr.pdf.LineTo(ax+s*0.7, ay+s*0.5)
+			cr.pdf.MoveTo(ax, ay-cs)
+			cr.pdf.LineTo(ax-cs*0.7, ay+cs*0.5)
+			cr.pdf.LineTo(ax+cs*0.7, ay+cs*0.5)
 			cr.pdf.ClosePath()
 			cr.pdf.DrawPath("F")
 		case model.AccessoryAgilityLadder:
 			// Small rectangle.
-			w, h := 2.0, 5.0
+			w, h := 2.0*s, 5.0*s
 			cr.pdf.SetFillColor(255, 215, 0) // gold
 			cr.pdf.Rect(ax-w/2, ay-h/2, w, h, "F")
 		case model.AccessoryChair:
 			// Small L-shape.
 			cr.pdf.SetDrawColor(128, 128, 128)
-			cr.pdf.SetLineWidth(0.5)
-			cr.pdf.Line(ax, ay-2, ax, ay+1)
-			cr.pdf.Line(ax, ay+1, ax+1.5, ay+1)
+			cr.pdf.SetLineWidth(0.5 * s)
+			cr.pdf.Line(ax, ay-2*s, ax, ay+1*s)
+			cr.pdf.Line(ax, ay+1*s, ax+1.5*s, ay+1*s)
 		}
 	}
 }
 
 func (cr *courtRenderer) drawActions(seq *model.Sequence) {
+	s := cr.es
 	for i := range seq.Actions {
 		act := &seq.Actions[i]
 		fromX, fromY := cr.resolveActionRef(act.From, seq.Players)
@@ -225,12 +300,12 @@ func (cr *courtRenderer) drawActions(seq *model.Sequence) {
 
 		col := actionColorPDF(act.Type)
 		cr.pdf.SetDrawColor(col[0], col[1], col[2])
-		cr.pdf.SetLineWidth(0.4)
+		cr.pdf.SetLineWidth(0.4 * s)
 
 		switch act.Type {
 		case model.ActionPass:
 			// Dashed line.
-			cr.drawDashed(fromX, fromY, toX, toY, 1.5, 1.0)
+			cr.drawDashed(fromX, fromY, toX, toY, 1.5*s, 1.0*s)
 			cr.drawArrowHead(fromX, fromY, toX, toY, col)
 		case model.ActionDribble:
 			// Zigzag.
@@ -238,7 +313,7 @@ func (cr *courtRenderer) drawActions(seq *model.Sequence) {
 			cr.drawArrowHead(fromX, fromY, toX, toY, col)
 		case model.ActionScreen:
 			// Thick bar.
-			cr.pdf.SetLineWidth(1.0)
+			cr.pdf.SetLineWidth(1.0 * s)
 			cr.pdf.Line(fromX, fromY, toX, toY)
 		default:
 			// Solid line + arrow.
@@ -297,7 +372,7 @@ func (cr *courtRenderer) drawZigzag(x1, y1, x2, y2 float64) {
 		return
 	}
 	segments := 6
-	amp := 1.0 // mm amplitude
+	amp := 1.0 * cr.es // mm amplitude
 	ux := dx / length
 	uy := dy / length
 	// perpendicular
@@ -333,7 +408,7 @@ func (cr *courtRenderer) drawArrowHead(fromX, fromY, toX, toY float64, col [3]in
 	ux := dx / length
 	uy := dy / length
 
-	size := 1.5 // arrow head size in mm
+	size := 1.5 * cr.es // arrow head size in mm
 	// Arrow tip is at (toX, toY), two sides.
 	lx := toX - ux*size + uy*size*0.5
 	ly := toY - uy*size - ux*size*0.5
