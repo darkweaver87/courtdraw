@@ -104,10 +104,22 @@ jobs:
         if: matrix.os == 'linux' && matrix.arch == 'arm64'
         run: |
           sudo dpkg --add-architecture arm64
-          # Add arm64 sources
-          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list.d/*.list 2>/dev/null || true
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ $(lsb_release -cs) main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ $(lsb_release -cs)-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+          # Pin existing sources to amd64 only (handles both .list and .sources formats)
+          for f in /etc/apt/sources.list.d/*.list; do
+            [ -f "$f" ] && sudo sed -i '/^deb /s/^deb /deb [arch=amd64] /' "$f" 2>/dev/null || true
+          done
+          for f in /etc/apt/sources.list.d/*.sources; do
+            [ -f "$f" ] && grep -q '^Architectures:' "$f" || sudo sed -i '/^Types:/a Architectures: amd64' "$f" 2>/dev/null || true
+          done
+          # Add arm64 ports
+          cat <<'SOURCES' | sudo tee /etc/apt/sources.list.d/arm64-ports.sources
+          Types: deb
+          URIs: http://ports.ubuntu.com/
+          Suites: noble noble-updates
+          Components: main restricted universe multiverse
+          Architectures: arm64
+          SOURCES
+          sudo sed -i 's/^          //' /etc/apt/sources.list.d/arm64-ports.sources
           sudo apt-get update
           sudo apt-get install -y \
             gcc-aarch64-linux-gnu \
