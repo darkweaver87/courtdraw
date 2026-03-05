@@ -12,14 +12,20 @@ import (
 
 // Player visual constants (base sizes at 1x zoom).
 const (
-	PlayerRadius       = 14
+	PlayerRadius       = 28   // used for hit testing; visual size is head+body
 	PlayerOutlineWidth = 2
-	QueueRadius        = 8
-	QueueSpacing       = 20
-	BallRadius         = 6
-	BallOutlineWidth   = 1.5
-	BallOffsetX        = 8
-	BallOffsetY        = 8
+	HeadRadius         = 14   // head circle radius
+	BodyRX             = 24   // shoulder ellipse horizontal radius
+	BodyRY             = 14   // shoulder ellipse vertical radius
+	HeadBodyGap        = 2    // gap between head and body
+	ArmLength          = 20   // defender arm length
+	ArmWidth           = 4    // defender arm stroke
+	QueueRadius        = 14
+	QueueSpacing       = 36
+	BallRadius         = 10
+	BallOutlineWidth   = 2
+	BallOffsetX        = 16
+	BallOffsetY        = 16
 )
 
 var (
@@ -27,35 +33,106 @@ var (
 	BallColor      = color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff}
 )
 
-// DrawPlayerWithLabel draws a player circle with role color, label, optional selection highlight and ball.
+// DrawPlayerWithLabel draws a player in B2 style: head circle above shoulder ellipse,
+// with role-specific extras (defender arms, coach clipboard, direction arrow).
 func DrawPlayerWithLabel(img *image.RGBA, vp *Viewport, player *model.Player, label string, face font.Face, selected bool, hasBall bool) {
 	center := vp.RelToPixel(player.Position)
 	col := model.RoleColor(player.Role)
 
-	pr := vp.S(PlayerRadius)
-	pw := vp.S(PlayerOutlineWidth)
-
 	if selected {
-		DrawCircleOutline(img, center, pr+vp.S(4), vp.S(2.5), HighlightColor)
+		DrawCircleOutline(img, center, vp.S(PlayerRadius+4), vp.S(2.5), HighlightColor)
 	}
 
-	DrawCircleFill(img, center, pr, col)
-	DrawCircleOutline(img, center, pr, pw,
-		color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
-
-	drawDirectionArrow(img, vp, center, player.Rotation, 0xff)
-
-	if face != nil && label != "" {
-		DrawText(img, label, center, face, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
-	}
+	ballPos := drawPlayerBody(img, vp, center, player, col, label, face, 0xff)
 
 	if hasBall {
-		DrawBallScaled(img, vp, center)
+		DrawBallScaled(img, vp, ballPos)
 	}
 
 	if player.Type == "queue" && player.Count > 1 {
 		drawQueue(img, vp, center, player, col)
 	}
+}
+
+// drawPlayerBody draws the B2 style player (head + shoulders + extras) with given alpha.
+// Returns the position of the right arm end (for ball placement).
+func drawPlayerBody(img *image.RGBA, vp *Viewport, center Point, player *model.Player, col color.NRGBA, label string, face font.Face, alpha uint8) Point {
+	col.A = alpha
+
+	hr := vp.Sf(HeadRadius)
+	brx := vp.Sf(BodyRX)
+	bry := vp.Sf(BodyRY)
+	gap := vp.Sf(HeadBodyGap)
+
+	// Body at center, head offset in the rotation direction (like looking that way).
+	rad := player.Rotation * math.Pi / 180
+	sinR := float32(math.Sin(rad))
+	cosR := float32(math.Cos(rad))
+	headDist := bry*0.5 + gap
+	bodyCenter := center
+	headCenter := Pt(center.X+sinR*headDist, center.Y-cosR*headDist)
+
+	// Body is lighter, head is full saturated color for strong contrast.
+	bodyCol := color.NRGBA{R: col.R, G: col.G, B: col.B, A: uint8(float64(alpha) * 0.45)}
+	headCol := col
+
+	// Draw body (shoulder ellipse, rotated with player).
+	DrawRotatedEllipseFill(img, bodyCenter, brx, bry, player.Rotation, bodyCol)
+
+	// Draw head.
+	DrawCircleFill(img, headCenter, hr, headCol)
+
+	// Label on head.
+	if face != nil && label != "" {
+		DrawText(img, label, headCenter, face, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: alpha})
+	}
+
+	// Default ball position (right side of body).
+	ballPos := Pt(bodyCenter.X+cosR*brx, bodyCenter.Y+sinR*brx)
+
+	// Role-specific extras (rotate with body).
+	switch player.Role {
+	case model.RoleAttacker, model.RolePointGuard, model.RoleShootingGuard,
+		model.RoleSmallForward, model.RolePowerForward, model.RoleCenter:
+		// Right arm: starts at right side of body, extends forward-right.
+		armLen := vp.Sf(ArmLength)
+		armW := vp.S(ArmWidth)
+		rightArm := Pt(bodyCenter.X+cosR*brx, bodyCenter.Y+sinR*brx)
+		rightEnd := Pt(
+			rightArm.X+sinR*armLen*0.7+cosR*armLen*0.5,
+			rightArm.Y-cosR*armLen*0.7+sinR*armLen*0.5,
+		)
+		armCol := color.NRGBA{R: col.R, G: col.G, B: col.B, A: alpha}
+		DrawLine(img, rightArm, rightEnd, armW, armCol)
+		ballPos = rightEnd // ball at end of arm
+	case model.RoleDefender:
+		// Arms spread: perpendicular to facing, angled slightly forward (\O/).
+		armLen := vp.Sf(ArmLength)
+		armW := vp.S(ArmWidth)
+		armCol := color.NRGBA{R: col.R, G: col.G, B: col.B, A: alpha}
+		leftStart := Pt(bodyCenter.X-cosR*brx, bodyCenter.Y-sinR*brx)
+		leftEnd := Pt(
+			leftStart.X-cosR*armLen+sinR*armLen*0.4,
+			leftStart.Y-sinR*armLen-cosR*armLen*0.4,
+		)
+		rightStart := Pt(bodyCenter.X+cosR*brx, bodyCenter.Y+sinR*brx)
+		rightEnd := Pt(
+			rightStart.X+cosR*armLen+sinR*armLen*0.4,
+			rightStart.Y+sinR*armLen-cosR*armLen*0.4,
+		)
+		DrawLine(img, leftStart, leftEnd, armW, armCol)
+		DrawLine(img, rightStart, rightEnd, armW, armCol)
+		ballPos = rightEnd // ball at end of right arm
+	case model.RoleCoach:
+		cbDist := brx + vp.Sf(5)
+		cbCenter := Pt(bodyCenter.X+cosR*cbDist, bodyCenter.Y+sinR*cbDist)
+		cbW := vp.Sf(3)
+		cbH := vp.Sf(5)
+		cbCol := color.NRGBA{R: 0x90, G: 0xa4, B: 0xae, A: uint8(float64(alpha) * 0.7)}
+		DrawRectFill(img, Pt(cbCenter.X-cbW, cbCenter.Y-cbH), Pt(cbCenter.X+cbW, cbCenter.Y+cbH), cbCol)
+	}
+
+	return ballPos
 }
 
 // DrawPlayerWithOpacity draws a player with a given opacity (0.0–1.0).
@@ -67,37 +144,20 @@ func DrawPlayerWithOpacity(img *image.RGBA, vp *Viewport, player *model.Player, 
 
 	center := vp.RelToPixel(player.Position)
 	col := model.RoleColor(player.Role)
-	col.A = alpha
 
-	pr := vp.S(PlayerRadius)
-	pw := vp.S(PlayerOutlineWidth)
-
-	DrawCircleFill(img, center, pr, col)
-	DrawCircleOutline(img, center, pr, pw,
-		color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: alpha})
-
-	drawDirectionArrow(img, vp, center, player.Rotation, alpha)
-
-	if face != nil && label != "" {
-		DrawText(img, label, center, face, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: alpha})
-	}
+	ballPos := drawPlayerBody(img, vp, center, player, col, label, face, alpha)
 
 	if hasBall {
-		DrawBallWithOpacity(img, center, opacity)
+		DrawBallWithOpacity(img, ballPos, opacity)
 	}
 }
 
-// DrawPlayerSimple draws a player circle with role color (no text label).
+// DrawPlayerSimple draws a player in B2 style (no text label).
 func DrawPlayerSimple(img *image.RGBA, vp *Viewport, player *model.Player) {
 	center := vp.RelToPixel(player.Position)
 	col := model.RoleColor(player.Role)
 
-	pr := vp.S(PlayerRadius)
-	pw := vp.S(PlayerOutlineWidth)
-
-	DrawCircleFill(img, center, pr, col)
-	DrawCircleOutline(img, center, pr, pw,
-		color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	_ = drawPlayerBody(img, vp, center, player, col, "", nil, 0xff)
 
 	if player.Type == "queue" && player.Count > 1 {
 		drawQueue(img, vp, center, player, col)
@@ -216,6 +276,30 @@ func HitTestRotationHandleScaled(vp *Viewport, center Point, rotation float64, p
 	return dist <= vp.Sd(RotationHandleRadius+4)
 }
 
+// drawDirectionArrowAbove draws a small arrow above the head, pointing in the direction of rotation.
+func drawDirectionArrowAbove(img *image.RGBA, vp *Viewport, origin Point, rotation float64, alpha uint8) {
+	rad := rotation * math.Pi / 180
+	cos := float32(math.Cos(rad))
+	sin := float32(math.Sin(rad))
+
+	arrowLen := vp.Sf(8)
+	halfW := vp.Sf(3)
+
+	rotate := func(lx, ly float32) Point {
+		return Point{
+			X: origin.X + lx*cos - ly*sin,
+			Y: origin.Y + lx*sin + ly*cos,
+		}
+	}
+
+	tip := rotate(0, -arrowLen)
+	left := rotate(-halfW, 0)
+	right := rotate(halfW, 0)
+
+	a := uint8(float64(alpha) * 0.7)
+	DrawTriangleFill(img, tip, left, right, color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: a})
+}
+
 // drawDirectionArrow draws a small white semi-transparent triangle inside the
 // player circle, pointing in the direction of rotation.
 func drawDirectionArrow(img *image.RGBA, vp *Viewport, center Point, rotation float64, alpha uint8) {
@@ -251,9 +335,13 @@ func drawQueue(img *image.RGBA, vp *Viewport, center Point, player *model.Player
 	qCol.A = 0xaa
 	qr := vp.S(QueueRadius)
 	qs := vp.Sf(QueueSpacing)
+	// Queue extends behind the player (opposite of facing direction).
+	rad := player.Rotation * math.Pi / 180
+	dx := -float32(math.Sin(rad))
+	dy := float32(math.Cos(rad))
 	for i := 1; i < count; i++ {
 		offset := float32(i) * qs
-		qCenter := Pt(center.X, center.Y+offset)
+		qCenter := Pt(center.X+dx*offset, center.Y+dy*offset)
 		DrawCircleFill(img, qCenter, qr, qCol)
 		DrawCircleOutline(img, qCenter, qr, 1,
 			color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xaa})

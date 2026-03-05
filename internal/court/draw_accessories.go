@@ -10,11 +10,11 @@ import (
 
 // Accessory visual constants (base sizes at 1x zoom).
 const (
-	AccessoryConeSize     = 10
-	AccessoryLadderWidth  = 12
-	AccessoryLadderLength = 40
+	AccessoryConeSize     = 20
+	AccessoryLadderWidth  = 24
+	AccessoryLadderLength = 80
 	AccessoryLadderRungs  = 5
-	AccessoryChairSize    = 12
+	AccessoryChairSize    = 24
 )
 
 var (
@@ -115,7 +115,7 @@ func drawLadder(img *image.RGBA, vp *Viewport, center Point, rotation float64) {
 
 func drawChair(img *image.RGBA, vp *Viewport, center Point, rotation float64) {
 	s := vp.Sf(AccessoryChairSize)
-	lw := vp.S(2.5)
+	lw := vp.S(2)
 	rad := rotation * math.Pi / 180
 	cos := float32(math.Cos(rad))
 	sin := float32(math.Sin(rad))
@@ -127,7 +127,32 @@ func drawChair(img *image.RGBA, vp *Viewport, center Point, rotation float64) {
 		}
 	}
 
-	// L-shape: vertical bar + horizontal seat.
-	DrawLine(img, rotate(0, -s), rotate(0, s*0.3), lw, ColorChair)
-	DrawLine(img, rotate(0, s*0.3), rotate(s*0.7, s*0.3), lw, ColorChair)
+	half := s * 0.5
+
+	// Seat: filled rectangle.
+	seatColor := color.NRGBA{R: 0x90, G: 0x90, B: 0x90, A: 0xaa}
+	tl := rotate(-half, -half)
+	tr := rotate(half, -half)
+	br := rotate(half, half)
+	bl := rotate(-half, half)
+	DrawTriangleFill(img, tl, tr, br, seatColor)
+	DrawTriangleFill(img, tl, br, bl, seatColor)
+
+	// Seat outline.
+	DrawLine(img, tl, tr, lw, ColorChair)
+	DrawLine(img, tr, br, lw, ColorChair)
+	DrawLine(img, br, bl, lw, ColorChair)
+	DrawLine(img, bl, tl, lw, ColorChair)
+
+	// Backrest: thick bar at the top.
+	backLw := vp.S(4)
+	DrawLine(img, rotate(-half, -half-backLw/2), rotate(half, -half-backLw/2), backLw, ColorChair)
+
+	// Legs: 4 small circles at corners.
+	legR := vp.S(2.5)
+	legColor := color.NRGBA{R: 0x60, G: 0x60, B: 0x60, A: 0xff}
+	DrawCircleFill(img, tl, legR, legColor)
+	DrawCircleFill(img, tr, legR, legColor)
+	DrawCircleFill(img, br, legR, legColor)
+	DrawCircleFill(img, bl, legR, legColor)
 }

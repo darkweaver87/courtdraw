@@ -158,6 +158,73 @@ func DrawCircleOutline(img *image.RGBA, center Point, radius, width float32, col
 	r.Draw(img, bounds, image.NewUniform(col), image.Point{})
 }
 
+// DrawEllipseFill draws a filled ellipse at center with rx (horizontal) and ry (vertical) radii.
+func DrawEllipseFill(img *image.RGBA, center Point, rx, ry float32, col color.NRGBA) {
+	segments := circleSegments(max(rx, ry))
+
+	bounds := shapeBounds(img, 1, Pt(center.X-rx, center.Y-ry), Pt(center.X+rx, center.Y+ry))
+	if bounds.Empty() {
+		return
+	}
+	ox := float32(bounds.Min.X)
+	oy := float32(bounds.Min.Y)
+
+	var r vector.Rasterizer
+	r.Reset(bounds.Dx(), bounds.Dy())
+
+	for i := 0; i <= segments; i++ {
+		angle := float64(i) * 2 * math.Pi / float64(segments)
+		x := center.X + rx*float32(math.Cos(angle)) - ox
+		y := center.Y + ry*float32(math.Sin(angle)) - oy
+		if i == 0 {
+			r.MoveTo(x, y)
+		} else {
+			r.LineTo(x, y)
+		}
+	}
+	r.ClosePath()
+
+	r.Draw(img, bounds, image.NewUniform(col), image.Point{})
+}
+
+// DrawRotatedEllipseFill draws a filled ellipse rotated by angle (degrees, 0=up).
+func DrawRotatedEllipseFill(img *image.RGBA, center Point, rx, ry float32, angleDeg float64, col color.NRGBA) {
+	segments := circleSegments(max(rx, ry))
+	rad := angleDeg * math.Pi / 180
+	cosA := float32(math.Cos(rad))
+	sinA := float32(math.Sin(rad))
+
+	// Compute bounding box from rotated extents.
+	maxR := max(rx, ry)
+	bounds := shapeBounds(img, 1, Pt(center.X-maxR, center.Y-maxR), Pt(center.X+maxR, center.Y+maxR))
+	if bounds.Empty() {
+		return
+	}
+	ox := float32(bounds.Min.X)
+	oy := float32(bounds.Min.Y)
+
+	var r vector.Rasterizer
+	r.Reset(bounds.Dx(), bounds.Dy())
+
+	for i := 0; i <= segments; i++ {
+		t := float64(i) * 2 * math.Pi / float64(segments)
+		// Ellipse point before rotation.
+		lx := rx * float32(math.Cos(t))
+		ly := ry * float32(math.Sin(t))
+		// Apply rotation.
+		x := center.X + lx*cosA - ly*sinA - ox
+		y := center.Y + lx*sinA + ly*cosA - oy
+		if i == 0 {
+			r.MoveTo(x, y)
+		} else {
+			r.LineTo(x, y)
+		}
+	}
+	r.ClosePath()
+
+	r.Draw(img, bounds, image.NewUniform(col), image.Point{})
+}
+
 // DrawCircleFill draws a filled circle at center with radius.
 func DrawCircleFill(img *image.RGBA, center Point, radius float32, col color.NRGBA) {
 	segments := circleSegments(radius)

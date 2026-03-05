@@ -194,19 +194,24 @@ func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
 		px, py := cr.relToMM(p.Position)
 		r := 2.5 * s
 
-		// Queue circles behind the main player.
+		// Queue circles behind the main player (opposite of facing direction).
 		if p.Type == "queue" && p.Count > 1 {
 			col := roleColorPDF(p.Role)
 			qCount := p.Count
 			if qCount > 4 {
 				qCount = 4
 			}
+			rad := p.Rotation * math.Pi / 180
+			qdx := -math.Sin(rad)
+			qdy := math.Cos(rad)
 			for qi := qCount - 1; qi >= 1; qi-- {
-				qy := py + float64(qi)*3.5*s
+				off := float64(qi) * 3.5 * s
+				qx := px + qdx*off
+				qy := py + qdy*off
 				cr.pdf.SetFillColor(col[0], col[1], col[2])
 				cr.pdf.SetDrawColor(255, 255, 255)
 				cr.pdf.SetLineWidth(0.2 * s)
-				cr.pdf.Circle(px, qy, 1.5*s, "FD")
+				cr.pdf.Circle(qx, qy, 1.5*s, "FD")
 			}
 		}
 
