@@ -116,6 +116,7 @@ props.delete: "Delete"
 # Sequence timeline
 seq.format: "Seq %d"
 seq.add: "[+]"
+seq.delete: "Delete sequence"
 
 # Instructions panel
 instr.header: "Instructions"
@@ -238,6 +239,25 @@ age_group.u19: "U19"
 age_group.senior: "Senior"
 
 # Status bar
+contribute.creating_pr: "Creating pull request..."
+contribute.pr_created: "Pull request created successfully"
+contribute.error: "Contribution failed"
+status.new_exercise: "New exercise created"
+status.new_session: "New session created"
+status.saved: "Saved: %s"
+status.save_error: "Save failed"
+status.opened: "Opened: %s"
+status.duplicated: "Exercise duplicated"
+status.imported: "Imported: %s"
+status.deleted: "Deleted: %s"
+status.seq_added: "Sequence %d added"
+status.seq_deleted: "Sequence %d deleted"
+status.player_added: "Player added: %s"
+status.action_added: "Action added: %s"
+status.accessory_added: "Accessory added: %s"
+status.element_deleted: "Element deleted"
+status.exercise_added: "Exercise added: %s"
+status.exercise_removed: "Exercise removed: %s"
 status.requires_ball: "Player must have the ball"
 status.pass_requires_player: "Pass target must be a player"
 

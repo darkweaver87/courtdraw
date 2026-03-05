@@ -116,6 +116,7 @@ props.delete: "Supprimer"
 # Chronologie des séquences
 seq.format: "Seq %d"
 seq.add: "[+]"
+seq.delete: "Supprimer la séquence"
 
 # Panneau instructions
 instr.header: "Consignes"
@@ -238,6 +239,25 @@ age_group.u19: "U19"
 age_group.senior: "Senior"
 
 # Barre de statut
+contribute.creating_pr: "Création de la pull request..."
+contribute.pr_created: "Pull request créée avec succès"
+contribute.error: "Échec de la contribution"
+status.new_exercise: "Nouvel exercice créé"
+status.new_session: "Nouvelle séance créée"
+status.saved: "Enregistré : %s"
+status.save_error: "Échec de l'enregistrement"
+status.opened: "Ouvert : %s"
+status.duplicated: "Exercice dupliqué"
+status.imported: "Importé : %s"
+status.deleted: "Supprimé : %s"
+status.seq_added: "Séquence %d ajoutée"
+status.seq_deleted: "Séquence %d supprimée"
+status.player_added: "Joueur ajouté : %s"
+status.action_added: "Action ajoutée : %s"
+status.accessory_added: "Accessoire ajouté : %s"
+status.element_deleted: "Élément supprimé"
+status.exercise_added: "Exercice ajouté : %s"
+status.exercise_removed: "Exercice retiré : %s"
 status.requires_ball: "Le joueur doit être en possession du ballon"
 status.pass_requires_player: "La cible de la passe doit être un joueur"
 
