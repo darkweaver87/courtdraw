@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image/color"
 	"log"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -69,7 +68,7 @@ func NewApp(st store.Store, libraryDir string, w fyne.Window) *App {
 	a := &App{
 		window:   w,
 		store:    st,
-		editLang: "en",
+		editLang: string(i18n.CurrentLang()),
 	}
 	if libraryDir != "" {
 		a.library = store.NewLibrary(libraryDir)
@@ -117,6 +116,9 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	a.seqTimeline.OnAddSeq = func() {
 		a.addSequence()
 	}
+	a.seqTimeline.OnDeleteSeq = func(idx int) {
+		a.deleteSequence(idx)
+	}
 
 	a.instrPanel = NewInstructionsPanel()
 	a.instrPanel.OnModified = func() {
@@ -139,6 +141,9 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	a.sessionTab.OnSessionChanged = func() {
 		a.resolveSessionExercises()
 	}
+	a.sessionTab.OnStatus = func(msg string, level int) {
+		a.statusBar.SetStatus(msg, level)
+	}
 
 	// Build editor tab content.
 	editorContent := a.buildEditorTab()
@@ -155,7 +160,10 @@ func (a *App) BuildUI() fyne.CanvasObject {
 		}
 	}
 
-	return container.NewStack(a.tabs, a.tooltipLayer.Widget())
+	return container.NewStack(
+		container.NewBorder(nil, a.statusBar.Widget(), nil, nil, a.tabs),
+		a.tooltipLayer.Widget(),
+	)
 }
 
 func (a *App) buildEditorTab() fyne.CanvasObject {
@@ -190,11 +198,8 @@ func (a *App) buildEditorDesktop() fyne.CanvasObject {
 		a.seqTimeline.Widget(),
 	)
 
-	// Bottom bar: status + anim controls (compact, always visible).
-	bottomBar := container.NewVBox(
-		a.statusBar.Widget(),
-		a.animControls.Widget(),
-	)
+	// Bottom bar: anim controls.
+	bottomBar := a.animControls.Widget()
 
 	// Middle section: palette | court | properties — resizable splits.
 	leftSplit := container.NewHSplit(a.toolPalette.Widget(), a.court)
@@ -245,7 +250,6 @@ func (a *App) buildEditorMobile() fyne.CanvasObject {
 	courtBottom := container.NewVBox(
 		a.seqTimeline.Widget(),
 		a.animControls.Widget(),
-		a.statusBar.Widget(),
 	)
 	courtTab := container.NewBorder(courtTop, courtBottom, nil, nil, a.court)
 
@@ -321,6 +325,12 @@ func (a *App) refreshEditor() {
 	if a.playback != nil {
 		a.animControls.SetPlayback(a.playback, len(a.exercise.Sequences))
 	}
+
+	// Forward editor state status to the status bar.
+	if a.editorState.StatusMsg != "" {
+		a.statusBar.SetStatus(a.editorState.StatusMsg, a.editorState.StatusLevel)
+		a.editorState.StatusMsg = ""
+	}
 }
 
 func (a *App) syncAnimState() {
@@ -370,6 +380,7 @@ func (a *App) NewExercise() {
 		},
 	}
 	a.SetExercise(ex)
+	a.statusBar.SetStatus(i18n.T("status.new_exercise"), 0)
 }
 
 // NewSession creates a blank session.
@@ -379,6 +390,7 @@ func (a *App) NewSession() {
 		Date:  time.Now().Format("2006-01-02"),
 	}
 	a.sessionTab.SetSession(s)
+	a.statusBar.SetStatus(i18n.T("status.new_session"), 0)
 }
 
 func (a *App) addSequence() {
@@ -405,6 +417,27 @@ func (a *App) addSequence() {
 	a.court.SetSequence(newIdx)
 	a.editorState.Deselect()
 	a.editorState.MarkModified()
+	a.statusBar.SetStatus(i18n.Tf("status.seq_added", newIdx+1), 0)
+	a.refreshEditor()
+}
+
+func (a *App) deleteSequence(idx int) {
+	if a.exercise == nil || len(a.exercise.Sequences) <= 1 {
+		return
+	}
+	if idx < 0 || idx >= len(a.exercise.Sequences) {
+		return
+	}
+	a.exercise.Sequences = append(a.exercise.Sequences[:idx], a.exercise.Sequences[idx+1:]...)
+	// Adjust current index.
+	newIdx := idx
+	if newIdx >= len(a.exercise.Sequences) {
+		newIdx = len(a.exercise.Sequences) - 1
+	}
+	a.court.SetSequence(newIdx)
+	a.editorState.Deselect()
+	a.editorState.MarkModified()
+	a.statusBar.SetStatus(i18n.Tf("status.seq_deleted", idx+1), 0)
 	a.refreshEditor()
 }
 
@@ -447,6 +480,7 @@ func (a *App) openExercise(name string) {
 	}
 	a.SetExercise(ex)
 	a.recordRecentFile(name)
+	a.statusBar.SetStatus(i18n.Tf("status.opened", name), 0)
 }
 
 func (a *App) saveExercise() {
@@ -455,12 +489,15 @@ func (a *App) saveExercise() {
 	}
 	if err := a.store.SaveExercise(a.exercise); err != nil {
 		log.Printf("save exercise: %v", err)
+		a.statusBar.SetStatus(i18n.T("status.save_error"), 1)
 		return
 	}
 	a.editorState.ClearModified()
-	a.sessionNeedsRefresh = true
 	a.recordRecentFile(store.ToKebab(a.exercise.Name))
 	a.fileToolbar.SetModified(false)
+	a.sessionNeedsRefresh = true
+	a.refreshSessionTab()
+	a.statusBar.SetStatus(i18n.Tf("status.saved", a.exercise.Name), 0)
 }
 
 func (a *App) duplicateExercise() {
@@ -515,6 +552,7 @@ func (a *App) duplicateExercise() {
 	}
 	a.SetExercise(dup)
 	a.editorState.MarkModified()
+	a.statusBar.SetStatus(i18n.T("status.duplicated"), 0)
 }
 
 func (a *App) showOpenDialog() {
@@ -591,7 +629,7 @@ func (a *App) importExercise(name string) {
 	a.SetExercise(ex)
 	a.sessionNeedsRefresh = true
 	a.recordRecentFile(store.ToKebab(ex.Name))
-	log.Printf("imported exercise: %s", ex.Name)
+	a.statusBar.SetStatus(i18n.Tf("status.imported", ex.Name), 0)
 }
 
 func (a *App) recordRecentFile(name string) {
@@ -639,7 +677,7 @@ func (a *App) deleteExercise(name string) {
 		a.SetExercise(nil)
 	}
 	a.sessionNeedsRefresh = true
-	log.Printf("deleted exercise: %s", name)
+	a.statusBar.SetStatus(i18n.Tf("status.deleted", name), 0)
 }
 
 // --- Session operations ---
@@ -763,6 +801,7 @@ func (a *App) openSession(name string) {
 	if ys, ok := a.store.(*store.YAMLStore); ok {
 		ys.RecordRecentSession(name)
 	}
+	a.statusBar.SetStatus(i18n.Tf("status.opened", name), 0)
 }
 
 func (a *App) saveSession() {
@@ -772,6 +811,7 @@ func (a *App) saveSession() {
 	}
 	if err := a.store.SaveSession(s); err != nil {
 		log.Printf("save session: %v", err)
+		a.statusBar.SetStatus(i18n.T("status.save_error"), 1)
 		return
 	}
 	a.sessionTab.ClearModified()
@@ -781,6 +821,7 @@ func (a *App) saveSession() {
 			ys.RecordRecentSession(name)
 		}
 	}
+	a.statusBar.SetStatus(i18n.Tf("status.saved", s.Title), 0)
 }
 
 func (a *App) deleteSession(name string) {
@@ -896,29 +937,23 @@ func (a *App) contributeExercise(name string) {
 		return
 	}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Printf("home dir: %v", err)
-		return
-	}
-	contributeDir := filepath.Join(homeDir, ".courtdraw", "contribute")
-	os.MkdirAll(contributeDir, 0755)
-	outPath := filepath.Join(contributeDir, name+".yaml")
-	if err := os.WriteFile(outPath, data, 0644); err != nil {
-		log.Printf("write contribute file: %v", err)
-		return
-	}
-	log.Printf("saved contribution: %s", outPath)
+	a.statusBar.SetStatus(i18n.T("contribute.creating_pr"), 0)
 
-	filename := name + ".yaml"
-	encoded := url.QueryEscape(string(data))
-	ghURL := fmt.Sprintf("https://github.com/darkweaver87/courtdraw/new/main/library?filename=%s&value=%s", filename, encoded)
-	if len(ghURL) > 8000 {
-		ghURL = "https://github.com/darkweaver87/courtdraw/new/main/library?filename=" + filename
-	}
-	if err := openBrowser(ghURL); err != nil {
-		log.Printf("open browser: %v", err)
-	}
+	// Run in background to avoid blocking UI.
+	go func() {
+		prURL, err := createContributionPR(name, data)
+		fyne.Do(func() {
+			if err != nil {
+				log.Printf("contribute PR failed: %v", err)
+				a.statusBar.SetStatus(i18n.T("contribute.error")+": "+err.Error(), 1)
+				return
+			}
+			a.statusBar.SetStatus(i18n.T("contribute.pr_created"), 0)
+			if prURL != "" {
+				openBrowser(prURL)
+			}
+		})
+	}()
 }
 
 // --- Build managed exercises list ---

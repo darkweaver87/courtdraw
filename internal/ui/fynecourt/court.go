@@ -25,23 +25,34 @@ import (
 )
 
 var (
-	defaultFace     font.Face
-	defaultFaceOnce sync.Once
+	parsedFont     *opentype.Font
+	parsedFontOnce sync.Once
+	faceCacheMu    sync.Mutex
+	faceCache      = map[float64]font.Face{}
 )
 
-func getDefaultFace() font.Face {
-	defaultFaceOnce.Do(func() {
-		ttf, err := opentype.Parse(goregular.TTF)
-		if err != nil {
-			return
-		}
-		defaultFace, _ = opentype.NewFace(ttf, &opentype.FaceOptions{
-			Size:    11,
-			DPI:     72,
-			Hinting: font.HintingFull,
-		})
+const baseFontSize = 16
+
+func getScaledFace(zoom float64) font.Face {
+	parsedFontOnce.Do(func() {
+		parsedFont, _ = opentype.Parse(goregular.TTF)
 	})
-	return defaultFace
+	if parsedFont == nil {
+		return nil
+	}
+	size := baseFontSize * zoom
+	faceCacheMu.Lock()
+	defer faceCacheMu.Unlock()
+	if f, ok := faceCache[size]; ok {
+		return f
+	}
+	f, _ := opentype.NewFace(parsedFont, &opentype.FaceOptions{
+		Size:    size,
+		DPI:     72,
+		Hinting: font.HintingFull,
+	})
+	faceCache[size] = f
+	return f
 }
 
 // CourtWidget renders a basketball court with exercise elements.
@@ -72,9 +83,6 @@ type CourtWidget struct {
 	courtBgZoom    float64
 	courtBgPanX    float64
 	courtBgPanY    float64
-
-	// Reusable frame buffer to avoid allocation per frame.
-	frameBuf *image.RGBA
 
 	// Zoom and pan state.
 	zoomLevel   float64 // 1.0 = normal, max 5.0
@@ -236,14 +244,11 @@ func (w *CourtWidget) draw(pixW, pixH int) image.Image {
 	// Build or reuse cached court background.
 	w.ensureCourtBg(pixW, pixH, &w.viewport)
 
-	// Reuse or allocate frame buffer, then copy background.
-	if w.frameBuf == nil || w.frameBuf.Rect.Dx() != pixW || w.frameBuf.Rect.Dy() != pixH {
-		w.frameBuf = image.NewRGBA(image.Rect(0, 0, pixW, pixH))
-	}
-	img := w.frameBuf
+	// Fresh frame buffer, copy background.
+	img := image.NewRGBA(image.Rect(0, 0, pixW, pixH))
 	copy(img.Pix, w.courtBg.Pix)
 
-	face := getDefaultFace()
+	face := getScaledFace(w.zoomLevel)
 
 	// Animation mode: call Update() at render time for smooth interpolation.
 	if w.animMode && w.playback != nil && w.playback.State() == anim.StatePlaying {
@@ -427,9 +432,9 @@ func (w *CourtWidget) MinSize() fyne.Size {
 // Tappable — used for mobile and simple clicks.
 func (w *CourtWidget) Tapped(e *fyne.PointEvent) {
 	if w.pressHandled {
-		return // already handled by Dragged
+		w.pressHandled = false // consumed, reset for next gesture
+		return                 // already handled by MouseDown
 	}
-	w.pressHandled = true
 	pos := w.dpToPixel(e.Position)
 	w.handlePress(pos)
 }
@@ -462,13 +467,15 @@ func (w *CourtWidget) MouseDown(e *desktop.MouseEvent) {
 	}
 	pos := w.dpToPixel(e.PointEvent.Position)
 	w.pressed = true
+	w.pressHandled = true // prevent Tapped from firing after MouseUp
 	w.handlePress(pos)
 }
 
 func (w *CourtWidget) MouseUp(e *desktop.MouseEvent) {
 	if w.pressed {
 		w.pressed = false
-		w.pressHandled = false
+		// Do NOT reset pressHandled here — Tapped fires AFTER MouseUp on desktop.
+		// pressHandled will be reset by DragEnd or next MouseDown.
 		w.handleRelease()
 	}
 }
@@ -673,10 +680,13 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 			Role:     state.ToolRole,
 			Position: relPos,
 		}
+		// Half court: basket is at the bottom (south).
+		// Attackers face south (180°), defenders face north with back to basket (0°).
 		switch state.ToolRole {
-		case model.RoleAttacker, model.RolePointGuard, model.RoleShootingGuard,
-			model.RoleSmallForward, model.RolePowerForward, model.RoleCenter:
-			p.Rotation = 180
+		case model.RoleDefender:
+			p.Rotation = 0 // facing north (back to basket)
+		default:
+			p.Rotation = 180 // facing south (toward basket)
 		}
 		if state.ToolQueue {
 			p.Type = "queue"
@@ -686,6 +696,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 		idx := len(seq.Players) - 1
 		state.Select(editor.SelectPlayer, idx, w.seqIndex)
 		state.MarkModified()
+		state.SetStatus(i18n.Tf("status.player_added", p.Label), 0)
 		w.Refresh()
 		w.notifyChanged()
 
@@ -740,6 +751,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 			}
 			state.ActionFrom = nil
 			state.MarkModified()
+			state.SetStatus(i18n.Tf("status.action_added", string(action.Type)), 0)
 			w.Refresh()
 			w.notifyChanged()
 		}
@@ -756,6 +768,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 		idx := len(seq.Accessories) - 1
 		state.Select(editor.SelectAccessory, idx, w.seqIndex)
 		state.MarkModified()
+		state.SetStatus(i18n.Tf("status.accessory_added", string(acc.Type)), 0)
 		w.Refresh()
 		w.notifyChanged()
 
@@ -926,6 +939,7 @@ func (w *CourtWidget) DeleteSelected() {
 	}
 	state.Deselect()
 	state.MarkModified()
+	state.SetStatus(i18n.T("status.element_deleted"), 0)
 	w.Refresh()
 	w.notifyChanged()
 }
