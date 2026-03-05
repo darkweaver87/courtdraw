@@ -241,6 +241,32 @@ age_group.senior: "Senior"
 status.requires_ball: "Player must have the ball"
 status.pass_requires_player: "Pass target must be a player"
 
+# Dialog
+dialog.cancel: "Cancel"
+
+# Session tab — actions
+session.new: "New Session"
+session.open: "Open Session"
+session.recent: "Recent Sessions"
+session.save: "Save Session"
+session.open_exercise: "Open Exercise"
+session.delete_exercise: "Delete Exercise"
+session.search: "Search exercises..."
+session.select_to_preview: "Select an exercise to preview"
+
+# Filters
+filter.all: "All"
+filter.local: "Local"
+filter.community: "Community"
+
 # Court types
 court_type.half_court: "Half court"
 court_type.full_court: "Full court"
+
+# Mobile layout tabs
+mobile.tab.court: "Court"
+mobile.tab.tools: "Tools"
+mobile.tab.props: "Properties"
+mobile.session.library: "Library"
+mobile.session.preview: "Preview"
+mobile.session.session: "Session"

@@ -1,7 +1,7 @@
 package court
 
 import (
-	"gioui.org/op"
+	"image"
 
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
@@ -25,7 +25,7 @@ func NBAGeometry() *CourtGeometry {
 	}
 }
 
-// DrawNBACourt draws an NBA basketball court.
-func DrawNBACourt(ops *op.Ops, courtType model.CourtType, vp *Viewport, geom *CourtGeometry) {
-	drawCourt(ops, courtType, vp, geom)
+// DrawNBACourt draws an NBA basketball court on the given image.
+func DrawNBACourt(img *image.RGBA, courtType model.CourtType, vp *Viewport, geom *CourtGeometry) {
+	drawCourt(img, courtType, vp, geom)
 }

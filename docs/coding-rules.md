@@ -81,7 +81,7 @@ import (
     "path/filepath"
 
     // 2. External packages
-    "gioui.org/layout"
+    "fyne.io/fyne/v2"
     "gopkg.in/yaml.v3"
 
     // 3. Internal packages
@@ -173,14 +173,25 @@ type Position struct {
 
 ### Dependencies
 
-- **Pure Go only** — no CGO. This is non-negotiable for cross-compilation.
+- **CGO required** — Fyne uses OpenGL via CGO for rendering.
 - Approved dependencies:
-  - `gioui.org` — UI framework
+  - `fyne.io/fyne/v2` — UI framework
+  - `golang.org/x/image` — vector rasterization for court rendering
   - `gopkg.in/yaml.v3` — YAML parsing
-  - `go-pdf/fpdf` (or pure Go equivalent) — PDF generation
+  - `go-pdf/fpdf` — PDF generation
   - `github.com/google/uuid` — UUID generation
 - Minimize dependency count. Prefer stdlib when possible.
 - Pin dependency versions in `go.sum`
+
+### Fyne Patterns
+
+- **Retained-mode**: Create widgets once in constructors, update via `Refresh()`
+- **`canvas.Raster`**: For custom drawing into `image.RGBA` (court widget)
+- **`widget.BaseWidget`**: Extend for custom interactive widgets
+- **Thread safety**: Use `fyne.Do()` for UI updates from goroutines
+- **Interactions**: Implement `fyne.Tappable`, `fyne.Draggable`, `desktop.Mouseable` as needed
+- **Dialogs**: Use `dialog.NewCustom` with `widget.List` for file pickers
+- **Icons**: Embed PNGs via `go:embed` + `fyne.NewStaticResource()`
 
 ---
 
@@ -404,8 +415,7 @@ make fmt              # Format code (gofmt)
 # Build targets
 make build-linux      # Linux binary
 make build-windows    # Windows binary
-make build-android    # Android APK (requires gogio)
-make build-ios        # iOS app (requires gogio + macOS)
+make build-android    # Android APK (requires fyne-cross)
 ```
 
 ---

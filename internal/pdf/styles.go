@@ -15,6 +15,12 @@ var (
 	colorLightBg   = [3]int{241, 250, 238}  // #f1faee
 	colorHeaderBg  = [3]int{29, 53, 87}     // navy
 	colorScreen    = [3]int{255, 183, 3}    // #ffb703
+
+	// Intensity dot colors: green, yellow, red.
+	colorIntGreen  = [3]int{76, 175, 80}   // #4caf50
+	colorIntYellow = [3]int{255, 193, 7}   // #ffc107
+	colorIntRed    = [3]int{244, 67, 54}   // #f44336
+	colorIntOff    = [3]int{180, 180, 180} // #b4b4b4
 )
 
 // PDF layout constants in mm.

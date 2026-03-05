@@ -167,12 +167,30 @@ jobs:
           tar czf "courtdraw-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" courtdraw/
         shell: bash
 
+      - name: Download Mesa3D software OpenGL (Windows)
+        if: matrix.os == 'windows'
+        run: |
+          curl -sL "https://github.com/pal1000/mesa-dist-win/releases/download/25.3.6/mesa3d-25.3.6-release-msvc.7z" -o mesa.7z
+          7z x mesa.7z x64/opengl32.dll x64/libgallium_wgl.dll x64/libEGL.dll
+        shell: bash
+
       - name: Package (zip)
         if: matrix.archive == 'zip'
         run: |
           mkdir -p dist/courtdraw
           cp courtdraw.exe dist/courtdraw/
           cp -r library dist/courtdraw/ 2>/dev/null || true
+          # Bundle Mesa software renderer as fallback for machines without GPU drivers.
+          cp x64/opengl32.dll x64/libgallium_wgl.dll x64/libEGL.dll dist/courtdraw/
+          # Create launcher script with Mesa fallback.
+          cat > dist/courtdraw/courtdraw-mesa.bat << 'BATCH'
+          @echo off
+          REM Use Mesa software OpenGL renderer (fallback for machines without GPU drivers).
+          set GALLIUM_DRIVER=llvmpipe
+          set MESA_GL_VERSION_OVERRIDE=2.1
+          set LIBGL_ALWAYS_SOFTWARE=1
+          "%~dp0courtdraw.exe" %*
+          BATCH
           cd dist
           7z a "courtdraw-${{ matrix.os }}-${{ matrix.arch }}.zip" courtdraw/
         shell: bash
@@ -192,35 +210,13 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgl1-mesa-dev \
-            libegl1-mesa-dev \
-            libxkbcommon-x11-dev \
-            libwayland-dev \
-            libx11-dev \
-            libx11-xcb-dev \
-            libxcursor-dev \
-            libxrandr-dev \
-            libxinerama-dev \
-            libxi-dev \
-            libxfixes-dev \
-            libxxf86vm-dev \
-            libvulkan-dev
-
-      - name: Install gogio
-        run: go install gioui.org/cmd/gogio@v0.9.0
+      - name: Install fyne-cross
+        run: go install github.com/fyne-io/fyne-cross@latest
 
       - name: Build Android APK
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
-          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
-        run: gogio -target android -appid com.darkweaver87.courtdraw ./cmd/courtdraw
-
-      - name: Rename APK
-        run: mv courtdraw.apk courtdraw-android.apk
+        run: |
+          fyne-cross android -app-id com.darkweaver87.courtdraw ./cmd/courtdraw
+          cp fyne-cross/dist/android/courtdraw.apk courtdraw-android.apk
 
       - uses: actions/upload-artifact@v4
         with:

@@ -5,20 +5,16 @@ import (
 	"math"
 	"testing"
 
-	"gioui.org/f32"
-
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
 func TestComputeViewport_WidthConstrained(t *testing.T) {
 	geom := FIBAGeometry()
-	// Very narrow widget: width should be the constraint.
 	vp := ComputeViewport(model.HalfCourt, geom, image.Pt(200, 800), 0)
 
 	if vp.Width <= 0 || vp.Height <= 0 {
 		t.Fatal("viewport has zero dimensions")
 	}
-	// Width should fill available space (minus centering offset).
 	if !approxEqual(vp.Width, 200, 1) {
 		t.Errorf("expected width ~200, got %.1f", vp.Width)
 	}
@@ -29,7 +25,6 @@ func TestComputeViewport_WidthConstrained(t *testing.T) {
 
 func TestComputeViewport_HeightConstrained(t *testing.T) {
 	geom := FIBAGeometry()
-	// Very short widget: height should be the constraint.
 	vp := ComputeViewport(model.HalfCourt, geom, image.Pt(2000, 100), 0)
 
 	if vp.Width <= 0 || vp.Height <= 0 {
@@ -44,7 +39,6 @@ func TestComputeViewport_WithPadding(t *testing.T) {
 	geom := FIBAGeometry()
 	vp := ComputeViewport(model.HalfCourt, geom, image.Pt(800, 600), 50)
 
-	// Viewport should fit within padded area.
 	if vp.Width > 800-2*50 {
 		t.Errorf("viewport width %.1f exceeds padded area %d", vp.Width, 800-2*50)
 	}
@@ -55,7 +49,6 @@ func TestComputeViewport_WithPadding(t *testing.T) {
 
 func TestComputeViewport_NegativePadding(t *testing.T) {
 	geom := FIBAGeometry()
-	// Padding larger than widget → zero available space.
 	vp := ComputeViewport(model.HalfCourt, geom, image.Pt(100, 100), 60)
 
 	if vp.Width != 0 || vp.Height != 0 {
@@ -90,13 +83,11 @@ func TestRelToPixel_Center(t *testing.T) {
 func TestRelToPixel_WithOffset(t *testing.T) {
 	vp := Viewport{OffsetX: 100, OffsetY: 200, Width: 400, Height: 300}
 
-	// [0,0] = bottom-left → screen (100, 500)
 	bl := vp.RelToPixel(model.Position{0, 0})
 	if !approxEqual(float64(bl.X), 100, 0.5) || !approxEqual(float64(bl.Y), 500, 0.5) {
 		t.Errorf("[0,0] with offset: got (%.1f, %.1f), want (100, 500)", bl.X, bl.Y)
 	}
 
-	// [1,1] = top-right → screen (500, 200)
 	tr := vp.RelToPixel(model.Position{1, 1})
 	if !approxEqual(float64(tr.X), 500, 0.5) || !approxEqual(float64(tr.Y), 200, 0.5) {
 		t.Errorf("[1,1] with offset: got (%.1f, %.1f), want (500, 200)", tr.X, tr.Y)
@@ -106,8 +97,7 @@ func TestRelToPixel_WithOffset(t *testing.T) {
 func TestPixelToRel_OutOfBounds(t *testing.T) {
 	vp := Viewport{OffsetX: 100, OffsetY: 100, Width: 200, Height: 200}
 
-	// Pixel before viewport → negative relative coords.
-	pos := vp.PixelToRel(f32.Point{X: 50, Y: 50})
+	pos := vp.PixelToRel(Pt(50, 50))
 	if pos.X() >= 0 || pos.Y() <= 1 {
 		t.Errorf("expected negative X and Y>1 for out-of-bounds pixel, got (%.2f, %.2f)", pos.X(), pos.Y())
 	}
@@ -162,7 +152,6 @@ func TestMeterToPixel_HalfVsFull(t *testing.T) {
 	halfMeter := vpHalf.MeterToPixel(1.0, geom, model.HalfCourt)
 	fullMeter := vpFull.MeterToPixel(1.0, geom, model.FullCourt)
 
-	// Half court fits larger per-meter because it shows less court.
 	if halfMeter <= fullMeter {
 		t.Errorf("expected half-court meter (%.2f) > full-court meter (%.2f)", halfMeter, fullMeter)
 	}
@@ -255,11 +244,9 @@ func TestComputeViewport_AspectPreserved_NBA(t *testing.T) {
 }
 
 func TestMeterToPixel_ZeroViewport(t *testing.T) {
-	vp := Viewport{} // zero dimensions
+	vp := Viewport{}
 	geom := FIBAGeometry()
 
-	// MeterToPixel with zero viewport → courtDimensions divides by zero.
-	// We just verify it doesn't panic and returns something finite.
 	px := vp.MeterToPixel(1.0, geom, model.HalfCourt)
 	if math.IsNaN(px) || math.IsInf(px, 0) {
 		t.Errorf("expected finite result for zero viewport, got %f", px)

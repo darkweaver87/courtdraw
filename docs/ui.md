@@ -219,8 +219,73 @@ Three-column layout merging the exercise library, preview, and session compositi
 - Modal overlay for picking a session to open (triggered by Open button)
 - Shows list of saved session names from `~/.courtdraw/sessions/`
 
-## Responsive Behavior
+## Responsive Layout
 
-- **Mobile** (< 600dp): panels become bottom sheets or tabs instead of side-by-side. Tool palette becomes a bottom toolbar.
-- **Tablet** (600–1000dp): layout as described above.
-- **Desktop** (> 1000dp): wider canvas, panels can be resized.
+The app uses a `ResponsiveContainer` (`internal/ui/responsive.go`) that swaps between desktop and mobile layouts.
+
+### Detection Rules
+
+- **Android / iOS**: always mobile layout, regardless of screen size or orientation
+- **Desktop**: mobile layout if window width < 600dp, desktop layout otherwise
+- Rotation on mobile triggers a `Layout()` call with the new size — the container rebuilds automatically
+
+### Desktop Layout
+
+As described above: HSplit panels (palette | court | properties), resizable.
+
+### Mobile Layout — Exercise Editor
+
+Three bottom tabs replace the side panels:
+
+```
+┌─────────────────┐
+│ Toolbar + Lang   │
+├─────────────────┤
+│  [−] [+] [1:1]  │  ← zoom buttons
+├─────────────────┤
+│                  │
+│  COURT (zoomed)  │
+│                  │
+├─────────────────┤
+│ Timeline + Anim  │
+├─────────────────┤
+│[Court][Tools][Props]│  ← bottom tabs
+└─────────────────┘
+```
+
+- **Court tab**: toolbar + language bar + zoom buttons + court (full screen) + sequence timeline + animation controls + status bar
+- **Tools tab**: tool palette (scrollable, full screen)
+- **Properties tab**: properties panel + instructions editor (VSplit 60/40)
+
+### Mobile Layout — Session Tab
+
+Three bottom tabs replace the 3-column split:
+
+```
+┌─────────────────┐
+│                  │
+│  (active panel)  │
+│                  │
+├─────────────────┤
+│[Library][Preview][Session]│  ← bottom tabs
+└─────────────────┘
+```
+
+- **Library tab**: search + filters + exercise list
+- **Preview tab**: court preview + add/open/delete buttons
+- **Session tab**: toolbar + metadata + exercise list + philosophy
+
+## Zoom and Pan
+
+The court widget supports zoom and pan for precise element placement:
+
+| Gesture | Action |
+|---|---|
+| Mouse wheel / pinch | Zoom in/out (1.0x – 5.0x) |
+| Double-tap | Reset zoom to 1.0x |
+| Drag on empty area (when zoomed) | Pan the view |
+| `+` / `−` / `1:1` buttons (mobile) | Zoom in / zoom out / reset |
+
+A "2.0x" overlay indicator appears in the top-right corner when zoomed.
+Pan is clamped so the court stays within view.
+Zoom level resets when loading a new exercise.

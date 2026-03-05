@@ -35,6 +35,7 @@ type Playback struct {
 	exercise *model.Exercise
 	state    PlaybackState
 	speed    Speed
+	loop     bool // if true, restart from seq 0 after the last sequence
 
 	// Current position in the animation.
 	// seqIndex is the "from" sequence index.
@@ -111,6 +112,11 @@ func (p *Playback) Speed() Speed {
 // SetSpeed changes the playback speed.
 func (p *Playback) SetSpeed(s Speed) {
 	p.speed = s
+}
+
+// SetLoop enables or disables looping.
+func (p *Playback) SetLoop(on bool) {
+	p.loop = on
 }
 
 // CycleSpeed cycles through available speeds.
@@ -196,12 +202,24 @@ func (p *Playback) Update() (AnimatedFrame, bool) {
 	now := time.Now()
 	dt := now.Sub(p.lastTick)
 	p.lastTick = now
+	// Cap dt to avoid large jumps when rendering is slow.
+	const maxDt = time.Second / 30
+	if dt > maxDt {
+		dt = maxDt
+	}
 	p.elapsed += time.Duration(float64(dt) * float64(p.speed))
 
 	switch p.phase {
 	case 0: // pausing at keyframe
 		if p.elapsed >= PauseDuration {
 			if p.seqIndex >= lastIdx {
+				if p.loop {
+					// Loop back to start.
+					p.seqIndex = 0
+					p.phase = 0
+					p.elapsed -= PauseDuration
+					return snapshotFrame(&seq[0]), true
+				}
 				// Reached the end: stop.
 				p.state = StateStopped
 				return snapshotFrame(&seq[p.seqIndex]), false
@@ -218,7 +236,7 @@ func (p *Playback) Update() (AnimatedFrame, bool) {
 			p.seqIndex++
 			p.phase = 0
 			p.elapsed -= TransitionDuration
-			if p.seqIndex >= lastIdx {
+			if p.seqIndex >= lastIdx && !p.loop {
 				p.state = StateStopped
 				return snapshotFrame(&seq[p.seqIndex]), false
 			}

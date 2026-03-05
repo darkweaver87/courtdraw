@@ -105,16 +105,15 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 	headerText := fmt.Sprintf("%d. %s", block.index+1, ex.Name)
 	pdf.CellFormat(contentWidth*0.6, 6, tr(headerText), "", 0, "L", false, 0, "")
 
-	// Duration and intensity.
+	// Duration.
 	pdf.SetFont("Helvetica", "", fontSizeSmall)
 	pdf.SetTextColor(colorWhite[0], colorWhite[1], colorWhite[2])
-	rightInfo := ex.Duration
-	if rightInfo != "" {
-		rightInfo += "  "
+	if ex.Duration != "" {
+		pdf.SetXY(marginLeft+contentWidth*0.6, y)
+		pdf.CellFormat(contentWidth*0.4-20, 6, ex.Duration, "", 0, "R", false, 0, "")
 	}
-	rightInfo += intensityDotsStr(int(ex.Intensity))
-	pdf.SetXY(marginLeft+contentWidth*0.6, y)
-	pdf.CellFormat(contentWidth*0.4, 6, rightInfo, "", 0, "R", false, 0, "")
+	// Intensity dots (green/yellow/red).
+	drawIntensityDots(pdf, marginLeft+contentWidth-16, y+3, int(ex.Intensity))
 
 	y += 7
 
@@ -308,7 +307,7 @@ func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, block
 			fmt.Sprintf("%d", b.index+1),
 			tr(b.exercise.Name),
 			tr(b.exercise.Duration),
-			intensityDotsStr(int(b.exercise.Intensity)),
+			"", // intensity drawn as colored dots below
 			tr(i18n.T("category." + string(b.exercise.Category))),
 		}
 		for i, cell := range cells {
@@ -316,6 +315,9 @@ func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, block
 			pdf.CellFormat(colWidths[i], 5, cell, "1", 0, "C", false, 0, "")
 			x += colWidths[i]
 		}
+		// Draw intensity dots centered in the intensity column.
+		intColX := marginLeft + colWidths[0] + colWidths[1] + colWidths[2]
+		drawIntensityDots(pdf, intColX+colWidths[3]/2-5, y+2.5, int(b.exercise.Intensity))
 		y += 5
 		totalMinutes += parseDurationMins(b.exercise.Duration)
 	}
@@ -411,16 +413,20 @@ func layoutCoachNotes(pdf *fpdf.Fpdf, tr func(string) string, y float64, session
 	return y
 }
 
-func intensityDotsStr(n int) string {
-	dots := ""
+// drawIntensityDots draws 3 colored circles (green/yellow/red) at the given position.
+// Active dots use their color; inactive dots are gray.
+func drawIntensityDots(pdf *fpdf.Fpdf, x, y float64, level int) {
+	colors := [3][3]int{colorIntGreen, colorIntYellow, colorIntRed}
+	r := intensityDotR
 	for i := 0; i < 3; i++ {
-		if i < n {
-			dots += "*"
+		cx := x + float64(i)*(r*2+1.5)
+		if i < level {
+			pdf.SetFillColor(colors[i][0], colors[i][1], colors[i][2])
 		} else {
-			dots += "-"
+			pdf.SetFillColor(colorIntOff[0], colorIntOff[1], colorIntOff[2])
 		}
+		pdf.Circle(cx, y, r, "F")
 	}
-	return "[" + dots + "]"
 }
 
 func parseDurationMins(d string) int {

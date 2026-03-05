@@ -241,6 +241,32 @@ age_group.senior: "Senior"
 status.requires_ball: "Le joueur doit être en possession du ballon"
 status.pass_requires_player: "La cible de la passe doit être un joueur"
 
+# Dialogues
+dialog.cancel: "Annuler"
+
+# Onglet séance — actions
+session.new: "Nouvelle séance"
+session.open: "Ouvrir une séance"
+session.recent: "Séances récentes"
+session.save: "Enregistrer la séance"
+session.open_exercise: "Ouvrir l'exercice"
+session.delete_exercise: "Supprimer l'exercice"
+session.search: "Rechercher des exercices..."
+session.select_to_preview: "Sélectionnez un exercice pour l'aperçu"
+
+# Filtres
+filter.all: "Tous"
+filter.local: "Locaux"
+filter.community: "Communauté"
+
 # Types de terrain
 court_type.half_court: "Demi-terrain"
 court_type.full_court: "Tout terrain"
+
+# Onglets mobile
+mobile.tab.court: "Terrain"
+mobile.tab.tools: "Outils"
+mobile.tab.props: "Propriétés"
+mobile.session.library: "Bibliothèque"
+mobile.session.preview: "Aperçu"
+mobile.session.session: "Séance"

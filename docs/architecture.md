@@ -5,16 +5,17 @@
 | Component | Technology | Rationale |
 |---|---|---|
 | Language | **Go** | Performant, cross-compile, no runtime |
-| UI Framework | **Gio** (gioui.org) | Native Go UI, supports iOS/Android/Linux/Windows/macOS |
-| Court Rendering | Gio canvas | 2D vector drawing via Gio paint/clip ops |
-| Animation | Gio frame scheduling | Interpolation between sequence keyframes |
-| PDF Generation | **go-pdf/fpdf** (or pure Go equivalent) | PDF generation without CGO |
+| UI Framework | **Fyne v2** (fyne.io/fyne/v2) | Retained-mode Go UI, supports Android/Linux/Windows/macOS |
+| Court Rendering | **image.RGBA** + `golang.org/x/image/vector` | Framework-agnostic 2D rasterization, anti-aliased |
+| Court Widget | **canvas.Raster** (Fyne) | Bitmap rendering bridge between `image.RGBA` and Fyne |
+| Animation | goroutine + `time.Ticker` (30fps) | Interpolation between sequence keyframes |
+| PDF Generation | **go-pdf/fpdf** v0.9.0 | PDF generation, Helvetica font |
 | Storage | **YAML files** in `~/.courtdraw/` | Human-readable, git-friendly, no database |
-| iOS/Android Build | `gogio` (Gio tool) | Native packaging from Go |
+| Android Build | `fyne-cross` (Docker) | Cross-compilation for Android |
 
 ## Hard Rules
 
-- **No CGO** — all dependencies must be pure Go for easy cross-compilation
+- **CGO required** — Fyne uses OpenGL via CGO for rendering
 - **No database** — all data is YAML files on disk
 - **No network** — the app is 100% offline
 - **No backend** — no server, no cloud sync, no accounts
@@ -58,7 +59,7 @@ Users import exercises from `library/` into `~/.courtdraw/exercises/` via the ap
 courtdraw/
 ├── cmd/
 │   └── courtdraw/
-│       └── main.go                  # Entry point, window creation
+│       └── main.go                  # Entry point, Fyne app + window
 ├── internal/
 │   ├── model/                       # Domain models (zero external dependencies)
 │   │   ├── exercise.go              # Exercise, Sequence, Element
@@ -70,32 +71,39 @@ courtdraw/
 │   │   ├── index.go                 # Index structs, load/save/rebuild
 │   │   ├── settings.go              # App settings persistence
 │   │   └── library.go              # Read-only access to library/ exercises
-│   ├── ui/                          # Gio UI layer
-│   │   ├── app.go                   # Root widget, tab navigation
+│   ├── i18n/                        # Localization (EN/FR)
+│   │   └── i18n.go                  # T() translation function
+│   ├── ui/                          # Fyne UI layer
+│   │   ├── app.go                   # Root app, tab navigation, file operations
+│   │   ├── toolbar.go               # File toolbar (new/open/save/duplicate/import)
+│   │   ├── toolpalette.go           # Tool palette (players/actions/accessories)
+│   │   ├── propspanel.go            # Properties panel (element + exercise metadata)
+│   │   ├── seqtimeline.go           # Sequence timeline tabs
+│   │   ├── animcontrols.go          # Animation playback controls
+│   │   ├── instrpanel.go            # Instruction editing panel
+│   │   ├── sessiontab.go            # Session tab (library + preview + session)
+│   │   ├── responsive.go            # ResponsiveContainer (desktop/mobile layout swap)
+│   │   ├── statusbar.go             # Status bar with auto-dismiss
+│   │   ├── browser.go               # URL opener utility
+│   │   ├── editor/
+│   │   │   └── state.go             # Editor state (tool, selection, drag, modified)
+│   │   ├── fynecourt/
+│   │   │   └── court.go             # Court widget (canvas.Raster + mouse/touch)
 │   │   ├── theme/
-│   │   │   └── theme.go             # Colors, fonts, spacing constants
-│   │   ├── tab/
-│   │   │   ├── exercise_editor.go   # Exercise editor tab
-│   │   │   └── session_composer.go  # Session composer tab
-│   │   ├── widget/
-│   │   │   ├── court.go             # Basketball court canvas (FIBA/NBA, half/full)
-│   │   │   ├── player.go            # Player circle + label
-│   │   │   ├── arrow.go             # Action arrows (solid/dashed/zigzag)
-│   │   │   ├── accessory.go         # Accessory rendering (cones, ladders, chairs)
-│   │   │   ├── toolbar.go           # Tool palette (Inkscape-style)
-│   │   │   ├── timeline.go          # Sequence timeline bar
-│   │   │   ├── dragdrop.go          # Drag & drop logic
-│   │   │   ├── properties.go        # Selected element property panel
-│   │   │   └── exerciselist.go      # Exercise library browser (for composer)
+│   │   │   └── theme.go             # Fyne theme (dark palette)
 │   │   └── icon/
-│   │       └── icons.go             # Embedded icon assets
-│   ├── court/                       # Court geometry & rendering logic
-│   │   ├── fiba.go                  # FIBA court dimensions and markings
-│   │   ├── nba.go                   # NBA court dimensions and markings
-│   │   ├── draw.go                  # Shared drawing primitives
-│   │   └── geometry.go              # Coordinate mapping (relative ↔ pixel)
+│   │       └── icons.go             # Embedded PNG icons as fyne.Resource
+│   ├── court/                       # Court rendering (framework-agnostic)
+│   │   ├── draw.go                  # Drawing primitives (line, circle, arc, text)
+│   │   ├── draw_players.go          # Player rendering (circle, label, ball, queue)
+│   │   ├── draw_accessories.go      # Accessory rendering (cone, ladder, chair)
+│   │   ├── draw_arrows.go           # Action arrow rendering (solid, dashed, zigzag)
+│   │   ├── fiba.go                  # FIBA court markings
+│   │   ├── nba.go                   # NBA court markings
+│   │   ├── geometry.go              # Coordinate mapping (relative ↔ pixel)
+│   │   └── draw_test.go             # Rendering tests (no UI framework)
 │   ├── anim/                        # Animation engine
-│   │   ├── interpolate.go           # Position interpolation between sequences
+│   │   ├── interpolate.go           # Position/rotation interpolation
 │   │   └── playback.go              # Play/pause/seek/speed controller
 │   └── pdf/                         # PDF generation
 │       ├── generator.go             # Session → PDF orchestrator
@@ -104,8 +112,9 @@ courtdraw/
 │       └── styles.go                # PDF colors, fonts, spacing
 ├── library/                         # Community exercise YAML collection
 ├── assets/
-│   ├── icons/                       # Accessory/action icons (PNG/SVG)
-│   └── fonts/                       # Embedded TTF/OTF fonts
+│   ├── icons/                       # Player/action/accessory icons (PNG)
+│   │   └── embed.go                 # go:embed FS
+│   └── fonts/                       # Embedded TTF fonts
 ├── docs/                            # Specifications
 ├── go.mod
 ├── go.sum
@@ -118,7 +127,7 @@ courtdraw/
 cmd/courtdraw  →  internal/ui  →  internal/model
                        │              ↑
                        ├──→ internal/store (reads/writes YAML for model types)
-                       ├──→ internal/court (renders model on Gio canvas)
+                       ├──→ internal/court (renders model into image.RGBA)
                        ├──→ internal/anim  (animates model sequences)
                        └──→ internal/pdf   (renders model to PDF)
 ```
@@ -147,7 +156,7 @@ test → build-desktop (matrix 5 targets) ─┐
 |-----|--------|-------------|
 | `test` | ubuntu-latest | `go test ./...` + `go vet ./...` |
 | `build-desktop` | matrix | Cross-compile for 5 desktop targets (CGO_ENABLED=1) |
-| `build-android` | ubuntu-latest | `gogio -target android` → APK |
+| `build-android` | ubuntu-latest | `fyne-cross android` → APK |
 | `release` | ubuntu-latest | `softprops/action-gh-release@v2` with auto release notes |
 
 ### Build Targets
@@ -159,7 +168,7 @@ test → build-desktop (matrix 5 targets) ─┐
 | macOS | arm64 | macos-latest | Native (Apple Silicon runner) |
 | macOS | amd64 | macos-latest | Cross-arch via `GOARCH=amd64` |
 | Windows | amd64 | windows-latest | Native gcc |
-| Android | — | ubuntu-latest | `gogio` → APK |
+| Android | — | ubuntu-latest | `fyne-cross` → APK |
 
 ### Artifacts
 

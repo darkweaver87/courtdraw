@@ -1,0 +1,133 @@
+package court
+
+import (
+	"image"
+	"image/color"
+	"math"
+
+	"github.com/darkweaver87/courtdraw/internal/model"
+)
+
+// Accessory visual constants (base sizes at 1x zoom).
+const (
+	AccessoryConeSize     = 10
+	AccessoryLadderWidth  = 12
+	AccessoryLadderLength = 40
+	AccessoryLadderRungs  = 5
+	AccessoryChairSize    = 12
+)
+
+var (
+	ColorCone   = color.NRGBA{R: 0xff, G: 0xa5, B: 0x00, A: 0xff}
+	ColorLadder = color.NRGBA{R: 0xff, G: 0xd7, B: 0x00, A: 0xff}
+	ColorChair  = color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xff}
+)
+
+// DrawAccessory draws a court accessory as a geometric shape.
+func DrawAccessory(img *image.RGBA, vp *Viewport, acc *model.Accessory, selected bool) {
+	center := vp.RelToPixel(acc.Position)
+
+	if selected {
+		DrawCircleOutline(img, center, vp.S(AccessoryConeSize+6), vp.S(2), HighlightColor)
+	}
+
+	switch acc.Type {
+	case model.AccessoryCone:
+		drawCone(img, vp, center, acc.Rotation)
+	case model.AccessoryAgilityLadder:
+		drawLadder(img, vp, center, acc.Rotation)
+	case model.AccessoryChair:
+		drawChair(img, vp, center, acc.Rotation)
+	}
+}
+
+// DrawAccessoryWithOpacity draws an accessory (opacity currently ignored for simplicity).
+func DrawAccessoryWithOpacity(img *image.RGBA, vp *Viewport, acc *model.Accessory, opacity float64) {
+	if opacity <= 0 {
+		return
+	}
+	DrawAccessory(img, vp, acc, false)
+}
+
+func drawCone(img *image.RGBA, vp *Viewport, center Point, rotation float64) {
+	s := vp.Sf(AccessoryConeSize)
+	rad := rotation * math.Pi / 180
+	cos := float32(math.Cos(rad))
+	sin := float32(math.Sin(rad))
+
+	rotate := func(lx, ly float32) Point {
+		return Point{
+			X: center.X + lx*cos - ly*sin,
+			Y: center.Y + lx*sin + ly*cos,
+		}
+	}
+
+	top := rotate(0, -s)
+	left := rotate(-s*0.7, s*0.5)
+	right := rotate(s*0.7, s*0.5)
+
+	DrawTriangleFill(img, top, left, right, ColorCone)
+}
+
+func drawLadder(img *image.RGBA, vp *Viewport, center Point, rotation float64) {
+	w := vp.Sf(AccessoryLadderWidth)
+	h := vp.Sf(AccessoryLadderLength)
+	lw := vp.S(1.5)
+
+	rad := rotation * math.Pi / 180
+	cos := float32(math.Cos(rad))
+	sin := float32(math.Sin(rad))
+
+	corners := [4]Point{
+		{X: -w / 2, Y: -h / 2},
+		{X: w / 2, Y: -h / 2},
+		{X: w / 2, Y: h / 2},
+		{X: -w / 2, Y: h / 2},
+	}
+
+	for i, c := range corners {
+		corners[i] = Point{
+			X: center.X + c.X*cos - c.Y*sin,
+			Y: center.Y + c.X*sin + c.Y*cos,
+		}
+	}
+
+	// Outline.
+	DrawLine(img, corners[0], corners[1], lw, ColorLadder)
+	DrawLine(img, corners[1], corners[2], lw, ColorLadder)
+	DrawLine(img, corners[2], corners[3], lw, ColorLadder)
+	DrawLine(img, corners[3], corners[0], lw, ColorLadder)
+
+	// Rungs.
+	for i := 1; i < AccessoryLadderRungs; i++ {
+		t := float32(i) / float32(AccessoryLadderRungs)
+		left := Point{
+			X: corners[0].X + (corners[3].X-corners[0].X)*t,
+			Y: corners[0].Y + (corners[3].Y-corners[0].Y)*t,
+		}
+		right := Point{
+			X: corners[1].X + (corners[2].X-corners[1].X)*t,
+			Y: corners[1].Y + (corners[2].Y-corners[1].Y)*t,
+		}
+		DrawLine(img, left, right, lw, ColorLadder)
+	}
+}
+
+func drawChair(img *image.RGBA, vp *Viewport, center Point, rotation float64) {
+	s := vp.Sf(AccessoryChairSize)
+	lw := vp.S(2.5)
+	rad := rotation * math.Pi / 180
+	cos := float32(math.Cos(rad))
+	sin := float32(math.Sin(rad))
+
+	rotate := func(x, y float32) Point {
+		return Point{
+			X: center.X + x*cos - y*sin,
+			Y: center.Y + x*sin + y*cos,
+		}
+	}
+
+	// L-shape: vertical bar + horizontal seat.
+	DrawLine(img, rotate(0, -s), rotate(0, s*0.3), lw, ColorChair)
+	DrawLine(img, rotate(0, s*0.3), rotate(s*0.7, s*0.3), lw, ColorChair)
+}

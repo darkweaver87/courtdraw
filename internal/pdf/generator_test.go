@@ -134,23 +134,6 @@ func TestParseDurationMins(t *testing.T) {
 	}
 }
 
-func TestIntensityDotsStr(t *testing.T) {
-	tests := []struct {
-		n        int
-		expected string
-	}{
-		{0, "[---]"},
-		{1, "[*--]"},
-		{2, "[**-]"},
-		{3, "[***]"},
-	}
-	for _, tt := range tests {
-		got := intensityDotsStr(tt.n)
-		if got != tt.expected {
-			t.Errorf("intensityDotsStr(%d) = %q, want %q", tt.n, got, tt.expected)
-		}
-	}
-}
 
 func TestGenerateBytes(t *testing.T) {
 	dir := t.TempDir()

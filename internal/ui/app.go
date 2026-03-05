@@ -2,12 +2,10 @@ package ui
 
 import (
 	"fmt"
-	"image"
 	"image/color"
 	"log"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -15,18 +13,14 @@ import (
 	"unicode"
 
 	"golang.org/x/text/unicode/norm"
-
-	gioapp "gioui.org/app"
-	"gioui.org/font"
-	"gioui.org/layout"
-	"gioui.org/op"
-	"gioui.org/op/clip"
-	"gioui.org/op/paint"
-	"gioui.org/unit"
-	"gioui.org/widget"
-	"gioui.org/widget/material"
-
 	"gopkg.in/yaml.v3"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/anim"
 	"github.com/darkweaver87/courtdraw/internal/i18n"
@@ -34,72 +28,320 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/pdf"
 	"github.com/darkweaver87/courtdraw/internal/store"
 	"github.com/darkweaver87/courtdraw/internal/ui/editor"
-	"github.com/darkweaver87/courtdraw/internal/ui/icon"
+	"github.com/darkweaver87/courtdraw/internal/ui/fynecourt"
 	"github.com/darkweaver87/courtdraw/internal/ui/theme"
-	uiwidget "github.com/darkweaver87/courtdraw/internal/ui/widget"
 )
 
 // App is the main application state.
 type App struct {
-	theme   *material.Theme
+	window  fyne.Window
 	store   store.Store
-	court   uiwidget.CourtWidget
-	exercise *model.Exercise
+	library *store.Library
 
-	editorState   editor.EditorState
-	toolPalette   *uiwidget.ToolPalette
-	propsPanel    *uiwidget.PropertiesPanel
-	seqTimeline   uiwidget.SeqTimeline
-	instrPanel    *uiwidget.InstructionsPanel
-	fileToolbar   uiwidget.FileToolbar
-	exerciseList  *uiwidget.ExerciseListOverlay
+	exercise    *model.Exercise
+	editorState editor.EditorState
+	playback    *anim.Playback
+	editLang    string
 
-	playback      *anim.Playback
-	animControls  uiwidget.AnimControls
-	statusBar     uiwidget.StatusBar
+	// Fyne widgets.
+	court        *fynecourt.CourtWidget
+	fileToolbar  *FileToolbar
+	toolPalette  *ToolPalette
+	propsPanel   *PropertiesPanel
+	seqTimeline  *SeqTimeline
+	instrPanel   *InstructionsPanel
+	animControls *AnimControls
+	statusBar    *StatusBar
+	tooltipLayer *TooltipLayer
+	sessionTab   *SessionTab
 
-	sessionTab *uiwidget.SessionTab
-	library    *store.Library
-	libraryOverlay  *uiwidget.LibraryOverlay
-
-	window         *gioapp.Window
-	pendingPDFPath chan string
-
-	activeTab          int
-	tabClickables      [2]widget.Clickable
-	langClick          widget.Clickable
+	// Tab management.
+	tabs                *container.AppTabs
 	sessionNeedsRefresh bool
 
-	editLang       string
-	editLangClicks [2]widget.Clickable
+	// Edit language buttons.
+	editLangBtns  [2]*widget.Button
+	editLangLabel *canvas.Text
 }
 
 // NewApp creates a new App instance.
-// libraryDir is the path to the community library directory (can be empty).
-func NewApp(th *material.Theme, st store.Store, libraryDir string) *App {
+func NewApp(st store.Store, libraryDir string, w fyne.Window) *App {
 	a := &App{
-		theme:           th,
-		store:           st,
-		toolPalette:     uiwidget.NewToolPalette(),
-		propsPanel:      uiwidget.NewPropertiesPanel(),
-		instrPanel:      uiwidget.NewInstructionsPanel(),
-		exerciseList:    uiwidget.NewExerciseListOverlay(),
-		sessionTab:     uiwidget.NewSessionTab(),
-		libraryOverlay: uiwidget.NewLibraryOverlay(),
-		pendingPDFPath: make(chan string, 1),
+		window:   w,
+		store:    st,
+		editLang: "en",
 	}
 	if libraryDir != "" {
 		a.library = store.NewLibrary(libraryDir)
 	}
 	a.editorState.ActiveTool = editor.ToolSelect
-	a.editLang = "en"
 	return a
 }
 
-// SetWindow stores the window reference for async invalidation.
-func (a *App) SetWindow(w *gioapp.Window) {
-	a.window = w
+// BuildUI creates the full application UI and returns the root canvas object.
+func (a *App) BuildUI() fyne.CanvasObject {
+	// Create all panel widgets.
+	a.court = fynecourt.NewCourtWidget()
+	a.court.SetEditorState(&a.editorState)
+	a.court.OnChanged = func() {
+		a.refreshEditor()
+	}
+
+	a.fileToolbar = NewFileToolbar()
+	a.fileToolbar.OnAction = func(action FileAction) {
+		a.handleFileAction(action)
+	}
+
+	a.toolPalette = NewToolPalette(&a.editorState)
+	a.toolPalette.OnToolChanged = func() {
+		if a.editorState.DeleteRequested {
+			a.editorState.DeleteRequested = false
+			a.court.DeleteSelected()
+		}
+		a.court.Refresh()
+	}
+
+	a.propsPanel = NewPropertiesPanel()
+	a.propsPanel.OnModified = func() {
+		a.court.Refresh()
+		a.fileToolbar.SetModified(a.editorState.Modified)
+	}
+
+	a.seqTimeline = NewSeqTimeline()
+	a.seqTimeline.OnSeqChanged = func(idx int) {
+		a.court.SetSequence(idx)
+		a.editorState.Deselect()
+		a.editorState.ActionFrom = nil
+		a.refreshEditor()
+	}
+	a.seqTimeline.OnAddSeq = func() {
+		a.addSequence()
+	}
+
+	a.instrPanel = NewInstructionsPanel()
+	a.instrPanel.OnModified = func() {
+		a.fileToolbar.SetModified(a.editorState.Modified)
+	}
+
+	a.animControls = NewAnimControls()
+	a.animControls.OnStateChanged = func() {
+		a.syncAnimState()
+	}
+
+	a.statusBar = NewStatusBar()
+	a.tooltipLayer = NewTooltipLayer()
+	SetTipLayer(a.tooltipLayer)
+
+	a.sessionTab = NewSessionTab()
+	a.sessionTab.OnAction = func(ev SessionTabEvent) {
+		a.handleSessionAction(ev)
+	}
+	a.sessionTab.OnSessionChanged = func() {
+		a.resolveSessionExercises()
+	}
+
+	// Build editor tab content.
+	editorContent := a.buildEditorTab()
+
+	// Build tabs.
+	a.tabs = container.NewAppTabs(
+		container.NewTabItem(i18n.T("tab.exercise_editor"), editorContent),
+		container.NewTabItem(i18n.T("tab.session"), a.sessionTab.Widget()),
+	)
+	a.tabs.OnChanged = func(tab *container.TabItem) {
+		if a.tabs.SelectedIndex() == 1 {
+			a.sessionNeedsRefresh = true
+			a.refreshSessionTab()
+		}
+	}
+
+	return container.NewStack(a.tabs, a.tooltipLayer.Widget())
 }
+
+func (a *App) buildEditorTab() fyne.CanvasObject {
+	// Edit language bar.
+	a.editLangBtns[0] = widget.NewButton("EN", func() {
+		if a.editLang != "en" {
+			a.editLang = "en"
+			a.switchLang("en")
+		}
+	})
+	a.editLangBtns[1] = widget.NewButton("FR", func() {
+		if a.editLang != "fr" {
+			a.editLang = "fr"
+			a.switchLang("fr")
+		}
+	})
+	a.updateLangBtnStyles()
+
+	a.editLangLabel = canvas.NewText(i18n.T("edit_lang.label")+":", color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
+	a.editLangLabel.TextSize = 11
+
+	return NewResponsiveContainer(a.buildEditorDesktop, a.buildEditorMobile)
+}
+
+func (a *App) buildEditorDesktop() fyne.CanvasObject {
+	langBar := container.NewHBox(a.editLangLabel, a.editLangBtns[0], a.editLangBtns[1], layout.NewSpacer())
+
+	// Top section: toolbar + lang bar + timeline.
+	topSection := container.NewVBox(
+		a.fileToolbar.Widget(),
+		langBar,
+		a.seqTimeline.Widget(),
+	)
+
+	// Bottom bar: status + anim controls (compact, always visible).
+	bottomBar := container.NewVBox(
+		a.statusBar.Widget(),
+		a.animControls.Widget(),
+	)
+
+	// Middle section: palette | court | properties — resizable splits.
+	leftSplit := container.NewHSplit(a.toolPalette.Widget(), a.court)
+	leftSplit.SetOffset(0.12) // ~12% for palette
+
+	middle := container.NewHSplit(leftSplit, a.propsPanel.Widget())
+	middle.SetOffset(0.78) // ~78% for palette+court, ~22% for properties
+
+	// Vertical split: court area (top) | instructions (bottom) — resizable.
+	mainArea := container.NewBorder(topSection, bottomBar, nil, nil, middle)
+	vSplit := container.NewVSplit(mainArea, a.instrPanel.Widget())
+	vSplit.SetOffset(0.82) // ~82% court, ~18% instructions
+
+	return vSplit
+}
+
+func (a *App) buildEditorMobile() fyne.CanvasObject {
+	langBar := container.NewHBox(a.editLangLabel, a.editLangBtns[0], a.editLangBtns[1], layout.NewSpacer())
+
+	// Court tab: toolbar + lang + court + zoom slider + timeline + anim controls.
+	zoomLabel := canvas.NewText("1.0x", color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
+	zoomLabel.TextSize = 14
+	zoomSlider := widget.NewSlider(1.0, 5.0)
+	zoomSlider.Step = 0.1
+	zoomSlider.Value = 1.0
+	zoomSlider.OnChanged = func(v float64) {
+		a.court.SetZoom(v)
+		zoomLabel.Text = fmt.Sprintf("%.1fx", v)
+		zoomLabel.Refresh()
+	}
+	zoomReset := widget.NewButton("1:1", func() {
+		a.court.ResetZoom()
+		zoomSlider.SetValue(1.0)
+		zoomLabel.Text = "1.0x"
+		zoomLabel.Refresh()
+	})
+	zoomReset.Importance = widget.LowImportance
+	zoomBar := container.NewBorder(nil, nil,
+		zoomLabel,
+		container.NewGridWrap(fyne.NewSize(48, 36), zoomReset),
+		zoomSlider,
+	)
+	courtTop := container.NewVBox(
+		a.fileToolbar.Widget(),
+		langBar,
+		zoomBar,
+	)
+	courtBottom := container.NewVBox(
+		a.seqTimeline.Widget(),
+		a.animControls.Widget(),
+		a.statusBar.Widget(),
+	)
+	courtTab := container.NewBorder(courtTop, courtBottom, nil, nil, a.court)
+
+	// Tools tab: tool palette (full screen, scrollable).
+	toolsTab := container.NewScroll(a.toolPalette.Widget())
+
+	// Props tab: properties + instructions (vertical split 60/40).
+	propsTab := container.NewVSplit(a.propsPanel.Widget(), a.instrPanel.Widget())
+	propsTab.SetOffset(0.6)
+
+	tabs := container.NewAppTabs(
+		container.NewTabItem(i18n.T("mobile.tab.court"), courtTab),
+		container.NewTabItem(i18n.T("mobile.tab.tools"), toolsTab),
+		container.NewTabItem(i18n.T("mobile.tab.props"), propsTab),
+	)
+	tabs.SetTabLocation(container.TabLocationBottom)
+
+	return tabs
+}
+
+func (a *App) switchLang(lang string) {
+	i18n.SetLang(i18n.Lang(lang))
+	a.propsPanel.SyncFromExercise()
+	a.instrPanel.ForceResync()
+	a.refreshEditor()
+	a.updateLangBtnStyles()
+	// Update tab labels to reflect new UI language.
+	if a.tabs != nil && len(a.tabs.Items) >= 2 {
+		a.tabs.Items[0].Text = i18n.T("tab.exercise_editor")
+		a.tabs.Items[1].Text = i18n.T("tab.session")
+		a.tabs.Refresh()
+	}
+	// Refresh translatable text in all panels.
+	a.editLangLabel.Text = i18n.T("edit_lang.label") + ":"
+	a.editLangLabel.Refresh()
+	a.fileToolbar.RefreshLanguage()
+	a.toolPalette.RefreshLanguage()
+	a.animControls.RefreshLanguage()
+	a.instrPanel.RefreshLanguage()
+	a.sessionTab.RefreshLanguage()
+	a.sessionNeedsRefresh = true
+	// Persist language choice.
+	if ys, ok := a.store.(*store.YAMLStore); ok {
+		settings, _ := ys.LoadSettings()
+		settings.Language = lang
+		ys.SaveSettings(settings)
+	}
+}
+
+func (a *App) updateLangBtnStyles() {
+	if a.editLang == "en" {
+		a.editLangBtns[0].Importance = widget.HighImportance
+		a.editLangBtns[1].Importance = widget.LowImportance
+	} else {
+		a.editLangBtns[0].Importance = widget.LowImportance
+		a.editLangBtns[1].Importance = widget.HighImportance
+	}
+	a.editLangBtns[0].Refresh()
+	a.editLangBtns[1].Refresh()
+}
+
+// refreshEditor updates all editor panels to reflect current state.
+func (a *App) refreshEditor() {
+	if a.exercise == nil {
+		return
+	}
+	seqIdx := a.court.SeqIndex()
+	a.seqTimeline.Update(a.exercise, seqIdx, a.editLang)
+	a.propsPanel.Update(a.exercise, &a.editorState, seqIdx, a.editLang)
+	a.instrPanel.Update(a.exercise, &a.editorState, seqIdx, a.editLang)
+	a.fileToolbar.SetModified(a.editorState.Modified)
+
+	if a.playback != nil {
+		a.animControls.SetPlayback(a.playback, len(a.exercise.Sequences))
+	}
+}
+
+func (a *App) syncAnimState() {
+	if a.playback == nil {
+		return
+	}
+	state := a.playback.State()
+
+	// Toggle animation mode on court widget.
+	a.court.SetAnimMode(state == anim.StatePlaying)
+
+	if state != anim.StatePlaying {
+		// Sync court seq from playback.
+		a.court.SetSequence(a.playback.SeqIndex())
+		a.refreshEditor()
+	}
+
+	a.animControls.Refresh()
+}
+
+// --- Exercise management ---
 
 // SetExercise sets the current exercise.
 func (a *App) SetExercise(ex *model.Exercise) {
@@ -113,624 +355,11 @@ func (a *App) SetExercise(ex *model.Exercise) {
 	} else {
 		a.playback = nil
 	}
+	a.court.SetPlayback(a.playback)
+	a.refreshEditor()
 }
 
-// LoadFirstExercise attempts to load the first available exercise.
-func (a *App) LoadFirstExercise() error {
-	names, err := a.store.ListExercises()
-	if err != nil {
-		return err
-	}
-	if len(names) == 0 {
-		return nil
-	}
-	ex, err := a.store.LoadExercise(names[0])
-	if err != nil {
-		return err
-	}
-	a.SetExercise(ex)
-	return nil
-}
-
-// Layout renders the full application UI.
-func (a *App) Layout(gtx layout.Context) layout.Dimensions {
-	// handle tab clicks
-	for i := range a.tabClickables {
-		if a.tabClickables[i].Clicked(gtx) {
-			if a.activeTab != i {
-				a.activeTab = i
-				if i == 1 {
-					a.sessionNeedsRefresh = true
-				}
-			}
-		}
-	}
-
-	return layout.Stack{}.Layout(gtx,
-		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
-			return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return a.layoutTabBar(gtx)
-				}),
-				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					return a.layoutContent(gtx)
-				}),
-			)
-		}),
-		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-			if !a.exerciseList.Visible {
-				return layout.Dimensions{}
-			}
-			// Handle exercise deletion from overlay.
-			if a.exerciseList.OnDelete != "" {
-				name := a.exerciseList.OnDelete
-				a.exerciseList.OnDelete = ""
-				a.deleteExercise(name)
-			}
-			// Handle recent file removal.
-			if a.exerciseList.OnRemove != "" {
-				name := a.exerciseList.OnRemove
-				a.exerciseList.OnRemove = ""
-				if ys, ok := a.store.(*store.YAMLStore); ok {
-					ys.ClearRecentFile(name)
-				}
-			}
-			dims, selected := a.exerciseList.Layout(gtx, a.theme)
-			if selected != "" {
-				a.openExercise(selected)
-			}
-			return dims
-		}),
-		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-			if a.libraryOverlay == nil || !a.libraryOverlay.Visible {
-				return layout.Dimensions{}
-			}
-			dims, selected := a.libraryOverlay.Layout(gtx, a.theme)
-			if selected != "" {
-				a.importExercise(selected)
-			}
-			return dims
-		}),
-	)
-}
-
-func (a *App) layoutTabBar(gtx layout.Context) layout.Dimensions {
-	barHeight := gtx.Dp(unit.Dp(theme.TabBarHeight))
-
-	// background
-	rect := clip.Rect{Max: image.Pt(gtx.Constraints.Max.X, barHeight)}.Op()
-	paint.FillShape(gtx.Ops, theme.ColorDarkBg, rect)
-
-	return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
-		// app name
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return layout.Inset{Left: unit.Dp(12), Right: unit.Dp(20)}.Layout(gtx,
-				func(gtx layout.Context) layout.Dimensions {
-					lbl := material.Label(a.theme, unit.Sp(16), i18n.T("app.title"))
-					lbl.Color = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
-					lbl.Font.Weight = font.Bold
-					return lbl.Layout(gtx)
-				},
-			)
-		}),
-		// exercise editor tab
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return a.layoutTab(gtx, 0, i18n.T("tab.exercise_editor"))
-		}),
-		// session tab
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return a.layoutTab(gtx, 1, i18n.T("tab.session"))
-		}),
-		// spacer
-		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-			return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, 0)}
-		}),
-		// language toggle
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			if a.langClick.Clicked(gtx) {
-				a.cycleLang()
-			}
-			return layout.Inset{Right: unit.Dp(4)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return icon.IconTextBtn(gtx, a.theme, &a.langClick, icon.Language, strings.ToUpper(string(i18n.CurrentLang())), theme.ColorTabActive)
-			})
-		}),
-	)
-}
-
-func (a *App) layoutTab(gtx layout.Context, index int, title string) layout.Dimensions {
-	return material.Clickable(gtx, &a.tabClickables[index], func(gtx layout.Context) layout.Dimensions {
-		return layout.Inset{
-			Top: unit.Dp(8), Bottom: unit.Dp(8),
-			Left: unit.Dp(16), Right: unit.Dp(16),
-		}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			col := theme.ColorTabText
-			if a.activeTab == index {
-				col = theme.ColorTabActive
-			}
-			lbl := material.Label(a.theme, unit.Sp(14), title)
-			lbl.Color = col
-			return lbl.Layout(gtx)
-		})
-	})
-}
-
-func (a *App) layoutContent(gtx layout.Context) layout.Dimensions {
-	switch a.activeTab {
-	case 0:
-		return a.layoutExerciseEditor(gtx)
-	case 1:
-		return a.layoutSessionTab(gtx)
-	default:
-		return layout.Dimensions{Size: gtx.Constraints.Max}
-	}
-}
-
-func (a *App) layoutExerciseEditor(gtx layout.Context) layout.Dimensions {
-	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-		// File toolbar.
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			dims, action := a.fileToolbar.Layout(gtx, a.theme, a.editorState.Modified)
-			a.handleFileAction(action)
-			return dims
-		}),
-		// Edit language bar.
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			if a.exercise == nil {
-				return layout.Dimensions{}
-			}
-			return a.layoutEditLangBar(gtx)
-		}),
-		// Rest of the editor (or empty state).
-		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-			if a.exercise == nil {
-				return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					lbl := material.Label(a.theme, unit.Sp(18), i18n.T("tab.no_exercise"))
-					lbl.Color = theme.ColorTabText
-					return lbl.Layout(gtx)
-				})
-			}
-			return a.layoutEditorContent(gtx)
-		}),
-	)
-}
-
-func (a *App) layoutEditLangBar(gtx layout.Context) layout.Dimensions {
-	barH := gtx.Dp(unit.Dp(24))
-	bg := color.NRGBA{R: 0x2a, G: 0x2a, B: 0x2a, A: 0xff}
-	paint.FillShape(gtx.Ops, bg, clip.Rect{Max: image.Pt(gtx.Constraints.Max.X, barH)}.Op())
-
-	langs := [2]string{"en", "fr"}
-
-	// Handle clicks.
-	for i := range a.editLangClicks {
-		if a.editLangClicks[i].Clicked(gtx) && a.editLang != langs[i] {
-			a.editLang = langs[i]
-			a.propsPanel.SyncFromExercise()
-			a.instrPanel.ForceResync()
-		}
-	}
-
-	return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return layout.Inset{Left: unit.Dp(8), Right: unit.Dp(8)}.Layout(gtx,
-				func(gtx layout.Context) layout.Dimensions {
-					lbl := material.Label(a.theme, unit.Sp(11), i18n.T("edit_lang.label")+":")
-					lbl.Color = theme.ColorTabText
-					return lbl.Layout(gtx)
-				},
-			)
-		}),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return a.layoutLangBtn(gtx, 0, "EN")
-		}),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return a.layoutLangBtn(gtx, 1, "FR")
-		}),
-	)
-}
-
-func (a *App) layoutLangBtn(gtx layout.Context, idx int, label string) layout.Dimensions {
-	langs := [2]string{"en", "fr"}
-	col := theme.ColorTabText
-	if a.editLang == langs[idx] {
-		col = theme.ColorTabActive
-	}
-	return material.Clickable(gtx, &a.editLangClicks[idx], func(gtx layout.Context) layout.Dimensions {
-		return layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4), Top: unit.Dp(2), Bottom: unit.Dp(2)}.Layout(gtx,
-			func(gtx layout.Context) layout.Dimensions {
-				lbl := material.Label(a.theme, unit.Sp(12), label)
-				lbl.Color = col
-				return lbl.Layout(gtx)
-			},
-		)
-	})
-}
-
-func (a *App) layoutEditorContent(gtx layout.Context) layout.Dimensions {
-	isAnimating := a.playback != nil && a.playback.State() == anim.StatePlaying
-
-	// Track playback seqIndex before anim controls process clicks,
-	// so we can detect changes from prev/next buttons.
-	prevPBSeq := -1
-	if a.playback != nil {
-		prevPBSeq = a.playback.SeqIndex()
-	}
-
-	seqIdx := a.court.SeqIndex()
-	var currentSeq *model.Sequence
-	if seqIdx < len(a.exercise.Sequences) {
-		currentSeq = &a.exercise.Sequences[seqIdx]
-	}
-
-	dims := layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-		// Top: sequence timeline.
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return a.seqTimeline.Layout(gtx, a.theme, a.exercise, &a.court, &a.editorState)
-		}),
-		// Middle: tool palette | court | properties.
-		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-			return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-				// Left: tool palette (120dp).
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					gtx.Constraints.Max.X = gtx.Dp(unit.Dp(120))
-					gtx.Constraints.Min.X = gtx.Constraints.Max.X
-					return a.toolPalette.Layout(gtx, a.theme, &a.editorState)
-				}),
-				// Center: court canvas (with animation support).
-				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					if isAnimating && a.playback != nil {
-						frame, needRedraw := a.playback.Update()
-						if needRedraw {
-							gtx.Execute(op.InvalidateCmd{})
-						}
-						// Sync court seq index during playback for timeline highlight.
-						a.court.SetSequence(a.playback.SeqIndex())
-						return a.court.LayoutAnimated(gtx, a.theme, &frame)
-					}
-					return a.court.Layout(gtx, a.theme, &a.editorState)
-				}),
-				// Right: properties panel (220dp).
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					gtx.Constraints.Max.X = gtx.Dp(unit.Dp(220))
-					gtx.Constraints.Min.X = gtx.Constraints.Max.X
-					return a.propsPanel.Layout(gtx, a.theme, a.exercise, &a.editorState, seqIdx, a.editLang)
-				}),
-			)
-		}),
-		// Status bar (auto-dismiss).
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return a.statusBar.Layout(gtx, a.theme, &a.editorState)
-		}),
-		// Animation controls.
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			numSeqs := len(a.exercise.Sequences)
-			return a.animControls.Layout(gtx, a.theme, a.playback, numSeqs)
-		}),
-		// Bottom: instructions panel.
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return a.instrPanel.Layout(gtx, a.theme, currentSeq, seqIdx, &a.editorState, a.exercise, a.editLang)
-		}),
-	)
-
-	// Post-layout sync: if anim controls changed the playback seqIndex
-	// (via prev/next), sync court to match. Otherwise, sync playback
-	// from the court (e.g. user clicked a timeline tab).
-	// Re-check state now (Play may have been clicked during this frame).
-	if a.playback != nil && a.playback.State() != anim.StatePlaying {
-		newPBSeq := a.playback.SeqIndex()
-		if newPBSeq != prevPBSeq {
-			// Anim controls changed it — sync court from playback.
-			a.court.SetSequence(newPBSeq)
-		} else {
-			// Timeline or other UI changed court — sync playback from court.
-			a.playback.SetSeqIndex(a.court.SeqIndex())
-		}
-	}
-
-	return dims
-}
-
-func (a *App) layoutSessionTab(gtx layout.Context) layout.Dimensions {
-	// Only refresh library when flagged dirty (tab switch, save, import).
-	if a.sessionNeedsRefresh {
-		a.sessionTab.SetExercises(a.buildManagedExercises())
-		a.sessionNeedsRefresh = false
-	}
-
-	// Re-resolve exercises when the session list changes (e.g. after adding/removing).
-	if a.sessionTab.Modified() {
-		a.resolveSessionExercises()
-	}
-
-	// Check for pending PDF export from native dialog.
-	select {
-	case path := <-a.pendingPDFPath:
-		a.generatePDFTo(path)
-	default:
-	}
-
-	// Handle session tab events.
-	ev := a.sessionTab.HandleActions(gtx)
-	switch ev.Action {
-	case uiwidget.SessionTabActionNew:
-		a.NewSession()
-	case uiwidget.SessionTabActionOpen:
-		a.showOpenSessionDialog()
-	case uiwidget.SessionTabActionSave:
-		a.saveSession()
-	case uiwidget.SessionTabActionGenerate:
-		a.showPdfExportDialog()
-	case uiwidget.SessionTabActionRefresh:
-		a.sessionTab.SetExercises(a.buildManagedExercises())
-	case uiwidget.SessionTabActionOpenExercise:
-		a.openExercise(ev.Name)
-		a.activeTab = 0
-	case uiwidget.SessionTabActionUpdate:
-		a.updateExerciseFromRemote(ev.Name)
-	case uiwidget.SessionTabActionContribute:
-		a.contributeExercise(ev.Name)
-	case uiwidget.SessionTabActionDeleteExercise:
-		a.deleteExercise(ev.Name)
-	case uiwidget.SessionTabActionRecent:
-		a.showRecentSessions()
-	}
-
-	// Handle session list overlay selection and deletion.
-	slo := a.sessionTab.SessionListOverlay()
-	if slo != nil {
-		if slo.OnDelete != "" {
-			name := slo.OnDelete
-			slo.OnDelete = ""
-			a.deleteSession(name)
-		}
-		if slo.OnRemove != "" {
-			name := slo.OnRemove
-			slo.OnRemove = ""
-			if ys, ok := a.store.(*store.YAMLStore); ok {
-				ys.ClearRecentSession(name)
-			}
-		}
-		if slo.OnSelect != "" {
-			name := slo.OnSelect
-			slo.OnSelect = ""
-			a.openSession(name)
-		}
-	}
-
-	return a.sessionTab.Layout(gtx, a.theme)
-}
-
-// loadExerciseAny tries loading from local store first, then community library.
-func (a *App) loadExerciseAny(name string) (*model.Exercise, error) {
-	ex, err := a.store.LoadExercise(name)
-	if err == nil {
-		return ex, nil
-	}
-	if a.library != nil {
-		return a.library.LoadExercise(name)
-	}
-	return nil, err
-}
-
-func (a *App) resolveSessionExercises() {
-	if a.sessionTab.Session() == nil {
-		return
-	}
-	lang := string(i18n.CurrentLang())
-	resolved := make(map[string]*model.Exercise)
-	for _, entry := range a.sessionTab.Session().Exercises {
-		if _, ok := resolved[entry.Exercise]; !ok {
-			ex, err := a.loadExerciseAny(entry.Exercise)
-			if err == nil {
-				resolved[entry.Exercise] = ex.Localized(lang)
-			}
-		}
-	}
-	a.sessionTab.SetResolvedExercises(resolved)
-}
-
-// NewSession creates a blank session.
-func (a *App) NewSession() {
-	s := &model.Session{
-		Title: i18n.T("default.session_name"),
-		Date:  time.Now().Format("2006-01-02"),
-	}
-	a.sessionTab.SetSession(s)
-}
-
-func (a *App) showOpenSessionDialog() {
-	names, err := a.store.ListSessions()
-	if err != nil {
-		log.Printf("list sessions: %v", err)
-		return
-	}
-	slo := a.sessionTab.SessionListOverlay()
-	if slo != nil {
-		slo.Show(names)
-	}
-}
-
-func (a *App) showRecentSessions() {
-	ys, ok := a.store.(*store.YAMLStore)
-	if !ok {
-		return
-	}
-	recent := ys.RecentSessions(10)
-	if len(recent) == 0 {
-		return
-	}
-	slo := a.sessionTab.SessionListOverlay()
-	if slo != nil {
-		slo.ShowRecent(recent)
-	}
-}
-
-func (a *App) openSession(name string) {
-	s, err := a.store.LoadSession(name)
-	if err != nil {
-		log.Printf("load session %s: %v", name, err)
-		return
-	}
-	a.sessionTab.SetSession(s)
-	if ys, ok := a.store.(*store.YAMLStore); ok {
-		ys.RecordRecentSession(name)
-	}
-}
-
-func (a *App) saveSession() {
-	s := a.sessionTab.Session()
-	if s == nil {
-		return
-	}
-	if err := a.store.SaveSession(s); err != nil {
-		log.Printf("save session: %v", err)
-		return
-	}
-	a.sessionTab.ClearModified()
-	name := store.SessionFileName(s)
-	if name != "" {
-		if ys, ok := a.store.(*store.YAMLStore); ok {
-			ys.RecordRecentSession(name)
-		}
-	}
-}
-
-func (a *App) deleteSession(name string) {
-	if err := a.store.DeleteSession(name); err != nil {
-		log.Printf("delete session %s: %v", name, err)
-		return
-	}
-	// If the deleted session is currently open, create a blank one.
-	s := a.sessionTab.Session()
-	if s != nil && store.SessionFileName(s) == name {
-		a.NewSession()
-	}
-	log.Printf("deleted session: %s", name)
-}
-
-func (a *App) showPdfExportDialog() {
-	s := a.sessionTab.Session()
-	if s == nil {
-		log.Printf("no session to generate PDF for")
-		return
-	}
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Printf("home dir: %v", err)
-		return
-	}
-	outputDir := homeDir
-	if ys, ok := a.store.(*store.YAMLStore); ok {
-		if settings, err := ys.LoadSettings(); err == nil && settings.PdfExportDir != "" {
-			outputDir = settings.PdfExportDir
-		}
-	}
-	title := strings.TrimSpace(s.Title)
-	if title == "" {
-		title = stripDiacritics(i18n.T("pdf.filename_prefix"))
-	} else {
-		title = stripDiacritics(title)
-	}
-	filename := title
-	if s.Date != "" {
-		filename += " - " + s.Date
-	}
-	defaultPath := filepath.Join(outputDir, filename+".pdf")
-
-	go func() {
-		cmd := exec.Command("zenity", "--file-selection", "--save", "--confirm-overwrite",
-			"--filename="+defaultPath,
-			"--file-filter=PDF | *.pdf")
-		out, err := cmd.Output()
-		if err != nil {
-			return
-		}
-		path := strings.TrimSpace(string(out))
-		if path == "" {
-			return
-		}
-		if !strings.HasSuffix(strings.ToLower(path), ".pdf") {
-			path += ".pdf"
-		}
-		select {
-		case a.pendingPDFPath <- path:
-		default:
-		}
-		if a.window != nil {
-			a.window.Invalidate()
-		}
-	}()
-}
-
-func (a *App) generatePDFTo(path string) {
-	s := a.sessionTab.Session()
-	if s == nil {
-		log.Printf("no session to generate PDF for")
-		return
-	}
-	dir := filepath.Dir(path)
-	os.MkdirAll(dir, 0755)
-	lang := string(i18n.CurrentLang())
-	loader := func(name string) (*model.Exercise, error) {
-		ex, err := a.loadExerciseAny(name)
-		if err != nil {
-			return nil, err
-		}
-		// If local copy lacks i18n, try community library for translations.
-		if ex.I18n == nil && a.library != nil {
-			if libEx, err := a.library.LoadExercise(name); err == nil && libEx.I18n != nil {
-				ex.I18n = libEx.I18n
-			}
-		}
-		return ex.Localized(lang), nil
-	}
-	if err := pdf.Generate(s, loader, path); err != nil {
-		log.Printf("generate PDF: %v", err)
-		return
-	}
-	log.Printf("PDF generated: %s", path)
-}
-
-// handleFileAction processes file toolbar button clicks.
-func (a *App) handleFileAction(action uiwidget.FileAction) {
-	switch action {
-	case uiwidget.FileActionNew:
-		a.NewExercise()
-		a.editorState.MarkModified()
-	case uiwidget.FileActionOpen:
-		a.showOpenDialog()
-	case uiwidget.FileActionSave:
-		a.saveExercise()
-	case uiwidget.FileActionDuplicate:
-		a.duplicateExercise()
-	case uiwidget.FileActionImport:
-		a.showImportDialog()
-	case uiwidget.FileActionRecent:
-		a.showRecentFiles()
-	}
-}
-
-// recordRecentFile marks an exercise as recently opened in the index.
-func (a *App) recordRecentFile(name string) {
-	if ys, ok := a.store.(*store.YAMLStore); ok {
-		ys.RecordRecentFile(name)
-	}
-}
-
-// showRecentFiles shows the exercise list overlay with recent file names.
-func (a *App) showRecentFiles() {
-	ys, ok := a.store.(*store.YAMLStore)
-	if !ok {
-		return
-	}
-	recent := ys.RecentFiles(10)
-	if len(recent) == 0 {
-		return
-	}
-	a.exerciseList.ShowRecent(recent)
-}
-
-// NewExercise creates a blank exercise and sets it as current.
+// NewExercise creates a blank exercise.
 func (a *App) NewExercise() {
 	ex := &model.Exercise{
 		Name:          i18n.T("default.exercise_name"),
@@ -743,13 +372,71 @@ func (a *App) NewExercise() {
 	a.SetExercise(ex)
 }
 
-func (a *App) showOpenDialog() {
-	names, err := a.store.ListExercises()
-	if err != nil {
-		log.Printf("list exercises: %v", err)
+// NewSession creates a blank session.
+func (a *App) NewSession() {
+	s := &model.Session{
+		Title: i18n.T("default.session_name"),
+		Date:  time.Now().Format("2006-01-02"),
+	}
+	a.sessionTab.SetSession(s)
+}
+
+func (a *App) addSequence() {
+	if a.exercise == nil {
 		return
 	}
-	a.exerciseList.Show(names)
+	var newSeq model.Sequence
+	currentIdx := a.court.SeqIndex()
+	if currentIdx < len(a.exercise.Sequences) {
+		current := &a.exercise.Sequences[currentIdx]
+		newSeq.Players = make([]model.Player, len(current.Players))
+		copy(newSeq.Players, current.Players)
+		newSeq.Accessories = make([]model.Accessory, len(current.Accessories))
+		copy(newSeq.Accessories, current.Accessories)
+		newSeq.BallCarrier = current.BallCarrier
+		for _, act := range current.Actions {
+			if act.Type == model.ActionPass && act.To.IsPlayer {
+				newSeq.BallCarrier = act.To.PlayerID
+			}
+		}
+	}
+	a.exercise.Sequences = append(a.exercise.Sequences, newSeq)
+	newIdx := len(a.exercise.Sequences) - 1
+	a.court.SetSequence(newIdx)
+	a.editorState.Deselect()
+	a.editorState.MarkModified()
+	a.refreshEditor()
+}
+
+// --- File operations ---
+
+func (a *App) handleFileAction(action FileAction) {
+	switch action {
+	case FileActionNew:
+		a.NewExercise()
+		a.editorState.MarkModified()
+	case FileActionOpen:
+		a.showOpenDialog()
+	case FileActionSave:
+		a.saveExercise()
+	case FileActionDuplicate:
+		a.duplicateExercise()
+	case FileActionImport:
+		a.showImportDialog()
+	case FileActionRecent:
+		a.showRecentFiles()
+	}
+}
+
+func (a *App) loadExerciseAny(name string) (*model.Exercise, error) {
+	ex, err := a.store.LoadExercise(name)
+	if err == nil {
+		return ex, nil
+	}
+	if a.library != nil {
+		return a.library.LoadExercise(name)
+	}
+	return nil, err
 }
 
 func (a *App) openExercise(name string) {
@@ -773,49 +460,13 @@ func (a *App) saveExercise() {
 	a.editorState.ClearModified()
 	a.sessionNeedsRefresh = true
 	a.recordRecentFile(store.ToKebab(a.exercise.Name))
-}
-
-func (a *App) showImportDialog() {
-	if a.library == nil {
-		log.Printf("no library directory configured")
-		return
-	}
-	names, err := a.library.ListExercises()
-	if err != nil {
-		log.Printf("list library exercises: %v", err)
-		return
-	}
-	if a.libraryOverlay != nil {
-		a.libraryOverlay.Show(names)
-	}
-}
-
-func (a *App) importExercise(name string) {
-	if a.library == nil {
-		return
-	}
-	ex, err := a.library.LoadExercise(name)
-	if err != nil {
-		log.Printf("load library exercise %s: %v", name, err)
-		return
-	}
-	// Save to user's store.
-	if err := a.store.SaveExercise(ex); err != nil {
-		log.Printf("save imported exercise: %v", err)
-		return
-	}
-	// Open the imported exercise.
-	a.SetExercise(ex)
-	a.sessionNeedsRefresh = true
-	a.recordRecentFile(store.ToKebab(ex.Name))
-	log.Printf("imported exercise: %s", ex.Name)
+	a.fileToolbar.SetModified(false)
 }
 
 func (a *App) duplicateExercise() {
 	if a.exercise == nil {
 		return
 	}
-	// Deep copy the exercise so the original is not mutated.
 	dup := &model.Exercise{
 		Name:          a.exercise.Name + i18n.T("file.copy_suffix"),
 		Description:   a.exercise.Description,
@@ -866,12 +517,417 @@ func (a *App) duplicateExercise() {
 	a.editorState.MarkModified()
 }
 
-func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
+func (a *App) showOpenDialog() {
+	names, err := a.store.ListExercises()
+	if err != nil {
+		log.Printf("list exercises: %v", err)
+		return
+	}
+	items := make([]string, len(names))
+	copy(items, names)
+	list := widget.NewList(
+		func() int { return len(items) },
+		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			obj.(*widget.Label).SetText(items[id])
+		},
+	)
+	var d dialog.Dialog
+	list.OnSelected = func(id widget.ListItemID) {
+		if id < len(items) {
+			a.openExercise(items[id])
+			d.Hide()
+		}
+	}
+	d = dialog.NewCustom(i18n.T("tooltip.open"), i18n.T("dialog.cancel"), list, a.window)
+	d.Resize(fyne.NewSize(400, 500))
+	d.Show()
+}
+
+func (a *App) showImportDialog() {
+	if a.library == nil {
+		log.Printf("no library directory configured")
+		return
+	}
+	names, err := a.library.ListExercises()
+	if err != nil {
+		log.Printf("list library exercises: %v", err)
+		return
+	}
+	items := make([]string, len(names))
+	copy(items, names)
+	list := widget.NewList(
+		func() int { return len(items) },
+		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			obj.(*widget.Label).SetText(items[id])
+		},
+	)
+	var d dialog.Dialog
+	list.OnSelected = func(id widget.ListItemID) {
+		if id < len(items) {
+			a.importExercise(items[id])
+			d.Hide()
+		}
+	}
+	d = dialog.NewCustom(i18n.T("tooltip.import"), i18n.T("dialog.cancel"), list, a.window)
+	d.Resize(fyne.NewSize(400, 500))
+	d.Show()
+}
+
+func (a *App) importExercise(name string) {
+	if a.library == nil {
+		return
+	}
+	ex, err := a.library.LoadExercise(name)
+	if err != nil {
+		log.Printf("load library exercise %s: %v", name, err)
+		return
+	}
+	if err := a.store.SaveExercise(ex); err != nil {
+		log.Printf("save imported exercise: %v", err)
+		return
+	}
+	a.SetExercise(ex)
+	a.sessionNeedsRefresh = true
+	a.recordRecentFile(store.ToKebab(ex.Name))
+	log.Printf("imported exercise: %s", ex.Name)
+}
+
+func (a *App) recordRecentFile(name string) {
+	if ys, ok := a.store.(*store.YAMLStore); ok {
+		ys.RecordRecentFile(name)
+	}
+}
+
+func (a *App) showRecentFiles() {
+	ys, ok := a.store.(*store.YAMLStore)
+	if !ok {
+		return
+	}
+	recent := ys.RecentFiles(10)
+	if len(recent) == 0 {
+		return
+	}
+	items := make([]string, len(recent))
+	copy(items, recent)
+	list := widget.NewList(
+		func() int { return len(items) },
+		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			obj.(*widget.Label).SetText(items[id])
+		},
+	)
+	var d dialog.Dialog
+	list.OnSelected = func(id widget.ListItemID) {
+		if id < len(items) {
+			a.openExercise(items[id])
+			d.Hide()
+		}
+	}
+	d = dialog.NewCustom(i18n.T("tooltip.recent"), i18n.T("dialog.cancel"), list, a.window)
+	d.Resize(fyne.NewSize(400, 400))
+	d.Show()
+}
+
+func (a *App) deleteExercise(name string) {
+	if err := a.store.DeleteExercise(name); err != nil {
+		log.Printf("delete exercise %s: %v", name, err)
+		return
+	}
+	if a.exercise != nil && store.ToKebab(a.exercise.Name) == name {
+		a.SetExercise(nil)
+	}
+	a.sessionNeedsRefresh = true
+	log.Printf("deleted exercise: %s", name)
+}
+
+// --- Session operations ---
+
+func (a *App) handleSessionAction(ev SessionTabEvent) {
+	switch ev.Action {
+	case SessionTabActionNew:
+		a.NewSession()
+	case SessionTabActionOpen:
+		a.showOpenSessionDialog()
+	case SessionTabActionSave:
+		a.saveSession()
+	case SessionTabActionGenerate:
+		a.showPdfExportDialog()
+	case SessionTabActionRefresh:
+		a.sessionTab.SetExercises(a.buildManagedExercises())
+	case SessionTabActionOpenExercise:
+		a.openExercise(ev.Name)
+		a.tabs.SelectIndex(0)
+	case SessionTabActionUpdate:
+		a.updateExerciseFromRemote(ev.Name)
+	case SessionTabActionContribute:
+		a.contributeExercise(ev.Name)
+	case SessionTabActionDeleteExercise:
+		a.deleteExercise(ev.Name)
+	case SessionTabActionRecent:
+		a.showRecentSessions()
+	}
+}
+
+func (a *App) refreshSessionTab() {
+	if a.sessionNeedsRefresh {
+		a.sessionTab.SetExercises(a.buildManagedExercises())
+		a.sessionNeedsRefresh = false
+	}
+	// Always resolve exercises so total duration is computed.
+	a.resolveSessionExercises()
+}
+
+func (a *App) resolveSessionExercises() {
+	if a.sessionTab.Session() == nil {
+		return
+	}
+	lang := string(i18n.CurrentLang())
+	resolved := make(map[string]*model.Exercise)
+	for _, entry := range a.sessionTab.Session().Exercises {
+		if _, ok := resolved[entry.Exercise]; !ok {
+			ex, err := a.loadExerciseAny(entry.Exercise)
+			if err == nil {
+				resolved[entry.Exercise] = ex.Localized(lang)
+			}
+		}
+	}
+	a.sessionTab.SetResolvedExercises(resolved)
+}
+
+func (a *App) showOpenSessionDialog() {
+	names, err := a.store.ListSessions()
+	if err != nil {
+		log.Printf("list sessions: %v", err)
+		return
+	}
+	items := make([]string, len(names))
+	copy(items, names)
+	list := widget.NewList(
+		func() int { return len(items) },
+		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			obj.(*widget.Label).SetText(items[id])
+		},
+	)
+	var d dialog.Dialog
+	list.OnSelected = func(id widget.ListItemID) {
+		if id < len(items) {
+			a.openSession(items[id])
+			d.Hide()
+		}
+	}
+	d = dialog.NewCustom(i18n.T("session.open"), i18n.T("dialog.cancel"), list, a.window)
+	d.Resize(fyne.NewSize(400, 500))
+	d.Show()
+}
+
+func (a *App) showRecentSessions() {
+	ys, ok := a.store.(*store.YAMLStore)
+	if !ok {
+		return
+	}
+	recent := ys.RecentSessions(10)
+	if len(recent) == 0 {
+		return
+	}
+	items := make([]string, len(recent))
+	copy(items, recent)
+	list := widget.NewList(
+		func() int { return len(items) },
+		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			obj.(*widget.Label).SetText(items[id])
+		},
+	)
+	var d dialog.Dialog
+	list.OnSelected = func(id widget.ListItemID) {
+		if id < len(items) {
+			a.openSession(items[id])
+			d.Hide()
+		}
+	}
+	d = dialog.NewCustom(i18n.T("session.recent"), i18n.T("dialog.cancel"), list, a.window)
+	d.Resize(fyne.NewSize(400, 400))
+	d.Show()
+}
+
+func (a *App) openSession(name string) {
+	s, err := a.store.LoadSession(name)
+	if err != nil {
+		log.Printf("load session %s: %v", name, err)
+		return
+	}
+	a.sessionTab.SetSession(s)
+	if ys, ok := a.store.(*store.YAMLStore); ok {
+		ys.RecordRecentSession(name)
+	}
+}
+
+func (a *App) saveSession() {
+	s := a.sessionTab.Session()
+	if s == nil {
+		return
+	}
+	if err := a.store.SaveSession(s); err != nil {
+		log.Printf("save session: %v", err)
+		return
+	}
+	a.sessionTab.ClearModified()
+	name := store.SessionFileName(s)
+	if name != "" {
+		if ys, ok := a.store.(*store.YAMLStore); ok {
+			ys.RecordRecentSession(name)
+		}
+	}
+}
+
+func (a *App) deleteSession(name string) {
+	if err := a.store.DeleteSession(name); err != nil {
+		log.Printf("delete session %s: %v", name, err)
+		return
+	}
+	s := a.sessionTab.Session()
+	if s != nil && store.SessionFileName(s) == name {
+		a.NewSession()
+	}
+	log.Printf("deleted session: %s", name)
+}
+
+func (a *App) showPdfExportDialog() {
+	s := a.sessionTab.Session()
+	if s == nil {
+		log.Printf("no session to generate PDF for")
+		return
+	}
+
+	d := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+		if err != nil || writer == nil {
+			return
+		}
+		path := writer.URI().Path()
+		writer.Close()
+		if !strings.HasSuffix(strings.ToLower(path), ".pdf") {
+			path += ".pdf"
+		}
+		a.generatePDFTo(path)
+	}, a.window)
+	d.SetFileName(a.pdfDefaultFilename() + ".pdf")
+	d.Show()
+}
+
+func (a *App) pdfDefaultFilename() string {
+	s := a.sessionTab.Session()
+	if s == nil {
+		return "session"
+	}
+	title := strings.TrimSpace(s.Title)
+	if title == "" {
+		title = stripDiacritics(i18n.T("pdf.filename_prefix"))
+	} else {
+		title = stripDiacritics(title)
+	}
+	filename := title
+	if s.Date != "" {
+		filename += " - " + s.Date
+	}
+	return filename
+}
+
+func (a *App) generatePDFTo(path string) {
+	s := a.sessionTab.Session()
+	if s == nil {
+		log.Printf("no session to generate PDF for")
+		return
+	}
+	dir := filepath.Dir(path)
+	os.MkdirAll(dir, 0755)
+	lang := string(i18n.CurrentLang())
+	loader := func(name string) (*model.Exercise, error) {
+		ex, err := a.loadExerciseAny(name)
+		if err != nil {
+			return nil, err
+		}
+		if ex.I18n == nil && a.library != nil {
+			if libEx, err := a.library.LoadExercise(name); err == nil && libEx.I18n != nil {
+				ex.I18n = libEx.I18n
+			}
+		}
+		return ex.Localized(lang), nil
+	}
+	if err := pdf.Generate(s, loader, path); err != nil {
+		log.Printf("generate PDF: %v", err)
+		return
+	}
+	log.Printf("PDF generated: %s", path)
+}
+
+func (a *App) updateExerciseFromRemote(name string) {
+	if a.library == nil {
+		return
+	}
+	ex, err := a.library.LoadExercise(name)
+	if err != nil {
+		log.Printf("load library exercise %s: %v", name, err)
+		return
+	}
+	if err := a.store.SaveExercise(ex); err != nil {
+		log.Printf("save updated exercise: %v", err)
+		return
+	}
+	if a.exercise != nil && store.ToKebab(a.exercise.Name) == name {
+		a.SetExercise(ex)
+	}
+	a.sessionNeedsRefresh = true
+	log.Printf("updated exercise from community: %s", name)
+}
+
+func (a *App) contributeExercise(name string) {
+	ex, err := a.store.LoadExercise(name)
+	if err != nil {
+		log.Printf("load exercise %s for contribution: %v", name, err)
+		return
+	}
+
+	data, err := yaml.Marshal(ex)
+	if err != nil {
+		log.Printf("marshal exercise for contribution: %v", err)
+		return
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Printf("home dir: %v", err)
+		return
+	}
+	contributeDir := filepath.Join(homeDir, ".courtdraw", "contribute")
+	os.MkdirAll(contributeDir, 0755)
+	outPath := filepath.Join(contributeDir, name+".yaml")
+	if err := os.WriteFile(outPath, data, 0644); err != nil {
+		log.Printf("write contribute file: %v", err)
+		return
+	}
+	log.Printf("saved contribution: %s", outPath)
+
+	filename := name + ".yaml"
+	encoded := url.QueryEscape(string(data))
+	ghURL := fmt.Sprintf("https://github.com/darkweaver87/courtdraw/new/main/library?filename=%s&value=%s", filename, encoded)
+	if len(ghURL) > 8000 {
+		ghURL = "https://github.com/darkweaver87/courtdraw/new/main/library?filename=" + filename
+	}
+	if err := openBrowser(ghURL); err != nil {
+		log.Printf("open browser: %v", err)
+	}
+}
+
+// --- Build managed exercises list ---
+
+func (a *App) buildManagedExercises() []ManagedExercise {
 	localMap := make(map[string]*model.Exercise)
 	remoteMap := make(map[string]*model.Exercise)
 	allNames := make(map[string]bool)
 
-	// Load local exercises.
 	if names, err := a.store.ListExercises(); err == nil {
 		for _, name := range names {
 			if ex, err := a.store.LoadExercise(name); err == nil {
@@ -881,7 +937,6 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 		}
 	}
 
-	// Load community exercises.
 	if a.library != nil {
 		if names, err := a.library.ListExercises(); err == nil {
 			for _, name := range names {
@@ -893,7 +948,6 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 		}
 	}
 
-	// Build sorted list.
 	sortedNames := make([]string, 0, len(allNames))
 	for name := range allNames {
 		sortedNames = append(sortedNames, name)
@@ -901,22 +955,22 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 	sort.Strings(sortedNames)
 
 	lang := string(i18n.CurrentLang())
-	items := make([]uiwidget.ManagedExercise, 0, len(sortedNames))
+	items := make([]ManagedExercise, 0, len(sortedNames))
 	for _, name := range sortedNames {
 		local := localMap[name]
 		remote := remoteMap[name]
 
-		var status uiwidget.ExerciseSyncStatus
+		var status ExerciseSyncStatus
 		switch {
 		case local != nil && remote == nil:
-			status = uiwidget.StatusLocalOnly
+			status = StatusLocalOnly
 		case local == nil && remote != nil:
-			status = uiwidget.StatusRemoteOnly
+			status = StatusRemoteOnly
 		case local != nil && remote != nil:
 			if exercisesEqual(local, remote) {
-				status = uiwidget.StatusSynced
+				status = StatusSynced
 			} else {
-				status = uiwidget.StatusModified
+				status = StatusModified
 			}
 		}
 
@@ -926,29 +980,25 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 		courtType := ""
 		duration := ""
 		var tags []string
-		if local != nil {
-			// Merge community i18n into local if missing.
-			if local.I18n == nil && remote != nil && remote.I18n != nil {
+		// Pick the primary exercise for metadata.
+		primary := local
+		if primary == nil {
+			primary = remote
+		}
+		if primary != nil {
+			if local != nil && local.I18n == nil && remote != nil && remote.I18n != nil {
 				local.I18n = remote.I18n
 			}
-			loc := local.Localized(lang)
+			loc := primary.Localized(lang)
 			displayName = loc.Name
-			category = string(local.Category)
-			ageGroup = string(local.AgeGroup)
-			courtType = string(local.CourtType)
-			duration = local.Duration
-			tags = loc.Tags
-		} else if remote != nil {
-			loc := remote.Localized(lang)
-			displayName = loc.Name
-			category = string(remote.Category)
-			ageGroup = string(remote.AgeGroup)
-			courtType = string(remote.CourtType)
-			duration = remote.Duration
+			category = string(primary.Category)
+			ageGroup = string(primary.AgeGroup)
+			courtType = string(primary.CourtType)
+			duration = primary.Duration
 			tags = loc.Tags
 		}
 
-		items = append(items, uiwidget.ManagedExercise{
+		items = append(items, ManagedExercise{
 			Name:        name,
 			Status:      status,
 			LocalEx:     local,
@@ -964,7 +1014,6 @@ func (a *App) buildManagedExercises() []uiwidget.ManagedExercise {
 	return items
 }
 
-// exercisesEqual compares two exercises by marshalling to YAML.
 func exercisesEqual(a, b *model.Exercise) bool {
 	dataA, errA := yaml.Marshal(a)
 	dataB, errB := yaml.Marshal(b)
@@ -974,89 +1023,8 @@ func exercisesEqual(a, b *model.Exercise) bool {
 	return string(dataA) == string(dataB)
 }
 
+// --- Utilities ---
 
-// updateExerciseFromRemote overwrites local with community version.
-func (a *App) updateExerciseFromRemote(name string) {
-	if a.library == nil {
-		return
-	}
-	ex, err := a.library.LoadExercise(name)
-	if err != nil {
-		log.Printf("load library exercise %s: %v", name, err)
-		return
-	}
-	if err := a.store.SaveExercise(ex); err != nil {
-		log.Printf("save updated exercise: %v", err)
-		return
-	}
-	// If the editor is showing this exercise, reload it.
-	if a.exercise != nil && store.ToKebab(a.exercise.Name) == name {
-		a.SetExercise(ex)
-	}
-	a.sessionNeedsRefresh = true
-	log.Printf("updated exercise from community: %s", name)
-}
-
-// contributeExercise saves YAML to contribute dir and opens GitHub.
-func (a *App) contributeExercise(name string) {
-	ex, err := a.store.LoadExercise(name)
-	if err != nil {
-		log.Printf("load exercise %s for contribution: %v", name, err)
-		return
-	}
-
-	data, err := yaml.Marshal(ex)
-	if err != nil {
-		log.Printf("marshal exercise for contribution: %v", err)
-		return
-	}
-
-	// Save to ~/.courtdraw/contribute/.
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Printf("home dir: %v", err)
-		return
-	}
-	contributeDir := filepath.Join(homeDir, ".courtdraw", "contribute")
-	os.MkdirAll(contributeDir, 0755)
-	outPath := filepath.Join(contributeDir, name+".yaml")
-	if err := os.WriteFile(outPath, data, 0644); err != nil {
-		log.Printf("write contribute file: %v", err)
-		return
-	}
-	log.Printf("saved contribution: %s", outPath)
-
-	// Build GitHub new-file URL.
-	filename := name + ".yaml"
-	encoded := url.QueryEscape(string(data))
-	ghURL := fmt.Sprintf("https://github.com/darkweaver87/courtdraw/new/main/library?filename=%s&value=%s", filename, encoded)
-
-	// GitHub URLs have a practical limit; if too long, just open the base.
-	if len(ghURL) > 8000 {
-		ghURL = "https://github.com/darkweaver87/courtdraw/new/main/library?filename=" + filename
-	}
-
-	if err := openBrowser(ghURL); err != nil {
-		log.Printf("open browser: %v", err)
-	}
-}
-
-// deleteExercise removes a local exercise file.
-func (a *App) deleteExercise(name string) {
-	if err := a.store.DeleteExercise(name); err != nil {
-		log.Printf("delete exercise %s: %v", name, err)
-		return
-	}
-	// If the deleted exercise is currently open, clear the editor.
-	if a.exercise != nil && store.ToKebab(a.exercise.Name) == name {
-		a.SetExercise(nil)
-	}
-	a.sessionNeedsRefresh = true
-	log.Printf("deleted exercise: %s", name)
-}
-
-// stripDiacritics removes combining marks (accents) from a string.
-// e.g. "séance" → "seance", "éàü" → "eau".
 func stripDiacritics(s string) string {
 	t := norm.NFD.String(s)
 	var b strings.Builder
@@ -1077,7 +1045,6 @@ func (a *App) cycleLang() {
 		if l == cur {
 			next := langs[(idx+1)%len(langs)]
 			i18n.SetLang(next)
-			// Persist asynchronously — best effort.
 			if ys, ok := a.store.(*store.YAMLStore); ok {
 				settings, _ := ys.LoadSettings()
 				settings.Language = string(next)
@@ -1087,3 +1054,7 @@ func (a *App) cycleLang() {
 		}
 	}
 }
+
+// Suppress unused imports.
+var _ = theme.ColorDarkBg
+var _ = canvas.NewRectangle

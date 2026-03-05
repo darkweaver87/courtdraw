@@ -1,6 +1,6 @@
 # CourtDraw
 
-Cross-platform basketball session designer written in Go with Gio UI.
+Cross-platform basketball session designer written in Go with Fyne v2.
 Coaches create exercises visually on a court, animate them, compose sessions, and export PDF session sheets.
 
 ## Quick Links
@@ -14,8 +14,9 @@ Coaches create exercises visually on a court, animate them, compose sessions, an
 
 ## Constraints
 
-- **Language**: Go — no CGO, pure Go dependencies only
-- **UI**: Gio (gioui.org) — single codebase for iOS, Android, Linux, Windows
+- **Language**: Go — CGO required (Fyne uses OpenGL)
+- **UI**: Fyne v2 (fyne.io/fyne/v2) — single codebase for Android, Linux, Windows, macOS
+- **Court rendering**: Framework-agnostic `image.RGBA` via `golang.org/x/image/vector`
 - **Storage**: YAML files in `~/.courtdraw/` — no database
 - **Offline-first**: no backend, no cloud, no accounts
 - **Basketball only**: no multi-sport abstraction
@@ -34,9 +35,8 @@ go build -o courtdraw ./cmd/courtdraw
 # Run tests
 go test ./...
 
-# Build for Android/iOS (requires gogio)
-gogio -target android ./cmd/courtdraw
-gogio -target ios ./cmd/courtdraw
+# Build for Android (requires fyne-cross)
+fyne-cross android -app-id com.darkweaver87.courtdraw ./cmd/courtdraw
 
 # CI/CD — trigger manual run
 gh workflow run ci.yaml
@@ -49,16 +49,21 @@ git push origin v1.0.0
 ## Project Layout
 
 ```
-cmd/courtdraw/       Entry point
-internal/model/      Data models (Exercise, Sequence, Session)
-internal/store/      YAML file persistence (~/.courtdraw/)
-internal/ui/         Gio UI (screens, widgets, theme)
-internal/court/      Court rendering (FIBA, NBA)
-internal/anim/       Animation engine (interpolation, playback)
-internal/pdf/        PDF session sheet generation
-library/             Community exercise collection (YAML)
-assets/icons/        Accessory and action icons (PNG/SVG)
-assets/fonts/        Embedded fonts
-docs/                Specifications
-.github/workflows/   CI/CD (GitHub Actions)
+cmd/courtdraw/           Entry point (Fyne app)
+internal/model/          Data models (Exercise, Sequence, Session)
+internal/store/          YAML file persistence (~/.courtdraw/)
+internal/ui/             Fyne UI panels (app, toolbar, properties, etc.)
+internal/ui/editor/      Editor state machine (tool, selection, drag)
+internal/ui/fynecourt/   Court widget (canvas.Raster + interaction)
+internal/ui/theme/       Fyne theme (dark palette)
+internal/ui/icon/        Embedded PNG icons as fyne.Resource
+internal/court/          Court rendering into image.RGBA (FIBA, NBA)
+internal/anim/           Animation engine (interpolation, playback)
+internal/pdf/            PDF session sheet generation
+internal/i18n/           Localization (EN/FR)
+library/                 Community exercise collection (YAML)
+assets/icons/            Accessory and action icons (PNG)
+assets/fonts/            Embedded fonts
+docs/                    Specifications
+.github/workflows/       CI/CD (GitHub Actions)
 ```

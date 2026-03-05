@@ -4,10 +4,18 @@ import (
 	"image"
 	"math"
 
-	"gioui.org/f32"
-
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
+
+// Point is a 2D coordinate in pixel space.
+type Point struct {
+	X, Y float32
+}
+
+// Pt creates a Point from x, y coordinates.
+func Pt(x, y float32) Point {
+	return Point{X: x, Y: y}
+}
 
 // CourtGeometry holds the physical dimensions of a basketball court in meters.
 type CourtGeometry struct {
@@ -32,19 +40,42 @@ type Viewport struct {
 	OffsetY float64
 	Width   float64
 	Height  float64
+	Scale   float64 // zoom scale factor (1.0 = normal)
+}
+
+// S scales a pixel value by the viewport's zoom level and returns float32.
+// Returns px unchanged when Scale <= 1.
+func (v *Viewport) S(px float64) float32 {
+	if v.Scale > 1.0 {
+		return float32(px * v.Scale)
+	}
+	return float32(px)
+}
+
+// Sf is an alias for S.
+func (v *Viewport) Sf(px float64) float32 {
+	return v.S(px)
+}
+
+// Sd scales a pixel value by the viewport's zoom level and returns float64.
+func (v *Viewport) Sd(px float64) float64 {
+	if v.Scale > 1.0 {
+		return px * v.Scale
+	}
+	return px
 }
 
 // RelToPixel converts a relative position [0,1] to pixel coordinates.
 // Y-flip: model [0,0] = bottom-left, screen [0,0] = top-left.
-func (v *Viewport) RelToPixel(pos model.Position) f32.Point {
-	return f32.Point{
+func (v *Viewport) RelToPixel(pos model.Position) Point {
+	return Point{
 		X: float32(v.OffsetX + pos.X()*v.Width),
 		Y: float32(v.OffsetY + (1.0-pos.Y())*v.Height),
 	}
 }
 
 // PixelToRel converts pixel coordinates to a relative position [0,1].
-func (v *Viewport) PixelToRel(p f32.Point) model.Position {
+func (v *Viewport) PixelToRel(p Point) model.Position {
 	return model.Position{
 		(float64(p.X) - v.OffsetX) / v.Width,
 		1.0 - (float64(p.Y)-v.OffsetY)/v.Height,
@@ -54,7 +85,6 @@ func (v *Viewport) PixelToRel(p f32.Point) model.Position {
 // MeterToPixel converts a distance in meters to pixels using the viewport and geometry.
 func (v *Viewport) MeterToPixel(meters float64, geom *CourtGeometry, courtType model.CourtType) float64 {
 	courtW, courtH := courtDimensions(geom, courtType)
-	// use the smaller axis scale to stay proportional
 	scaleX := v.Width / courtW
 	scaleY := v.Height / courtH
 	scale := math.Min(scaleX, scaleY)
@@ -62,7 +92,6 @@ func (v *Viewport) MeterToPixel(meters float64, geom *CourtGeometry, courtType m
 }
 
 // courtDimensions returns the logical width/height of the court based on type.
-// Court is drawn vertically: width = court.Width, height depends on half/full.
 func courtDimensions(geom *CourtGeometry, courtType model.CourtType) (float64, float64) {
 	w := geom.Width
 	h := geom.Length
@@ -86,11 +115,9 @@ func ComputeViewport(courtType model.CourtType, geom *CourtGeometry, widgetSize 
 
 	var vpW, vpH float64
 	if availW/availH > aspect {
-		// height-constrained
 		vpH = availH
 		vpW = vpH * aspect
 	} else {
-		// width-constrained
 		vpW = availW
 		vpH = vpW / aspect
 	}

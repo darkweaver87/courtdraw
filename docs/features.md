@@ -146,9 +146,8 @@ Icons are PNG or SVG files in `assets/icons/`. They can be replaced for custom s
 
 ## Dropdown Selectors
 
-- Properties panel fields (role, callout, court standard, court type, category) use popup dropdown lists instead of cycling on click
-- The session composer category filter also uses a popup dropdown
-- Popup renders as a centered floating panel with scrollable options via `op.Defer` for z-ordering
+- Properties panel fields (role, callout, court standard, court type, category) use `widget.Select` dropdowns
+- The session tab category filter also uses a `widget.Select` dropdown
 
 ## Exercise & Session Management (Overlays)
 
@@ -240,3 +239,23 @@ Layout overflows to additional pages automatically.
   - Category dropdown filter
   - Clickable tag chips to filter by tag
   - Filters combine with AND logic
+
+## Responsive Layout
+
+- `ResponsiveContainer` widget dynamically swaps between desktop (HSplit) and mobile (bottom tabs) layouts
+- **Android / iOS**: always uses mobile layout regardless of screen size or orientation
+- **Desktop**: switches to mobile layout when window width < 600dp
+- Mobile editor: 3 bottom tabs — Court, Tools, Properties
+- Mobile session: 3 bottom tabs — Library, Preview, Session
+- Layout rebuilds on mode change; same widgets are reused across layouts
+
+## Zoom and Pan
+
+- Court widget supports zoom (1.0x – 5.0x) via mouse wheel scroll or pinch-to-zoom (Fyne maps pinch to scroll events)
+- Double-tap resets zoom to 1.0x
+- When zoomed in, dragging on an empty area pans the view (no element hit = pan mode)
+- Zoom indicator overlay ("2.0x") displayed in top-right corner when zoomed
+- Mobile fallback: `+` / `−` / `1:1` buttons in the toolbar
+- Pan is clamped to keep the court visible
+- Court background cache includes zoom/pan in its cache key
+- Zoom resets when loading a new exercise

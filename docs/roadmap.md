@@ -4,7 +4,7 @@
 
 Goal: app launches, displays a court, loads an exercise from YAML.
 
-1. Go module + Gio setup, basic window with tab layout
+1. Go module + Fyne setup, basic window with tab layout
 2. Data models in `internal/model/` (Exercise, Sequence, Player, Action, Accessory, Session)
 3. YAML store in `internal/store/` (read/write exercises and sessions from `~/.courtdraw/`)
 4. Court rendering in `internal/court/` (FIBA + NBA, half + full, all official markings)
@@ -97,3 +97,17 @@ Goal: simplify navigation by merging exercise manager and session composer.
 42. Session column with metadata editors, exercise list, coach notes, philosophy
 
 Deliverable: streamlined 2-tab UX with all exercise management and session composition in one view.
+
+## Phase 9 — Responsive Layout & Zoom
+
+Goal: usable on mobile (Android) with proper touch interactions.
+
+43. `ResponsiveContainer` widget — swaps desktop HSplit vs mobile bottom tabs based on OS and screen width
+44. Mobile editor layout — 3 bottom tabs (Court / Tools / Properties) with full-screen panels
+45. Mobile session layout — 3 bottom tabs (Library / Preview / Session)
+46. Pinch-to-zoom on court widget (1.0x–5.0x) via `fyne.Scrollable` interface
+47. Pan when zoomed (drag on empty area), double-tap to reset zoom
+48. Zoom indicator overlay + mobile zoom buttons (+/−/1:1) fallback
+49. i18n keys for mobile tab labels (EN/FR)
+
+Deliverable: fully usable mobile experience with zoom/pan for precise element placement.
