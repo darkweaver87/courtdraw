@@ -2,31 +2,42 @@ package ui
 
 import (
 	"image/color"
-	"time"
+	"runtime"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 )
 
-const statusDismissDelay = 3 * time.Second
-
-// StatusBar displays a temporary status message at the bottom of the editor.
+// StatusBar displays status messages at the bottom of the editor.
+// On desktop it is always visible; on mobile it auto-hides.
 type StatusBar struct {
 	label *canvas.Text
 	bg    *canvas.Rectangle
 	box   *fyne.Container
-	timer *time.Timer
+}
+
+var statusBarHeight float32 = 22
+
+func init() {
+	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+		statusBarHeight = 28
+	}
 }
 
 // NewStatusBar creates a new status bar.
 func NewStatusBar() *StatusBar {
 	sb := &StatusBar{}
-	sb.label = canvas.NewText("", color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
-	sb.label.TextSize = 13
-	sb.bg = canvas.NewRectangle(color.NRGBA{R: 0x33, G: 0x33, B: 0x33, A: 0xdd})
-	sb.box = container.NewStack(sb.bg, container.NewPadded(sb.label))
-	sb.box.Hide()
+	sb.label = canvas.NewText("CourtDraw", color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
+	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+		sb.label.TextSize = 13
+	} else {
+		sb.label.TextSize = 11
+	}
+	sb.bg = canvas.NewRectangle(color.NRGBA{R: 0x22, G: 0x22, B: 0x22, A: 0xff})
+	sb.bg.SetMinSize(fyne.NewSize(0, statusBarHeight))
+	padded := container.NewPadded(sb.label)
+	sb.box = container.NewStack(sb.bg, padded)
 	return sb
 }
 
@@ -35,28 +46,16 @@ func (sb *StatusBar) Widget() fyne.CanvasObject {
 	return sb.box
 }
 
-// SetStatus shows a status message that auto-dismisses after 3 seconds.
+// SetStatus shows a status message. level 0 = info, 1 = error.
 func (sb *StatusBar) SetStatus(msg string, level int) {
-	if sb.timer != nil {
-		sb.timer.Stop()
-	}
 	if msg == "" {
-		sb.box.Hide()
-		return
+		msg = "CourtDraw"
 	}
 	sb.label.Text = msg
-	sb.label.Refresh()
 	if level == 1 {
-		sb.bg.FillColor = color.NRGBA{R: 0x8b, G: 0x00, B: 0x00, A: 0xdd}
+		sb.label.Color = color.NRGBA{R: 0xff, G: 0x66, B: 0x66, A: 0xff}
 	} else {
-		sb.bg.FillColor = color.NRGBA{R: 0x33, G: 0x33, B: 0x33, A: 0xdd}
+		sb.label.Color = color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff}
 	}
-	sb.bg.Refresh()
-	sb.box.Show()
-
-	sb.timer = time.AfterFunc(statusDismissDelay, func() {
-		fyne.Do(func() {
-			sb.box.Hide()
-		})
-	})
+	sb.label.Refresh()
 }
