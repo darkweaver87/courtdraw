@@ -21,11 +21,14 @@ type SeqTimeline struct {
 	box       *fyne.Container
 	tabBox    *fyne.Container
 	addBtn    *widget.Button
+	deleteBtn *widget.Button
 	buttons   []*widget.Button
 	activeIdx int
+	numSeqs   int
 
 	OnSeqChanged func(int)
 	OnAddSeq     func()
+	OnDeleteSeq  func(int)
 }
 
 // NewSeqTimeline creates a new sequence timeline.
@@ -39,8 +42,16 @@ func NewSeqTimeline() *SeqTimeline {
 	})
 	st.addBtn.Importance = widget.LowImportance
 
+	st.deleteBtn = widget.NewButtonWithIcon("", theme.DeleteIcon(), func() {
+		if st.OnDeleteSeq != nil {
+			st.OnDeleteSeq(st.activeIdx)
+		}
+	})
+	st.deleteBtn.Importance = widget.DangerImportance
+	st.deleteBtn.Hide()
+
 	bg := canvas.NewRectangle(color.NRGBA{R: 0x2a, G: 0x2a, B: 0x2a, A: 0xff})
-	scroll := container.NewHScroll(container.NewHBox(st.tabBox, st.addBtn, layout.NewSpacer()))
+	scroll := container.NewHScroll(container.NewHBox(st.tabBox, st.addBtn, st.deleteBtn, layout.NewSpacer()))
 	st.box = container.NewStack(bg, scroll)
 	return st
 }
@@ -60,6 +71,14 @@ func (st *SeqTimeline) Update(exercise *model.Exercise, activeIdx int, editLang 
 	}
 
 	st.activeIdx = activeIdx
+	st.numSeqs = len(exercise.Sequences)
+
+	// Show delete button only when there are 2+ sequences.
+	if st.numSeqs > 1 {
+		st.deleteBtn.Show()
+	} else {
+		st.deleteBtn.Hide()
+	}
 
 	// Rebuild buttons if count changed.
 	if len(st.buttons) != len(exercise.Sequences) {
