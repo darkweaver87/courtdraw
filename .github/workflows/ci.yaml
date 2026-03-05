@@ -180,17 +180,8 @@ jobs:
           mkdir -p dist/courtdraw
           cp courtdraw.exe dist/courtdraw/
           cp -r library dist/courtdraw/ 2>/dev/null || true
-          # Bundle Mesa software renderer as fallback for machines without GPU drivers.
           cp x64/opengl32.dll x64/libgallium_wgl.dll x64/libEGL.dll dist/courtdraw/
-          # Create launcher script with Mesa fallback.
-          cat > dist/courtdraw/courtdraw-mesa.bat << 'BATCH'
-          @echo off
-          REM Use Mesa software OpenGL renderer (fallback for machines without GPU drivers).
-          set GALLIUM_DRIVER=llvmpipe
-          set MESA_GL_VERSION_OVERRIDE=2.1
-          set LIBGL_ALWAYS_SOFTWARE=1
-          "%~dp0courtdraw.exe" %*
-          BATCH
+          printf '@echo off\r\nset GALLIUM_DRIVER=llvmpipe\r\nset MESA_GL_VERSION_OVERRIDE=2.1\r\nset LIBGL_ALWAYS_SOFTWARE=1\r\n"%%~dp0courtdraw.exe" %%*\r\n' > dist/courtdraw/courtdraw-mesa.bat
           cd dist
           7z a "courtdraw-${{ matrix.os }}-${{ matrix.arch }}.zip" courtdraw/
         shell: bash
