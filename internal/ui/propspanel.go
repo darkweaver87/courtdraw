@@ -39,8 +39,11 @@ type PropertiesPanel struct {
 	// Player editors.
 	playerLabelEntry *widget.Entry
 	playerRoleSelect *widget.Select
-	ballCarrierBtn   *widget.Button
+	ballCheck        *widget.Check
+	queueCheck       *widget.Check
 	calloutSelect    *widget.Select
+	rotationSlider   *widget.Slider
+	rotationLabel    *canvas.Text
 
 	// Sync tracking.
 	syncedPlayerIdx int
@@ -184,10 +187,18 @@ func NewPropertiesPanel() *PropertiesPanel {
 		pp.onPlayerRoleChanged(s, roles, roleKeys)
 	})
 
-	pp.ballCarrierBtn = widget.NewButton(i18n.T("props.no_ball"), func() {
-		pp.toggleBallCarrier()
+	pp.ballCheck = widget.NewCheck(i18n.T("props.ball"), func(checked bool) {
+		pp.toggleBallCarrier(checked)
 	})
-	pp.ballCarrierBtn.Importance = widget.LowImportance
+	pp.queueCheck = widget.NewCheck(i18n.T("tool.player.queue"), func(checked bool) {
+		pp.toggleQueue(checked)
+	})
+
+	pp.rotationSlider = widget.NewSlider(0, 360)
+	pp.rotationSlider.Step = 5
+	pp.rotationSlider.OnChanged = func(v float64) { pp.onRotationChanged(v) }
+	pp.rotationLabel = canvas.NewText("0°", color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	pp.rotationLabel.TextSize = 12
 
 	calloutLabels := []string{i18n.T("callout.none")}
 	for _, c := range model.AllCallouts() {
@@ -281,17 +292,15 @@ func (pp *PropertiesPanel) addPlayerProps(seq *model.Sequence, idx int) {
 
 	pp.content.Add(pp.makeField(i18n.T("props.label"), pp.playerLabelEntry))
 	pp.content.Add(pp.makeField(i18n.T("props.role"), pp.playerRoleSelect))
-
-	// Sync role display.
 	pp.playerRoleSelect.SetSelected(roleDisplayLabel(p.Role))
 
-	// Ball carrier.
-	if seq.BallCarrier == p.ID {
-		pp.ballCarrierBtn.SetText(i18n.T("props.has_ball"))
-	} else {
-		pp.ballCarrierBtn.SetText(i18n.T("props.no_ball"))
-	}
-	pp.content.Add(pp.makeField(i18n.T("props.ball"), pp.ballCarrierBtn))
+	// Ball carrier checkbox.
+	pp.ballCheck.SetChecked(seq.BallCarrier == p.ID)
+	pp.content.Add(container.NewPadded(pp.ballCheck))
+
+	// Queue checkbox.
+	pp.queueCheck.SetChecked(p.Type == "queue")
+	pp.content.Add(container.NewPadded(pp.queueCheck))
 
 	// Callout.
 	if p.Callout != "" {
@@ -301,14 +310,27 @@ func (pp *PropertiesPanel) addPlayerProps(seq *model.Sequence, idx int) {
 	}
 	pp.content.Add(pp.makeField(i18n.T("props.callout"), pp.calloutSelect))
 
-	// Position (read-only).
-	pp.content.Add(pp.makeReadonly(i18n.T("props.position"), fmt.Sprintf("(%.2f, %.2f)", p.Position.X(), p.Position.Y())))
-	pp.content.Add(pp.makeReadonly(i18n.T("props.rotation"), fmt.Sprintf("%.0f°", p.Rotation)))
+	// Position with ± buttons.
+	pp.content.Add(pp.makePositionEditor(p))
+
+	// Rotation slider.
+	pp.rotationSlider.Value = p.Rotation
+	pp.rotationLabel.Text = fmt.Sprintf("%.0f°", p.Rotation)
+	pp.content.Add(pp.makeField(i18n.T("props.rotation"),
+		container.NewBorder(nil, nil, nil, pp.rotationLabel, pp.rotationSlider)))
 }
 
 func (pp *PropertiesPanel) addAccessoryProps(a *model.Accessory) {
 	pp.content.Add(pp.makeReadonly(i18n.T("props.type"), string(a.Type)))
-	pp.content.Add(pp.makeReadonly(i18n.T("props.rotation"), fmt.Sprintf("%.0f°", a.Rotation)))
+
+	// Position with ± buttons.
+	pp.content.Add(pp.makeAccessoryPositionEditor(a))
+
+	// Rotation slider.
+	pp.rotationSlider.Value = a.Rotation
+	pp.rotationLabel.Text = fmt.Sprintf("%.0f°", a.Rotation)
+	pp.content.Add(pp.makeField(i18n.T("props.rotation"),
+		container.NewBorder(nil, nil, nil, pp.rotationLabel, pp.rotationSlider)))
 }
 
 func (pp *PropertiesPanel) addActionProps(a *model.Action) {
@@ -488,7 +510,7 @@ func (pp *PropertiesPanel) onPlayerRoleChanged(s string, labels []string, keys [
 	}
 }
 
-func (pp *PropertiesPanel) toggleBallCarrier() {
+func (pp *PropertiesPanel) toggleBallCarrier(checked bool) {
 	sel := pp.state.SelectedElement
 	if sel == nil || sel.Kind != editor.SelectPlayer {
 		return
@@ -501,12 +523,104 @@ func (pp *PropertiesPanel) toggleBallCarrier() {
 		return
 	}
 	p := &seq.Players[sel.Index]
-	if seq.BallCarrier == p.ID {
-		seq.BallCarrier = ""
-		pp.ballCarrierBtn.SetText(i18n.T("props.no_ball"))
-	} else {
+	if checked {
 		seq.BallCarrier = p.ID
-		pp.ballCarrierBtn.SetText(i18n.T("props.has_ball"))
+	} else {
+		seq.BallCarrier = ""
+	}
+	pp.markModified()
+}
+
+func (pp *PropertiesPanel) toggleQueue(checked bool) {
+	sel := pp.state.SelectedElement
+	if sel == nil || sel.Kind != editor.SelectPlayer {
+		return
+	}
+	if pp.exercise == nil || pp.seqIndex >= len(pp.exercise.Sequences) {
+		return
+	}
+	seq := &pp.exercise.Sequences[pp.seqIndex]
+	if sel.Index >= len(seq.Players) {
+		return
+	}
+	p := &seq.Players[sel.Index]
+	if checked {
+		p.Type = "queue"
+		if p.Count < 2 {
+			p.Count = 3
+		}
+	} else {
+		p.Type = ""
+		p.Count = 0
+	}
+	pp.markModified()
+}
+
+func (pp *PropertiesPanel) onRotationChanged(v float64) {
+	sel := pp.state.SelectedElement
+	if sel == nil || pp.exercise == nil || pp.seqIndex >= len(pp.exercise.Sequences) {
+		return
+	}
+	seq := &pp.exercise.Sequences[pp.seqIndex]
+	switch sel.Kind {
+	case editor.SelectPlayer:
+		if sel.Index < len(seq.Players) {
+			seq.Players[sel.Index].Rotation = v
+		}
+	case editor.SelectAccessory:
+		if sel.Index < len(seq.Accessories) {
+			seq.Accessories[sel.Index].Rotation = v
+		}
+	default:
+		return
+	}
+	pp.rotationLabel.Text = fmt.Sprintf("%.0f°", v)
+	pp.rotationLabel.Refresh()
+	pp.markModified()
+}
+
+func (pp *PropertiesPanel) adjustPlayerPos(axis int, delta float64) {
+	sel := pp.state.SelectedElement
+	if sel == nil || sel.Kind != editor.SelectPlayer {
+		return
+	}
+	if pp.exercise == nil || pp.seqIndex >= len(pp.exercise.Sequences) {
+		return
+	}
+	seq := &pp.exercise.Sequences[pp.seqIndex]
+	if sel.Index >= len(seq.Players) {
+		return
+	}
+	p := &seq.Players[sel.Index]
+	p.Position[axis] += delta
+	if p.Position[axis] < 0 {
+		p.Position[axis] = 0
+	}
+	if p.Position[axis] > 1 {
+		p.Position[axis] = 1
+	}
+	pp.markModified()
+}
+
+func (pp *PropertiesPanel) adjustAccessoryPos(axis int, delta float64) {
+	sel := pp.state.SelectedElement
+	if sel == nil || sel.Kind != editor.SelectAccessory {
+		return
+	}
+	if pp.exercise == nil || pp.seqIndex >= len(pp.exercise.Sequences) {
+		return
+	}
+	seq := &pp.exercise.Sequences[pp.seqIndex]
+	if sel.Index >= len(seq.Accessories) {
+		return
+	}
+	a := &seq.Accessories[sel.Index]
+	a.Position[axis] += delta
+	if a.Position[axis] < 0 {
+		a.Position[axis] = 0
+	}
+	if a.Position[axis] > 1 {
+		a.Position[axis] = 1
 	}
 	pp.markModified()
 }
@@ -562,6 +676,90 @@ func (pp *PropertiesPanel) markModified() {
 	if pp.OnModified != nil {
 		pp.OnModified()
 	}
+}
+
+// --- Position editor helpers ---
+
+const posStep = 0.01
+
+func (pp *PropertiesPanel) makePositionEditor(p *model.Player) fyne.CanvasObject {
+	xLabel := canvas.NewText(fmt.Sprintf("%.2f", p.Position.X()), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	xLabel.TextSize = 12
+	xLabel.Alignment = fyne.TextAlignCenter
+	yLabel := canvas.NewText(fmt.Sprintf("%.2f", p.Position.Y()), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	yLabel.TextSize = 12
+	yLabel.Alignment = fyne.TextAlignCenter
+
+	xMinus := widget.NewButton("-", func() {
+		pp.adjustPlayerPos(0, -posStep)
+		xLabel.Text = fmt.Sprintf("%.2f", pp.exercise.Sequences[pp.seqIndex].Players[pp.state.SelectedElement.Index].Position.X())
+		xLabel.Refresh()
+	})
+	xMinus.Importance = widget.LowImportance
+	xPlus := widget.NewButton("+", func() {
+		pp.adjustPlayerPos(0, posStep)
+		xLabel.Text = fmt.Sprintf("%.2f", pp.exercise.Sequences[pp.seqIndex].Players[pp.state.SelectedElement.Index].Position.X())
+		xLabel.Refresh()
+	})
+	xPlus.Importance = widget.LowImportance
+
+	yMinus := widget.NewButton("-", func() {
+		pp.adjustPlayerPos(1, -posStep)
+		yLabel.Text = fmt.Sprintf("%.2f", pp.exercise.Sequences[pp.seqIndex].Players[pp.state.SelectedElement.Index].Position.Y())
+		yLabel.Refresh()
+	})
+	yMinus.Importance = widget.LowImportance
+	yPlus := widget.NewButton("+", func() {
+		pp.adjustPlayerPos(1, posStep)
+		yLabel.Text = fmt.Sprintf("%.2f", pp.exercise.Sequences[pp.seqIndex].Players[pp.state.SelectedElement.Index].Position.Y())
+		yLabel.Refresh()
+	})
+	yPlus.Importance = widget.LowImportance
+
+	xRow := container.NewHBox(xMinus, xLabel, xPlus)
+	yRow := container.NewHBox(yMinus, yLabel, yPlus)
+	posRow := container.NewGridWithColumns(2, xRow, yRow)
+	return pp.makeField(i18n.T("props.position"), posRow)
+}
+
+func (pp *PropertiesPanel) makeAccessoryPositionEditor(a *model.Accessory) fyne.CanvasObject {
+	xLabel := canvas.NewText(fmt.Sprintf("%.2f", a.Position.X()), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	xLabel.TextSize = 12
+	xLabel.Alignment = fyne.TextAlignCenter
+	yLabel := canvas.NewText(fmt.Sprintf("%.2f", a.Position.Y()), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	yLabel.TextSize = 12
+	yLabel.Alignment = fyne.TextAlignCenter
+
+	xMinus := widget.NewButton("-", func() {
+		pp.adjustAccessoryPos(0, -posStep)
+		xLabel.Text = fmt.Sprintf("%.2f", pp.exercise.Sequences[pp.seqIndex].Accessories[pp.state.SelectedElement.Index].Position.X())
+		xLabel.Refresh()
+	})
+	xMinus.Importance = widget.LowImportance
+	xPlus := widget.NewButton("+", func() {
+		pp.adjustAccessoryPos(0, posStep)
+		xLabel.Text = fmt.Sprintf("%.2f", pp.exercise.Sequences[pp.seqIndex].Accessories[pp.state.SelectedElement.Index].Position.X())
+		xLabel.Refresh()
+	})
+	xPlus.Importance = widget.LowImportance
+
+	yMinus := widget.NewButton("-", func() {
+		pp.adjustAccessoryPos(1, -posStep)
+		yLabel.Text = fmt.Sprintf("%.2f", pp.exercise.Sequences[pp.seqIndex].Accessories[pp.state.SelectedElement.Index].Position.Y())
+		yLabel.Refresh()
+	})
+	yMinus.Importance = widget.LowImportance
+	yPlus := widget.NewButton("+", func() {
+		pp.adjustAccessoryPos(1, posStep)
+		yLabel.Text = fmt.Sprintf("%.2f", pp.exercise.Sequences[pp.seqIndex].Accessories[pp.state.SelectedElement.Index].Position.Y())
+		yLabel.Refresh()
+	})
+	yPlus.Importance = widget.LowImportance
+
+	xRow := container.NewHBox(xMinus, xLabel, xPlus)
+	yRow := container.NewHBox(yMinus, yLabel, yPlus)
+	posRow := container.NewGridWithColumns(2, xRow, yRow)
+	return pp.makeField(i18n.T("props.position"), posRow)
 }
 
 // --- Layout helpers ---
