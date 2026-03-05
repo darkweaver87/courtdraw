@@ -62,4 +62,6 @@ var (
 	AccCone   = LoadPngResource("cone")
 	AccLadder = LoadPngResource("ladder")
 	AccChair  = LoadPngResource("chair")
+
+	ToolSelect = LoadPngResource("select")
 )
