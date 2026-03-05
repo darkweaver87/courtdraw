@@ -1,0 +1,180 @@
+name: Give and Go at 45
+description: 'Give and go from the top: pass to the wing at 45, receive back on the cut, finish with a layup'
+court_type: half_court
+court_standard: fiba
+duration: 12m
+intensity: 2
+category: offense
+age_group: u13
+tags:
+    - give-and-go
+    - passing
+    - cutting
+    - layup
+sequences:
+    - label: Setup
+      instructions:
+        - Column A at the half court line with the ball
+        - B at 45 degrees on the wing
+        - A drives towards the basket with the ball
+      players:
+        - id: a1
+          label: A
+          role: attacker
+          position:
+            - 0.5
+            - 0.95
+          rotation: 180
+          type: queue
+          count: 4
+        - id: b1
+          label: B
+          role: attacker
+          position:
+            - 0.09616076259682561
+            - 0.434629048640644
+          rotation: 120
+      ball_carrier: a1
+    - label: A passes to B
+      instructions:
+        - A drives towards the basket
+        - A passes to B at 45 degrees
+        - Sharp pass — no lobs
+      players:
+        - id: a1
+          label: A
+          role: attacker
+          position:
+            - 0.4
+            - 0.55
+          rotation: 180
+        - id: a_col
+          label: A
+          role: attacker
+          position:
+            - 0.5
+            - 0.95
+          rotation: 180
+          type: queue
+          count: 3
+        - id: b1
+          label: B
+          role: attacker
+          position:
+            - 0.10069701209054777
+            - 0.43219947119674595
+          rotation: 120
+      actions:
+        - type: pass
+          from: a1
+          to: b1
+      ball_carrier: b1
+    - label: B gives back, A cuts to the basket
+      instructions:
+        - A cuts HARD to the basket after the pass
+        - B gives the ball back to A on the cut
+        - 'Timing: the pass arrives as A reaches the paint'
+      players:
+        - id: a1
+          label: A
+          role: attacker
+          position:
+            - 0.384215443372823
+            - 0.23175545712143075
+          rotation: 165
+        - id: a_col
+          label: A
+          role: attacker
+          position:
+            - 0.5
+            - 0.95
+          rotation: 180
+          type: queue
+          count: 3
+        - id: b1
+          label: B
+          role: attacker
+          position:
+            - 0.09842888734368668
+            - 0.4282735075087333
+          rotation: 135
+      actions:
+        - type: cut
+          from: a1
+          to:
+            - 0.4
+            - 0.2
+        - type: pass
+          from: b1
+          to: a1
+      ball_carrier: a1
+    - label: Layup
+      instructions:
+        - A finishes with a layup — strong finish, no soft stuff
+        - A gets the rebound, passes back to B
+        - A goes to the back of the line
+        - Next in line goes immediately
+        - Alternate sides every few reps
+      players:
+        - id: a1
+          label: A
+          role: attacker
+          position:
+            - 0.42957828439841533
+            - 0.14428903758163725
+          rotation: 120
+        - id: a_col
+          label: A
+          role: attacker
+          position:
+            - 0.5
+            - 0.95
+          rotation: 180
+          type: queue
+          count: 3
+        - id: b1
+          label: B
+          role: attacker
+          position:
+            - 0.10317190585130617
+            - 0.4294883518520276
+          rotation: 120
+      actions:
+        - type: shot_layup
+          from: a1
+          to:
+            - 0.5
+            - 0.05
+      ball_carrier: a1
+i18n:
+    fr:
+        name: Passe et va a 45
+        description: 'Passe et va depuis le haut : passe a l''ailier a 45, recoit sur la coupe, finit en course'
+        tags:
+            - passe-et-va
+            - passes
+            - coupe
+            - layup
+        sequences:
+            - label: Mise en place
+              instructions:
+                - Colonne A a la ligne mediane avec le ballon
+                - B a 45 degres sur l'aile
+                - A part en direction du panier avec le ballon
+            - label: A passe a B
+              instructions:
+                - A avance vers le panier
+                - A passe a B a 45 degres
+                - Passe seche — pas de cloche
+            - label: B redonne, A coupe vers le panier
+              instructions:
+                - A coupe FORT vers le panier apres la passe
+                - B redonne le ballon a A sur la coupe
+                - 'Timing : la passe arrive quand A entre dans la raquette'
+            - label: Layup
+              instructions:
+                - A finit en course — finition forte, pas de mollesse
+                - A prend le rebond, repasse a B
+                - A retourne au bout de la file
+                - Le suivant enchaine immediatement
+                - Alterner les cotes toutes les quelques repetitions
