@@ -188,7 +188,20 @@ func InterpolateFrame(fromSeq, toSeq *model.Sequence, t float64) AnimatedFrame {
 	fromCarrier := fromSeq.BallCarrier
 	toCarrier := toSeq.BallCarrier
 
+	// Check for shot actions in the destination sequence — if the ball carrier
+	// shoots, the ball travels from the shooter to the shot target.
+	shotTarget, hasShot := findShotTarget(toSeq, fromCarrier)
+
 	switch {
+	case hasShot && fromCarrier != "":
+		// Ball travels from shooter to shot target position.
+		frame.BallCarrier = fromCarrier
+		frame.BallOpacity = 1.0
+		var fromPos model.Position
+		if fp, ok := fromMap[fromCarrier]; ok {
+			fromPos = fp.Position
+		}
+		frame.BallPos = InterpolatePosition(fromPos, shotTarget, t)
 	case fromCarrier != "" && toCarrier != "":
 		// Ball moves from one player to another (or stays on same).
 		frame.BallCarrier = toCarrier
@@ -218,6 +231,32 @@ func InterpolateFrame(fromSeq, toSeq *model.Sequence, t float64) AnimatedFrame {
 	}
 
 	return frame
+}
+
+// findShotTarget checks if the given player has a shot action in the sequence
+// and returns the shot's target position. Shot actions are: ShotLayup, ShotPushup, ShotJump.
+func findShotTarget(seq *model.Sequence, playerID string) (model.Position, bool) {
+	if playerID == "" {
+		return model.Position{}, false
+	}
+	for i := range seq.Actions {
+		a := &seq.Actions[i]
+		switch a.Type {
+		case model.ActionShotLayup, model.ActionShotPushup, model.ActionShotJump:
+			if a.From.IsPlayer && a.From.PlayerID == playerID {
+				if a.To.IsPlayer {
+					// Target is a player — find their position.
+					for j := range seq.Players {
+						if seq.Players[j].ID == a.To.PlayerID {
+							return seq.Players[j].Position, true
+						}
+					}
+				}
+				return a.To.Position, true
+			}
+		}
+	}
+	return model.Position{}, false
 }
 
 // snapshotFrame creates a fully-visible frame from a single sequence.

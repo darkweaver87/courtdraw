@@ -32,8 +32,9 @@ func TestPlayback_SingleSequenceExercise(t *testing.T) {
 	p := NewPlayback(ex)
 	p.Play()
 
-	// Simulate time passing beyond pause duration.
-	p.lastTick = time.Now().Add(-2 * PauseDuration)
+	// Simulate elapsed time beyond pause duration so Update transitions.
+	p.elapsed = PauseDuration + time.Millisecond
+	p.lastTick = time.Now()
 	frame, _ := p.Update()
 
 	// With one sequence, playback should stop after the pause.
