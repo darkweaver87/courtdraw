@@ -72,6 +72,13 @@ func NewAnimControls() *AnimControls {
 			ac.Refresh()
 		}
 	})
+	// Tooltips above since these controls are at the bottom of the UI.
+	ac.prevBtn.TooltipAbove = true
+	ac.playBtn.TooltipAbove = true
+	ac.pauseBtn.TooltipAbove = true
+	ac.stopBtn.TooltipAbove = true
+	ac.nextBtn.TooltipAbove = true
+
 	ac.speedBtn = widget.NewButton("1.0x", func() {
 		if ac.playback != nil {
 			ac.playback.CycleSpeed()

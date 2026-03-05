@@ -22,17 +22,18 @@ type TipButton struct {
 	text          string
 	hovered       bool
 	OverrideColor color.Color // if non-nil, used instead of importance-based color
+	TooltipAbove  bool        // show tooltip above the button instead of below
 }
 
 var (
 	tipIconSize float32 = 20
-	tipPadding  float32 = 6
+	tipPadding  float32 = 4
 )
 
 func init() {
 	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
 		tipIconSize = 32
-		tipPadding = 10
+		tipPadding = 6
 	}
 }
 
@@ -102,7 +103,11 @@ func (tb *TipButton) MouseIn(*desktop.MouseEvent) {
 	tb.Refresh()
 	if tb.tooltip != "" && tipLayer != nil {
 		pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(tb)
-		tipLayer.Show(tb.tooltip, fyne.NewPos(pos.X, pos.Y+tb.Size().Height+2))
+		if tb.TooltipAbove {
+			tipLayer.Show(tb.tooltip, fyne.NewPos(pos.X, pos.Y-24))
+		} else {
+			tipLayer.Show(tb.tooltip, fyne.NewPos(pos.X, pos.Y+tb.Size().Height+2))
+		}
 	}
 }
 
@@ -139,13 +144,18 @@ type tipBtnRenderer struct {
 func (r *tipBtnRenderer) Layout(size fyne.Size) {
 	r.bg.Resize(size)
 	r.bg.Move(fyne.NewPos(0, 0))
-	is := tipIconSize
 	p := tipPadding
 	if r.tb.text == "" {
+		// Icon fills the cell minus padding.
+		is := min(size.Width, size.Height) - p*2
+		if is < 1 {
+			is = 1
+		}
 		r.ico.Resize(fyne.NewSize(is, is))
 		r.ico.Move(fyne.NewPos((size.Width-is)/2, (size.Height-is)/2))
 		r.txt.Move(fyne.NewPos(-100, -100)) // offscreen
 	} else {
+		is := tipIconSize
 		r.ico.Resize(fyne.NewSize(is, is))
 		r.ico.Move(fyne.NewPos(p, (size.Height-is)/2))
 		r.txt.Move(fyne.NewPos(p+is+p/2, (size.Height-r.txt.MinSize().Height)/2))

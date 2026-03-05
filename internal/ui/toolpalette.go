@@ -7,7 +7,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/i18n"
@@ -49,7 +48,7 @@ func init() {
 	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
 		toolGridCell = fyne.NewSize(54, 54)
 	} else {
-		toolGridCell = fyne.NewSize(34, 34)
+		toolGridCell = fyne.NewSize(40, 40)
 	}
 }
 
@@ -63,7 +62,7 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 
 	// Select tool.
 	selectGrid := container.NewGridWrap(toolGridCell,
-		tp.makeTool("tool.select", theme.RadioButtonCheckedIcon(), func() {
+		tp.makeTool("tool.select", icon.ToolSelect, func() {
 			state.SetTool(editor.ToolSelect)
 			tp.updateActive()
 		}),
