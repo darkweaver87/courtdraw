@@ -94,14 +94,16 @@ type SessionTab struct {
 	filterBtns [3]*widget.Button
 
 	// Toolbar buttons (stored as fields for reuse across layouts).
-	newBtn     *TipButton
-	openBtn    *TipButton
-	recentBtn  *TipButton
-	saveBtn    *TipButton
-	genBtn     *TipButton
-	addBtn     *TipButton
-	openExBtn  *TipButton
-	deleteExBtn *TipButton
+	newBtn        *TipButton
+	openBtn       *TipButton
+	recentBtn     *TipButton
+	saveBtn       *TipButton
+	genBtn        *TipButton
+	refreshBtn    *TipButton
+	addBtn        *TipButton
+	openExBtn     *TipButton
+	deleteExBtn   *TipButton
+	contributeBtn *TipButton
 
 	// Session column.
 	session            *model.Session
@@ -131,6 +133,7 @@ type SessionTab struct {
 
 	OnAction         func(SessionTabEvent)
 	OnSessionChanged func() // called when exercises are added/removed/reordered
+	OnStatus         func(string, int)
 }
 
 // NewSessionTab creates a new session tab.
@@ -278,6 +281,7 @@ func (st *SessionTab) buildLayout() {
 	st.recentBtn = NewTipButton(icon.Refresh(), i18n.T("session.recent"), func() { st.emitAction(SessionTabActionRecent, "") })
 	st.saveBtn = NewTipButton(icon.Save(), i18n.T("session.save"), func() { st.emitAction(SessionTabActionSave, "") })
 	st.genBtn = NewTipButton(fynetheme.DocumentPrintIcon(), i18n.T("session.generate_pdf"), func() { st.emitAction(SessionTabActionGenerate, "") })
+	st.refreshBtn = NewTipButton(icon.Refresh(), i18n.T("mgr.refresh"), func() { st.emitAction(SessionTabActionRefresh, "") })
 
 	// Add to session button.
 	st.addBtn = NewTipButton(fynetheme.NavigateNextIcon(), i18n.T("session.add_to_session"), func() {
@@ -303,6 +307,19 @@ func (st *SessionTab) buildLayout() {
 	})
 	st.deleteExBtn.SetImportance(widget.DangerImportance)
 
+	st.contributeBtn = NewTipButton(icon.Upload(), i18n.T("mgr.contribute"), func() {
+		filtered := st.filteredExercises()
+		if st.selectedIdx >= 0 && st.selectedIdx < len(filtered) {
+			st.emitAction(SessionTabActionContribute, filtered[st.selectedIdx].Name)
+		}
+	})
+
+	// Tooltips above for buttons at bottom of preview column.
+	st.addBtn.TooltipAbove = true
+	st.openExBtn.TooltipAbove = true
+	st.deleteExBtn.TooltipAbove = true
+	st.contributeBtn.TooltipAbove = true
+
 	// Library column.
 	st.filterBtns[0] = widget.NewButton(i18n.T("filter.all"), func() { st.filterIndex = 0; st.refreshLibraryList() })
 	st.filterBtns[1] = widget.NewButton(i18n.T("filter.local"), func() { st.filterIndex = 1; st.refreshLibraryList() })
@@ -318,16 +335,17 @@ func (st *SessionTab) buildLayout() {
 func (st *SessionTab) buildDesktopLayout() fyne.CanvasObject {
 	statusRow := container.NewGridWithColumns(3, st.filterBtns[0], st.filterBtns[1], st.filterBtns[2])
 	filterGrid := container.NewGridWithColumns(2, st.categorySelect, st.courtTypeSelect)
+	searchRow := container.NewBorder(nil, nil, nil, st.refreshBtn, st.searchEntry)
 
 	libraryCol := container.NewBorder(
-		container.NewVBox(st.searchEntry, statusRow, filterGrid, st.tagScroll),
+		container.NewVBox(searchRow, statusRow, filterGrid, st.tagScroll),
 		nil, nil, nil,
 		st.libraryList,
 	)
 
 	previewCol := container.NewBorder(
 		st.previewLabel,
-		container.NewVBox(st.addBtn, container.NewGridWithColumns(2, st.openExBtn, st.deleteExBtn)),
+		container.NewVBox(st.addBtn, container.NewGridWithColumns(3, st.openExBtn, st.contributeBtn, st.deleteExBtn)),
 		nil, nil,
 		st.previewCourt,
 	)
@@ -355,8 +373,9 @@ func (st *SessionTab) buildMobileLayout() fyne.CanvasObject {
 	// Library tab.
 	statusRow := container.NewGridWithColumns(3, st.filterBtns[0], st.filterBtns[1], st.filterBtns[2])
 	filterGrid := container.NewGridWithColumns(2, st.categorySelect, st.courtTypeSelect)
+	searchRow := container.NewBorder(nil, nil, nil, st.refreshBtn, st.searchEntry)
 	libraryTab := container.NewBorder(
-		container.NewVBox(st.searchEntry, statusRow, filterGrid, st.tagScroll),
+		container.NewVBox(searchRow, statusRow, filterGrid, st.tagScroll),
 		nil, nil, nil,
 		st.libraryList,
 	)
@@ -364,7 +383,7 @@ func (st *SessionTab) buildMobileLayout() fyne.CanvasObject {
 	// Preview tab.
 	previewTab := container.NewBorder(
 		st.previewLabel,
-		container.NewVBox(st.addBtn, container.NewGridWithColumns(2, st.openExBtn, st.deleteExBtn)),
+		container.NewVBox(st.addBtn, container.NewGridWithColumns(3, st.openExBtn, st.contributeBtn, st.deleteExBtn)),
 		nil, nil,
 		st.previewCourt,
 	)
@@ -584,6 +603,9 @@ func (st *SessionTab) addExerciseByRef(name string) {
 	st.modified = true
 	st.refreshSessionList()
 	st.notifySessionChanged()
+	if st.OnStatus != nil {
+		st.OnStatus(fmt.Sprintf(i18n.T("status.exercise_added"), name), 0)
+	}
 }
 
 func (st *SessionTab) refreshSessionList() {
@@ -638,10 +660,14 @@ func (st *SessionTab) removeExercise(idx int) {
 	if st.session == nil || idx >= len(st.session.Exercises) {
 		return
 	}
+	name := st.session.Exercises[idx].Exercise
 	st.session.Exercises = append(st.session.Exercises[:idx], st.session.Exercises[idx+1:]...)
 	st.modified = true
 	st.refreshSessionList()
 	st.notifySessionChanged()
+	if st.OnStatus != nil {
+		st.OnStatus(fmt.Sprintf(i18n.T("status.exercise_removed"), name), 0)
+	}
 }
 
 func (st *SessionTab) notifySessionChanged() {
