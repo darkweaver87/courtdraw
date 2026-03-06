@@ -180,6 +180,7 @@ type Position struct {
   - `gopkg.in/yaml.v3` — YAML parsing
   - `go-pdf/fpdf` — PDF generation
   - `github.com/google/uuid` — UUID generation
+  - `github.com/google/go-github/v74` — GitHub API for exercise contributions
 - Minimize dependency count. Prefer stdlib when possible.
 - Pin dependency versions in `go.sum`
 

@@ -111,3 +111,15 @@ Goal: usable on mobile (Android) with proper touch interactions.
 49. i18n keys for mobile tab labels (EN/FR)
 
 Deliverable: fully usable mobile experience with zoom/pan for precise element placement.
+
+## Phase 10 — Court Polish & Preferences
+
+Goal: professional court rendering and in-app settings.
+
+50. 2m dark-blue apron (run-off area) around the court (FIBA standard)
+51. Element scaling by court type — `ElementScale` on Viewport, capped so players look proportional on half court
+52. Body-aware clamping — `ClampPosition` accounts for player body radius, not just center point
+53. Preferences dialog — GitHub token (password entry), language selector, exercise directory with folder picker
+54. Contribute via `go-github` — replace `gh` CLI with `go-github/v74` library for exercise PRs
+
+Deliverable: polished court rendering with apron, proportional elements, and in-app preferences.

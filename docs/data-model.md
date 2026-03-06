@@ -110,7 +110,9 @@ sequences:
 | `intensity` | int 0–3 | no | 0=rest, 1=low, 2=medium, 3=max |
 | `category` | enum | no | `warmup`, `offense`, `defense`, `transition`, `scrimmage`, `cooldown` |
 | `tags` | []string | no | Free tags for filtering |
+| `age_group` | enum | no | Target age group (`u9`, `u11`, `u13`, `u15`, `u17`, `u19`, `senior`) |
 | `sequences` | []Sequence | yes | Ordered list of sequences (at least 1) |
+| `i18n` | map[string]ExerciseI18n | no | Translations keyed by language code (e.g. `fr`) |
 
 ## Sequence
 
@@ -123,6 +125,7 @@ A sequence is one chronological step of an exercise. It captures the state of th
 | `players` | []Player | no | All players on the court at this step |
 | `accessories` | []Accessory | no | Equipment on the court |
 | `actions` | []Action | no | Movements/actions happening in this step |
+| `ball_carrier` | string | no | Player ID of the current ball carrier |
 
 ## Player
 
@@ -132,6 +135,11 @@ A sequence is one chronological step of an exercise. It captures the state of th
 | `label` | string | no | Display label (e.g. "D", "A1", "1") |
 | `role` | enum | no | See player roles below |
 | `position` | [float, float] | yes | Relative position on court [x, y], range 0.0–1.0 |
+| `rotation` | float | no | Rotation in degrees (0 = facing basket) |
+| `callout` | enum | no | Predefined shout (`block`, `shoot`, `here`, `screen`, `switch`, `help`, `ball`, `go`) |
+| `type` | string | no | `"queue"` for queued players (omit for individual) |
+| `count` | int | no | Number of players in queue (only when type=queue) |
+| `direction` | string | no | Queue extension direction (only when type=queue) |
 
 ### Player Roles
 
@@ -280,6 +288,7 @@ exercises:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `title` | string | yes | Session title |
+| `date` | string | no | Session date (e.g. `"2026-03-03"`) |
 | `subtitle` | string | no | Themes / subtitle |
 | `age_group` | string | no | Target age group |
 | `coach_notes` | []string | no | Coach notes |
@@ -373,4 +382,4 @@ pdf_export_dir: /home/user/Documents
 | `pdf_export_dir` | string | Default directory for PDF exports |
 | `github_token` | string | GitHub PAT, base64-encoded in YAML, decoded at load |
 | `exercise_dir` | string | Exercises storage directory (defaults to `~/.courtdraw/exercises/`) |
-| `recent_files` | []string | Recently opened exercise names (deprecated) |
+| `recent_files` | []string | Recently opened exercise names (deprecated — migrated to index `last_opened`) |

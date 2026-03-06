@@ -30,10 +30,13 @@ Source: NBA Official Rule Book — court diagram.
 
 ### Court Rendering
 
-- All markings drawn with white lines on green background
+- All markings drawn with white lines on wood-tone background
+- 2m dark-blue apron (run-off area) drawn around the court on all sides (FIBA standard)
 - Orientation: vertical (baskets at top and bottom)
 - Half-court: only one basket end
 - Elements shared between standards: sidelines, baselines, midcourt line (full), center circle (full), free-throw line, free-throw circle, paint/lane, three-point arc, no-charge zone, basket (backboard + rim)
+- Element sizing (players, accessories) scales proportionally with court type — smaller on full court, larger on half court — via `ElementScale` on the viewport
+- Players are clamped to stay entirely within court boundaries (body radius accounted for, not just center point)
 
 ## Player Roles
 

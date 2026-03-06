@@ -6,7 +6,7 @@
 |---|---|---|
 | Language | **Go** | Performant, cross-compile, no runtime |
 | UI Framework | **Fyne v2** (fyne.io/fyne/v2) | Retained-mode Go UI, supports Android/Linux/Windows/macOS |
-| Court Rendering | **image.RGBA** + `golang.org/x/image/vector` | Framework-agnostic 2D rasterization, anti-aliased |
+| Court Rendering | **image.RGBA** + `golang.org/x/image/vector` | Framework-agnostic 2D rasterization, anti-aliased, 2m apron |
 | Court Widget | **canvas.Raster** (Fyne) | Bitmap rendering bridge between `image.RGBA` and Fyne |
 | Animation | goroutine + `time.Ticker` (30fps) | Interpolation between sequence keyframes |
 | PDF Generation | **go-pdf/fpdf** v0.9.0 | PDF generation, Helvetica font |
@@ -35,7 +35,7 @@ All user data lives in `~/.courtdraw/`:
 │   ├── index.yaml      # Session metadata index (auto-generated)
 │   ├── high-intensity-u13.yaml
 │   └── shooting-fundamentals.yaml
-└── settings.yaml       # App settings (language, PDF export dir)
+└── settings.yaml       # App settings (language, token, exercise dir, PDF export dir) — mode 0600
 ```
 
 Each directory contains an `index.yaml` that caches metadata (name, category, tags, timestamps) for fast listing without scanning individual files. The index is rebuilt automatically if missing or corrupt.
@@ -100,7 +100,7 @@ courtdraw/
 │   │   ├── draw_arrows.go           # Action arrow rendering (solid, dashed, zigzag)
 │   │   ├── fiba.go                  # FIBA court markings
 │   │   ├── nba.go                   # NBA court markings
-│   │   ├── geometry.go              # Coordinate mapping (relative ↔ pixel)
+│   │   ├── geometry.go              # Coordinate mapping (relative ↔ pixel), apron, element scaling
 │   │   └── draw_test.go             # Rendering tests (no UI framework)
 │   ├── anim/                        # Animation engine
 │   │   ├── interpolate.go           # Position/rotation interpolation

@@ -89,7 +89,10 @@ Grouped into sections:
 
 - Displays the court for the **current sequence**
 - Court type set in exercise metadata (FIBA or NBA, half or full)
+- 2m dark-blue apron (run-off area) rendered around the court
 - All players, accessories, and actions for the current sequence are rendered
+- Element sizes scale proportionally with court type (smaller on full court, larger on half court)
+- Players are clamped within court boundaries (body radius accounted for)
 - Supports zoom (pinch/scroll wheel) and pan (two-finger/middle-click)
 
 ### Top Bar: Sequence Timeline
@@ -183,7 +186,7 @@ Three-column layout merging the exercise library, preview, and session compositi
 - **[Save]**: write to `~/.courtdraw/sessions/<title>.yaml`
 - **[Refresh]**: reload exercise library
 - **[PDF]**: generate session sheet PDF (right-aligned)
-- **[Preferences]**: gear icon, right-aligned — opens preferences dialog (GitHub token, language, exercise dirs)
+- **[Preferences]**: gear icon, right-aligned — opens preferences dialog (GitHub token, language, exercise directory)
 - Save icon highlights when session is modified
 
 ### Left Column: Library (~30%)
