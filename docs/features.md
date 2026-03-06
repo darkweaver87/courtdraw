@@ -133,9 +133,19 @@ Icons are PNG or SVG files in `assets/icons/`. They can be replaced for custom s
 - The user can then modify their local copy
 - Community exercises can also be **opened directly** without importing (read-only from library)
 
-### Export
+### Export / Contribute
 
-- Any exercise from `~/.courtdraw/exercises/` can be contributed back to the repo via a standard git workflow (copy YAML to `library/`, open PR)
+- Exercises can be contributed to the community library directly from the app using the **Contribute** button
+- Uses the GitHub API (`go-github`) to fork the repo, push the exercise YAML, and create a pull request
+- Requires a GitHub Personal Access Token configured in **Preferences** (or via `GITHUB_TOKEN` env)
+- If no token is configured, the status bar shows a message directing the user to Preferences
+
+### Preferences
+
+- Accessible via the gear icon (right side of the toolbar)
+- **GitHub Token**: stored base64-encoded in `settings.yaml` (mode 0600)
+- **Language**: switch between EN/FR (applies immediately)
+- **Exercise Directories**: additional directories to scan for exercises (one per line)
 
 ## Localization
 

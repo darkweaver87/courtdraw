@@ -135,7 +135,7 @@ cmd/courtdraw  →  internal/ui  →  internal/model
 - `model` has **zero** external dependencies — pure data structures and enums
 - `store` depends on `model` and a YAML library
 - `court`, `anim`, `pdf` depend on `model` only
-- `ui` orchestrates everything
+- `ui` orchestrates everything and uses `go-github` for contribution PRs
 
 ## CI/CD
 

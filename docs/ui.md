@@ -183,6 +183,7 @@ Three-column layout merging the exercise library, preview, and session compositi
 - **[Save]**: write to `~/.courtdraw/sessions/<title>.yaml`
 - **[Refresh]**: reload exercise library
 - **[PDF]**: generate session sheet PDF (right-aligned)
+- **[Preferences]**: gear icon, right-aligned — opens preferences dialog (GitHub token, language, exercise dirs)
 - Save icon highlights when session is modified
 
 ### Left Column: Library (~30%)

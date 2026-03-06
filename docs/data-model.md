@@ -355,3 +355,23 @@ All positions use **relative coordinates**:
 - `[0.5, 0.5]` = center of the court
 
 Conversion to pixels/mm happens only at render time (in `court`, `pdf`, and `ui` packages).
+
+## Settings
+
+Stored in `~/.courtdraw/settings.yaml` with file permissions `0600`.
+
+```yaml
+language: en
+github_token: "base64-encoded-token"
+exercise_dirs:
+  - /path/to/extra/exercises
+pdf_export_dir: /home/user/Documents
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `language` | string | UI language (`en` or `fr`) |
+| `pdf_export_dir` | string | Default directory for PDF exports |
+| `github_token` | string | GitHub PAT, base64-encoded in YAML, decoded at load |
+| `exercise_dirs` | []string | Additional directories to scan for exercises |
+| `recent_files` | []string | Recently opened exercise names (deprecated) |
