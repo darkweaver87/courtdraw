@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +14,8 @@ import (
 type Settings struct {
 	Language     string   `yaml:"language"`
 	PdfExportDir string   `yaml:"pdf_export_dir,omitempty"`
+	GithubToken  string   `yaml:"github_token,omitempty"`
+	ExerciseDirs []string `yaml:"exercise_dirs,omitempty"`
 	RecentFiles  []string `yaml:"recent_files,omitempty"`
 }
 
@@ -34,6 +37,14 @@ func (s *YAMLStore) LoadSettings() (*Settings, error) {
 	if err := yaml.Unmarshal(data, &settings); err != nil {
 		return nil, fmt.Errorf("parse settings: %w", err)
 	}
+
+	// Decode base64-encoded token.
+	if settings.GithubToken != "" {
+		if decoded, err := base64.StdEncoding.DecodeString(settings.GithubToken); err == nil {
+			settings.GithubToken = string(decoded)
+		}
+	}
+
 	return &settings, nil
 }
 
@@ -42,9 +53,15 @@ func (s *YAMLStore) SaveSettings(settings *Settings) error {
 	baseDir := filepath.Dir(s.exercisesDir)
 	path := filepath.Join(baseDir, "settings.yaml")
 
-	data, err := yaml.Marshal(settings)
+	// Encode token as base64 before marshalling.
+	toSave := *settings
+	if toSave.GithubToken != "" {
+		toSave.GithubToken = base64.StdEncoding.EncodeToString([]byte(toSave.GithubToken))
+	}
+
+	data, err := yaml.Marshal(&toSave)
 	if err != nil {
 		return fmt.Errorf("marshal settings: %w", err)
 	}
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }
