@@ -33,9 +33,10 @@ import (
 
 // App is the main application state.
 type App struct {
-	window  fyne.Window
-	store   store.Store
-	library *store.Library
+	window   fyne.Window
+	store    store.Store
+	settings *store.Settings
+	library  *store.Library
 
 	exercise    *model.Exercise
 	editorState editor.EditorState
@@ -64,10 +65,11 @@ type App struct {
 }
 
 // NewApp creates a new App instance.
-func NewApp(st store.Store, libraryDir string, w fyne.Window) *App {
+func NewApp(st store.Store, settings *store.Settings, libraryDir string, w fyne.Window) *App {
 	a := &App{
 		window:   w,
 		store:    st,
+		settings: settings,
 		editLang: string(i18n.CurrentLang()),
 	}
 	if libraryDir != "" {
@@ -351,6 +353,15 @@ func (a *App) syncAnimState() {
 	a.animControls.Refresh()
 }
 
+func (a *App) showPreferences() {
+	ys, _ := a.store.(*store.YAMLStore)
+	showPrefsDialog(a.window, a.settings, ys, func(langChanged bool) {
+		if langChanged {
+			a.switchLang(a.settings.Language)
+		}
+	})
+}
+
 // --- Exercise management ---
 
 // SetExercise sets the current exercise.
@@ -458,6 +469,8 @@ func (a *App) handleFileAction(action FileAction) {
 		a.showImportDialog()
 	case FileActionRecent:
 		a.showRecentFiles()
+	case FileActionPreferences:
+		a.showPreferences()
 	}
 }
 
@@ -937,11 +950,20 @@ func (a *App) contributeExercise(name string) {
 		return
 	}
 
+	token := a.settings.GithubToken
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+	}
+	if token == "" {
+		a.statusBar.SetStatus(i18n.T("contribute.no_token"), 1)
+		return
+	}
+
 	a.statusBar.SetStatus(i18n.T("contribute.creating_pr"), 0)
 
 	// Run in background to avoid blocking UI.
 	go func() {
-		prURL, err := createContributionPR(name, data)
+		prURL, err := createContributionPR(token, name, data)
 		fyne.Do(func() {
 			if err != nil {
 				log.Printf("contribute PR failed: %v", err)

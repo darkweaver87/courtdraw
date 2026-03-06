@@ -1,102 +1,105 @@
 package ui
 
 import (
-	"encoding/base64"
-	"encoding/json"
+	"context"
 	"fmt"
-	"os/exec"
+	"net/http"
 	"strings"
+
+	"github.com/google/go-github/v74/github"
 )
 
-const upstreamRepo = "darkweaver87/courtdraw"
+const (
+	upstreamOwner = "darkweaver87"
+	upstreamRepo  = "courtdraw"
+)
 
-// createContributionPR uses the gh CLI to fork the repo, push the exercise
-// file, and open a pull request. Returns the PR URL on success.
-func createContributionPR(name string, yamlData []byte) (string, error) {
-	// Verify gh CLI is available and authenticated.
-	if _, err := ghExec("auth", "status"); err != nil {
-		return "", fmt.Errorf("gh CLI not authenticated — run 'gh auth login' first")
+// tokenTransport is an http.RoundTripper that adds a Bearer token header.
+type tokenTransport struct {
+	token string
+	base  http.RoundTripper
+}
+
+func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req2 := req.Clone(req.Context())
+	req2.Header.Set("Authorization", "Bearer "+t.token)
+	return t.base.RoundTrip(req2)
+}
+
+// createContributionPR uses the GitHub API (go-github) to fork the repo,
+// push the exercise file, and open a pull request. Returns the PR URL.
+func createContributionPR(token, name string, yamlData []byte) (string, error) {
+	if token == "" {
+		return "", fmt.Errorf("no GitHub token configured")
 	}
 
-	// Get authenticated user login.
-	userJSON, err := ghExec("api", "user", "-q", ".login")
+	ctx := context.Background()
+	httpClient := &http.Client{
+		Transport: &tokenTransport{token: token, base: http.DefaultTransport},
+	}
+	client := github.NewClient(httpClient)
+
+	// 1. Get authenticated user login.
+	user, _, err := client.Users.Get(ctx, "")
 	if err != nil {
 		return "", fmt.Errorf("get user: %w", err)
 	}
-	user := strings.TrimSpace(userJSON)
-	if user == "" {
-		return "", fmt.Errorf("could not determine GitHub username")
-	}
+	login := user.GetLogin()
 
-	// Fork the repo (no-op if already forked).
-	ghExec("repo", "fork", upstreamRepo, "--clone=false")
-
-	// Get upstream main branch SHA.
-	sha, err := ghExec("api", fmt.Sprintf("repos/%s/git/ref/heads/main", upstreamRepo), "-q", ".object.sha")
+	// 2. Fork the repo (no-op if already forked).
+	_, _, err = client.Repositories.CreateFork(ctx, upstreamOwner, upstreamRepo, &github.RepositoryCreateForkOptions{})
 	if err != nil {
-		return "", fmt.Errorf("get main SHA: %w", err)
+		// 422 = fork already exists, which is fine.
+		if !strings.Contains(err.Error(), "try again later") {
+			// Ignore "job scheduled" responses — fork is being created.
+		}
 	}
-	sha = strings.TrimSpace(sha)
+
+	// 3. Get upstream main branch SHA.
+	ref, _, err := client.Git.GetRef(ctx, upstreamOwner, upstreamRepo, "refs/heads/main")
+	if err != nil {
+		return "", fmt.Errorf("get main ref: %w", err)
+	}
+	sha := ref.Object.GetSHA()
 
 	branch := "contribute-" + sanitizeBranch(name)
-	forkRepo := user + "/courtdraw"
 	filePath := "library/" + name + ".yaml"
 
-	// Create branch on the fork.
-	_, err = ghExec("api", fmt.Sprintf("repos/%s/git/refs", forkRepo),
-		"-X", "POST",
-		"-f", "ref=refs/heads/"+branch,
-		"-f", "sha="+sha,
-	)
+	// 4. Create branch on the fork.
+	_, _, err = client.Git.CreateRef(ctx, login, upstreamRepo, &github.Reference{
+		Ref:    github.Ptr("refs/heads/" + branch),
+		Object: &github.GitObject{SHA: github.Ptr(sha)},
+	})
 	if err != nil {
-		// Branch may already exist — try to continue.
+		// Branch may already exist — continue.
 		if !strings.Contains(err.Error(), "Reference already exists") {
 			return "", fmt.Errorf("create branch: %w", err)
 		}
 	}
 
-	// Upload the file via Contents API.
-	content := base64.StdEncoding.EncodeToString(yamlData)
-	_, err = ghExec("api", fmt.Sprintf("repos/%s/contents/%s", forkRepo, filePath),
-		"-X", "PUT",
-		"-f", fmt.Sprintf("message=Add exercise: %s", name),
-		"-f", "content="+content,
-		"-f", "branch="+branch,
-	)
+	// 5. Upload the exercise file.
+	commitMsg := fmt.Sprintf("Add exercise: %s", name)
+	_, _, err = client.Repositories.CreateFile(ctx, login, upstreamRepo, filePath, &github.RepositoryContentFileOptions{
+		Message: github.Ptr(commitMsg),
+		Content: yamlData,
+		Branch:  github.Ptr(branch),
+	})
 	if err != nil {
 		return "", fmt.Errorf("upload file: %w", err)
 	}
 
-	// Create pull request.
-	prJSON, err := ghExec("api", fmt.Sprintf("repos/%s/pulls", upstreamRepo),
-		"-X", "POST",
-		"-f", fmt.Sprintf("title=Add exercise: %s", name),
-		"-f", fmt.Sprintf("body=Community exercise contribution: **%s**", name),
-		"-f", fmt.Sprintf("head=%s:%s", user, branch),
-		"-f", "base=main",
-	)
+	// 6. Create pull request.
+	pr, _, err := client.PullRequests.Create(ctx, upstreamOwner, upstreamRepo, &github.NewPullRequest{
+		Title: github.Ptr(fmt.Sprintf("Add exercise: %s", name)),
+		Body:  github.Ptr(fmt.Sprintf("Community exercise contribution: **%s**", name)),
+		Head:  github.Ptr(fmt.Sprintf("%s:%s", login, branch)),
+		Base:  github.Ptr("main"),
+	})
 	if err != nil {
 		return "", fmt.Errorf("create PR: %w", err)
 	}
 
-	// Extract PR URL from response.
-	var pr struct {
-		HTMLURL string `json:"html_url"`
-	}
-	if json.Unmarshal([]byte(prJSON), &pr) == nil && pr.HTMLURL != "" {
-		return pr.HTMLURL, nil
-	}
-	return "", nil
-}
-
-// ghExec runs a gh CLI command and returns stdout.
-func ghExec(args ...string) (string, error) {
-	cmd := exec.Command("gh", args...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return string(out), fmt.Errorf("%s: %s", err, string(out))
-	}
-	return string(out), nil
+	return pr.GetHTMLURL(), nil
 }
 
 // sanitizeBranch removes characters not allowed in git branch names.

@@ -7,6 +7,7 @@ require gopkg.in/yaml.v3 v3.0.1
 require (
 	fyne.io/fyne/v2 v2.7.3
 	github.com/go-pdf/fpdf v0.9.0
+	github.com/google/go-github/v74 v74.0.0
 	golang.org/x/image v0.36.0
 	golang.org/x/text v0.34.0
 )
@@ -26,6 +27,7 @@ require (
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/go-text/typesetting v0.3.3 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hack-pad/go-indexeddb v0.3.2 // indirect
 	github.com/hack-pad/safejs v0.1.0 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20250612000132-0ef82f21eade // indirect

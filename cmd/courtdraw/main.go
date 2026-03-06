@@ -57,7 +57,7 @@ func main() {
 	w.Resize(fyne.NewSize(1200, 800))
 
 	// Create and initialize the application.
-	application := ui.NewApp(st, libraryDir, w)
+	application := ui.NewApp(st, settings, libraryDir, w)
 	w.SetContent(application.BuildUI())
 
 	// Initialize exercise and session after UI is built (court widget exists).
