@@ -52,27 +52,22 @@ jobs:
             arch: amd64
             runner: ubuntu-latest
             cc: gcc
-            archive: tar.gz
           - os: linux
             arch: arm64
             runner: ubuntu-latest
             cc: aarch64-linux-gnu-gcc
-            archive: tar.gz
           - os: darwin
             arch: arm64
             runner: macos-latest
             cc: ""
-            archive: tar.gz
           - os: darwin
             arch: amd64
             runner: macos-latest
             cc: ""
-            archive: tar.gz
           - os: windows
             arch: amd64
             runner: windows-latest
             cc: gcc
-            archive: zip
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -156,14 +151,9 @@ jobs:
           go build -o "${binary}" ./cmd/courtdraw
         shell: bash
 
-      - name: Package (tar.gz)
-        if: matrix.archive == 'tar.gz'
-        run: |
-          mkdir -p dist/courtdraw
-          binary=courtdraw
-          cp "${binary}" dist/courtdraw/
-          cd dist
-          tar czf "courtdraw-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" courtdraw/
+      - name: Rename binary
+        if: matrix.os != 'windows'
+        run: mv courtdraw "courtdraw-${{ matrix.os }}-${{ matrix.arch }}"
         shell: bash
 
       - name: Download Mesa3D software OpenGL (Windows)
@@ -173,8 +163,8 @@ jobs:
           7z x mesa.7z x64/opengl32.dll x64/libgallium_wgl.dll x64/libEGL.dll
         shell: bash
 
-      - name: Package (zip)
-        if: matrix.archive == 'zip'
+      - name: Package Windows zip
+        if: matrix.os == 'windows'
         run: |
           mkdir -p dist/courtdraw
           cp courtdraw.exe dist/courtdraw/
@@ -185,9 +175,16 @@ jobs:
         shell: bash
 
       - uses: actions/upload-artifact@v4
+        if: matrix.os != 'windows'
         with:
           name: courtdraw-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist/courtdraw-${{ matrix.os }}-${{ matrix.arch }}.*
+          path: courtdraw-${{ matrix.os }}-${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'windows'
+        with:
+          name: courtdraw-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/courtdraw-${{ matrix.os }}-${{ matrix.arch }}.zip
 
   build-android:
     needs: test
@@ -224,7 +221,7 @@ jobs:
       - name: Collect release assets
         run: |
           mkdir -p release
-          find artifacts/ -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.apk" \) -exec cp {} release/ \;
+          find artifacts/ -type f \( -name "courtdraw-*" -o -name "*.zip" -o -name "*.apk" \) -exec cp {} release/ \;
           ls -la release/
 
       - uses: softprops/action-gh-release@v2
