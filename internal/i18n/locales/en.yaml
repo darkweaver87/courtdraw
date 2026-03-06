@@ -261,6 +261,17 @@ status.exercise_removed: "Exercise removed: %s"
 status.requires_ball: "Player must have the ball"
 status.pass_requires_player: "Pass target must be a player"
 
+# Preferences
+tooltip.preferences: "Preferences"
+prefs.title: "Preferences"
+prefs.github_token: "GitHub Token"
+prefs.token_placeholder: "Paste your Personal Access Token"
+prefs.language: "Language"
+prefs.exercise_dirs: "Exercise Directories (one per line)"
+prefs.dirs_placeholder: "/path/to/exercises"
+prefs.save: "Save"
+contribute.no_token: "GitHub token not set — open Preferences"
+
 # Dialog
 dialog.cancel: "Cancel"
 

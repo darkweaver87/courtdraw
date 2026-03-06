@@ -261,6 +261,17 @@ status.exercise_removed: "Exercice retiré : %s"
 status.requires_ball: "Le joueur doit être en possession du ballon"
 status.pass_requires_player: "La cible de la passe doit être un joueur"
 
+# Préférences
+tooltip.preferences: "Préférences"
+prefs.title: "Préférences"
+prefs.github_token: "Jeton GitHub"
+prefs.token_placeholder: "Collez votre jeton d'accès personnel"
+prefs.language: "Langue"
+prefs.exercise_dirs: "Répertoires d'exercices (un par ligne)"
+prefs.dirs_placeholder: "/chemin/vers/exercices"
+prefs.save: "Enregistrer"
+contribute.no_token: "Jeton GitHub manquant — ouvrez les Préférences"
+
 # Dialogues
 dialog.cancel: "Annuler"
 
