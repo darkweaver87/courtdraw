@@ -162,7 +162,6 @@ jobs:
           mkdir -p dist/courtdraw
           binary=courtdraw
           cp "${binary}" dist/courtdraw/
-          cp -r library dist/courtdraw/ 2>/dev/null || true
           cd dist
           tar czf "courtdraw-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" courtdraw/
         shell: bash
@@ -179,7 +178,6 @@ jobs:
         run: |
           mkdir -p dist/courtdraw
           cp courtdraw.exe dist/courtdraw/
-          cp -r library dist/courtdraw/ 2>/dev/null || true
           cp x64/opengl32.dll x64/libgallium_wgl.dll x64/libEGL.dll dist/courtdraw/
           printf '@echo off\r\nset GALLIUM_DRIVER=llvmpipe\r\nset MESA_GL_VERSION_OVERRIDE=2.1\r\nset LIBGL_ALWAYS_SOFTWARE=1\r\n"%%~dp0courtdraw.exe" %%*\r\n' > dist/courtdraw/courtdraw-mesa.bat
           cd dist
@@ -207,7 +205,7 @@ jobs:
       - name: Build Android APK
         run: |
           fyne-cross android -app-id com.darkweaver87.courtdraw ./cmd/courtdraw
-          cp fyne-cross/dist/android/courtdraw.apk courtdraw-android.apk
+          cp fyne-cross/dist/android/*.apk courtdraw-android.apk
 
       - uses: actions/upload-artifact@v4
         with:
