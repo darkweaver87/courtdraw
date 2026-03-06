@@ -23,6 +23,7 @@ func Delete() fyne.Resource    { return theme.DeleteIcon() }
 func Close() fyne.Resource     { return theme.CancelIcon() }
 func Add() fyne.Resource       { return theme.ContentAddIcon() }
 func Refresh() fyne.Resource   { return theme.ViewRefreshIcon() }
+func Settings() fyne.Resource  { return theme.SettingsIcon() }
 func Upload() fyne.Resource    { return theme.UploadIcon() }
 func MoveUp() fyne.Resource     { return theme.MoveUpIcon() }
 func MoveDown() fyne.Resource   { return theme.MoveDownIcon() }
