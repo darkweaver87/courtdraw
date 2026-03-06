@@ -7,6 +7,9 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
+// ApronMeters is the width of the run-off area around the court (FIBA standard: 2m).
+const ApronMeters = 2.0
+
 // Point is a 2D coordinate in pixel space.
 type Point struct {
 	X, Y float32
@@ -36,20 +39,25 @@ type CourtGeometry struct {
 
 // Viewport maps relative court coordinates to pixel positions.
 type Viewport struct {
-	OffsetX float64
-	OffsetY float64
-	Width   float64
-	Height  float64
-	Scale   float64 // zoom scale factor (1.0 = normal)
+	OffsetX      float64
+	OffsetY      float64
+	Width        float64
+	Height       float64
+	Scale        float64 // zoom scale factor (1.0 = normal)
+	ElementScale float64 // court-type scale for players/accessories (1.0 = half court reference)
 }
 
-// S scales a pixel value by the viewport's zoom level and returns float32.
-// Returns px unchanged when Scale <= 1.
+// S scales a pixel value by element scale and zoom, returns float32.
 func (v *Viewport) S(px float64) float32 {
-	if v.Scale > 1.0 {
-		return float32(px * v.Scale)
+	es := v.ElementScale
+	if es <= 0 {
+		es = 1.0
 	}
-	return float32(px)
+	s := px * es
+	if v.Scale > 1.0 {
+		s *= v.Scale
+	}
+	return float32(s)
 }
 
 // Sf is an alias for S.
@@ -57,12 +65,17 @@ func (v *Viewport) Sf(px float64) float32 {
 	return v.S(px)
 }
 
-// Sd scales a pixel value by the viewport's zoom level and returns float64.
+// Sd scales a pixel value by element scale and zoom, returns float64.
 func (v *Viewport) Sd(px float64) float64 {
-	if v.Scale > 1.0 {
-		return px * v.Scale
+	es := v.ElementScale
+	if es <= 0 {
+		es = 1.0
 	}
-	return px
+	s := px * es
+	if v.Scale > 1.0 {
+		s *= v.Scale
+	}
+	return s
 }
 
 // RelToPixel converts a relative position [0,1] to pixel coordinates.
@@ -101,11 +114,15 @@ func courtDimensions(geom *CourtGeometry, courtType model.CourtType) (float64, f
 	return w, h
 }
 
-// ComputeViewport computes a Viewport that fits the court into the given widget size
-// while maintaining the court's aspect ratio.
+// ComputeViewport computes a Viewport that fits the court (plus 2m apron)
+// into the given widget size while maintaining the court's aspect ratio.
 func ComputeViewport(courtType model.CourtType, geom *CourtGeometry, widgetSize image.Point, padding int) Viewport {
 	courtW, courtH := courtDimensions(geom, courtType)
-	aspect := courtW / courtH
+
+	// Total area includes 2m apron on each side.
+	totalW := courtW + 2*ApronMeters
+	totalH := courtH + 2*ApronMeters
+	totalAspect := totalW / totalH
 
 	availW := float64(widgetSize.X - 2*padding)
 	availH := float64(widgetSize.Y - 2*padding)
@@ -113,19 +130,54 @@ func ComputeViewport(courtType model.CourtType, geom *CourtGeometry, widgetSize 
 		return Viewport{}
 	}
 
-	var vpW, vpH float64
-	if availW/availH > aspect {
-		vpH = availH
-		vpW = vpH * aspect
+	// Fit total area (court + apron) into available space.
+	var fitW, fitH float64
+	if availW/availH > totalAspect {
+		fitH = availH
+		fitW = fitH * totalAspect
 	} else {
-		vpW = availW
-		vpH = vpW / aspect
+		fitW = availW
+		fitH = fitW / totalAspect
+	}
+
+	pxPerMeter := fitW / totalW
+	vpW := courtW * pxPerMeter
+	vpH := courtH * pxPerMeter
+	apronPx := ApronMeters * pxPerMeter
+
+	totalOriginX := (float64(widgetSize.X) - fitW) / 2
+	totalOriginY := (float64(widgetSize.Y) - fitH) / 2
+
+	// Element scale: proportional to pixel density, normalized so half court = 1.0.
+	halfW, halfH := courtDimensions(geom, model.HalfCourt)
+	halfTotalW := halfW + 2*ApronMeters
+	halfTotalH := halfH + 2*ApronMeters
+	halfAspect := halfTotalW / halfTotalH
+	var halfFitW float64
+	if availW/availH > halfAspect {
+		halfFitW = availH * halfAspect
+	} else {
+		halfFitW = availW
+	}
+	halfPxPerMeter := halfFitW / halfTotalW
+
+	elementScale := 1.0
+	if halfPxPerMeter > 0 {
+		elementScale = pxPerMeter / halfPxPerMeter
+	}
+	// Cap so elements don't appear oversized relative to the court.
+	// The apron shrinks the court viewport; apply an extra 0.85 factor
+	// so players look well-proportioned on half court.
+	maxScale := geom.Width / (geom.Width + 2*ApronMeters) * 0.85
+	if elementScale > maxScale {
+		elementScale = maxScale
 	}
 
 	return Viewport{
-		OffsetX: (float64(widgetSize.X) - vpW) / 2,
-		OffsetY: (float64(widgetSize.Y) - vpH) / 2,
-		Width:   vpW,
-		Height:  vpH,
+		OffsetX:      totalOriginX + apronPx,
+		OffsetY:      totalOriginY + apronPx,
+		Width:        vpW,
+		Height:       vpH,
+		ElementScale: elementScale,
 	}
 }

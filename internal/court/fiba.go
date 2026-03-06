@@ -36,6 +36,7 @@ func DrawFIBACourt(img *image.RGBA, courtType model.CourtType, vp *Viewport, geo
 func drawCourt(img *image.RGBA, courtType model.CourtType, vp *Viewport, geom *CourtGeometry) {
 	lineCol := color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
 	bgCol := color.NRGBA{R: 0xc8, G: 0x96, B: 0x64, A: 0xff}
+	apronCol := color.NRGBA{R: 0x1a, G: 0x3c, B: 0x6e, A: 0xff} // dark blue apron
 
 	lineW := float32(vp.MeterToPixel(geom.LineWidth, geom, courtType))
 	if lineW < 1.5 {
@@ -50,7 +51,12 @@ func drawCourt(img *image.RGBA, courtType model.CourtType, vp *Viewport, geom *C
 		return vp.RelToPixel(model.Position{rx, ry})
 	}
 
-	// Background.
+	// Apron (2m run-off area around the court).
+	apronTL := m2p(-ApronMeters, courtH+ApronMeters)
+	apronBR := m2p(courtW+ApronMeters, -ApronMeters)
+	DrawRectFill(img, apronTL, apronBR, apronCol)
+
+	// Court floor.
 	topLeft := m2p(0, courtH)
 	botRight := m2p(courtW, 0)
 	DrawRectFill(img, topLeft, botRight, bgCol)

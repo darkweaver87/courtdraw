@@ -372,19 +372,29 @@ func HitTestRotationHandle(center Point, rotation float64, pos Point) bool {
 	return dist <= RotationHandleRadius+4
 }
 
-// ClampPosition clamps a relative position to [0,1].
-func ClampPosition(p model.Position) model.Position {
-	if p[0] < 0 {
-		p[0] = 0
+// ClampPosition clamps a relative position so the player body (not just the
+// center point) stays within the court boundaries [0,1].
+// The margin is computed from the player's visual radius in relative coordinates.
+func ClampPosition(vp *Viewport, p model.Position) model.Position {
+	// Convert player radius (pixels) to relative court fraction.
+	marginX := 0.0
+	marginY := 0.0
+	if vp != nil && vp.Width > 0 && vp.Height > 0 {
+		r := vp.Sd(PlayerRadius)
+		marginX = r / vp.Width
+		marginY = r / vp.Height
 	}
-	if p[0] > 1 {
-		p[0] = 1
+	if p[0] < marginX {
+		p[0] = marginX
 	}
-	if p[1] < 0 {
-		p[1] = 0
+	if p[0] > 1-marginX {
+		p[0] = 1 - marginX
 	}
-	if p[1] > 1 {
-		p[1] = 1
+	if p[1] < marginY {
+		p[1] = marginY
+	}
+	if p[1] > 1-marginY {
+		p[1] = 1 - marginY
 	}
 	return p
 }

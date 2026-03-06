@@ -15,11 +15,12 @@ func TestComputeViewport_WidthConstrained(t *testing.T) {
 	if vp.Width <= 0 || vp.Height <= 0 {
 		t.Fatal("viewport has zero dimensions")
 	}
-	if !approxEqual(vp.Width, 200, 1) {
-		t.Errorf("expected width ~200, got %.1f", vp.Width)
-	}
-	if vp.OffsetX > 1 {
-		t.Errorf("expected minimal X offset for width-constrained, got %.1f", vp.OffsetX)
+	// Court viewport is smaller than widget because apron takes space.
+	courtW, _ := courtDimensions(geom, model.HalfCourt)
+	totalW := courtW + 2*ApronMeters
+	expectedW := 200 * courtW / totalW
+	if !approxEqual(vp.Width, expectedW, 1) {
+		t.Errorf("expected width ~%.0f, got %.1f", expectedW, vp.Width)
 	}
 }
 
@@ -30,8 +31,12 @@ func TestComputeViewport_HeightConstrained(t *testing.T) {
 	if vp.Width <= 0 || vp.Height <= 0 {
 		t.Fatal("viewport has zero dimensions")
 	}
-	if !approxEqual(vp.Height, 100, 1) {
-		t.Errorf("expected height ~100, got %.1f", vp.Height)
+	// Court viewport is smaller than widget because apron takes space.
+	_, courtH := courtDimensions(geom, model.HalfCourt)
+	totalH := courtH + 2*ApronMeters
+	expectedH := 100 * courtH / totalH
+	if !approxEqual(vp.Height, expectedH, 1) {
+		t.Errorf("expected height ~%.0f, got %.1f", expectedH, vp.Height)
 	}
 }
 

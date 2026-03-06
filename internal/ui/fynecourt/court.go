@@ -512,11 +512,12 @@ func (w *CourtWidget) applyZoomPan(base court.Viewport) court.Viewport {
 	cy := base.OffsetY + base.Height/2
 	// Apply pan offset (in relative court coordinates → pixel offset).
 	return court.Viewport{
-		OffsetX: cx - newW/2 - w.panX*newW,
-		OffsetY: cy - newH/2 - w.panY*newH,
-		Width:   newW,
-		Height:  newH,
-		Scale:   z,
+		OffsetX:      cx - newW/2 - w.panX*newW,
+		OffsetY:      cy - newH/2 - w.panY*newH,
+		Width:        newW,
+		Height:       newH,
+		Scale:        z,
+		ElementScale: base.ElementScale,
 	}
 }
 
@@ -673,7 +674,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 
 	case editor.ToolPlayer:
 		relPos := w.viewport.PixelToRel(pos)
-		relPos = court.ClampPosition(relPos)
+		relPos = court.ClampPosition(&w.viewport,relPos)
 		p := model.Player{
 			ID:       editor.NextPlayerID(seq),
 			Label:    model.RoleLabel(state.ToolRole),
@@ -735,7 +736,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 				w.notifyChanged()
 				return
 			} else {
-				toRef.Position = court.ClampPosition(w.viewport.PixelToRel(pos))
+				toRef.Position = court.ClampPosition(&w.viewport,w.viewport.PixelToRel(pos))
 			}
 			action := model.Action{
 				Type: state.ToolActionType,
@@ -758,7 +759,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 
 	case editor.ToolAccessory:
 		relPos := w.viewport.PixelToRel(pos)
-		relPos = court.ClampPosition(relPos)
+		relPos = court.ClampPosition(&w.viewport,relPos)
 		acc := model.Accessory{
 			Type:     state.ToolAccessoryType,
 			ID:       editor.NextAccessoryID(seq),
@@ -875,7 +876,7 @@ func (w *CourtWidget) handleDrag(pos court.Point) {
 		return
 	}
 
-	relPos := court.ClampPosition(w.viewport.PixelToRel(pos))
+	relPos := court.ClampPosition(&w.viewport,w.viewport.PixelToRel(pos))
 
 	if w.dragPlayerIdx >= 0 && w.dragPlayerIdx < len(seq.Players) {
 		seq.Players[w.dragPlayerIdx].Position = relPos
