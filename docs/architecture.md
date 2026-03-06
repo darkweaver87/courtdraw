@@ -17,8 +17,8 @@
 
 - **CGO required** — Fyne uses OpenGL via CGO for rendering
 - **No database** — all data is YAML files on disk
-- **No network** — the app is 100% offline
 - **No backend** — no server, no cloud sync, no accounts
+- **Offline-first** — network used only for community library sync (GitHub API) and contributions; always falls back to local cache
 
 ## File Storage
 
@@ -35,23 +35,23 @@ All user data lives in `~/.courtdraw/`:
 │   ├── index.yaml      # Session metadata index (auto-generated)
 │   ├── high-intensity-u13.yaml
 │   └── shooting-fundamentals.yaml
+├── library/            # Community exercise cache (synced from GitHub)
+│   ├── .manifest.yaml  # SHA manifest for incremental sync
+│   ├── gauntlet.yaml
+│   ├── double-close-out.yaml
+│   └── ...
 └── settings.yaml       # App settings (language, token, exercise dir, PDF export dir) — mode 0600
 ```
 
 Each directory contains an `index.yaml` that caches metadata (name, category, tags, timestamps) for fast listing without scanning individual files. The index is rebuilt automatically if missing or corrupt.
 
-The community collection lives in the repo under `library/`:
+The community collection is fetched from the `library/` directory of the GitHub repo (`darkweaver87/courtdraw`) and cached locally in `~/.courtdraw/library/`. Sync is incremental (SHA-based manifest) and triggered:
+- Automatically on first launch if the cache is empty
+- Manually via the Refresh button in the session tab
 
-```
-courtdraw/
-├── library/            # Community exercises (shipped with repo, importable)
-│   ├── gauntlet.yaml
-│   ├── double-close-out.yaml
-│   └── ...
-└── ...
-```
+If the network is unavailable, the local cache is used silently.
 
-Users import exercises from `library/` into `~/.courtdraw/exercises/` via the app. They can also create exercises directly in the app, which saves to `~/.courtdraw/exercises/`.
+Users import exercises from the community cache into `~/.courtdraw/exercises/` via the app. They can also create exercises directly in the app, which saves to `~/.courtdraw/exercises/`.
 
 ## Project Structure
 
@@ -70,7 +70,8 @@ courtdraw/
 │   │   ├── yaml.go                  # YAML read/write implementation
 │   │   ├── index.go                 # Index structs, load/save/rebuild
 │   │   ├── settings.go              # App settings persistence
-│   │   └── library.go              # Read-only access to library/ exercises
+│   │   ├── library.go              # Read-only access to library/ exercises
+│   │   └── library_sync.go         # GitHub fetch + SHA manifest for incremental sync
 │   ├── i18n/                        # Localization (EN/FR)
 │   │   └── i18n.go                  # T() translation function
 │   ├── ui/                          # Fyne UI layer
@@ -135,6 +136,7 @@ cmd/courtdraw  →  internal/ui  →  internal/model
 - `model` has **zero** external dependencies — pure data structures and enums
 - `store` depends on `model` and a YAML library
 - `court`, `anim`, `pdf` depend on `model` only
+- `store` also uses `go-github` for community library sync (incremental fetch from GitHub)
 - `ui` orchestrates everything and uses `go-github` for contribution PRs
 
 ## CI/CD

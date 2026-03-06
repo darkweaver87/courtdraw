@@ -39,30 +39,20 @@ func main() {
 		i18n.SetLang(i18n.DetectSystemLang())
 	}
 
-	// Detect library directory (alongside the executable or in repo).
-	exePath, _ := os.Executable()
-	libraryDir := ""
-	candidates := []string{
-		filepath.Join(filepath.Dir(exePath), "library"),
-		filepath.Join(".", "library"),
-	}
-	for _, c := range candidates {
-		if info, err := os.Stat(c); err == nil && info.IsDir() {
-			libraryDir = c
-			break
-		}
-	}
+	// Community library: cached in ~/.courtdraw/library/, synced from GitHub.
+	lib := store.NewCachedLibrary(baseDir)
 
 	w := a.NewWindow("CourtDraw")
 	w.Resize(fyne.NewSize(1200, 800))
 
 	// Create and initialize the application.
-	application := ui.NewApp(st, settings, libraryDir, w)
+	application := ui.NewApp(st, settings, lib, w)
 	w.SetContent(application.BuildUI())
 
 	// Initialize exercise and session after UI is built (court widget exists).
 	application.NewExercise()
 	application.NewSession()
+	application.SyncLibraryIfEmpty()
 	w.ShowAndRun()
 }
 

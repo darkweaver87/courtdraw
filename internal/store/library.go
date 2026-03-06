@@ -21,6 +21,14 @@ func NewLibrary(dir string) *Library {
 	return &Library{dir: dir}
 }
 
+// NewCachedLibrary creates a Library backed by baseDir/library/.
+// The directory is created if it does not exist.
+func NewCachedLibrary(baseDir string) *Library {
+	dir := filepath.Join(baseDir, "library")
+	os.MkdirAll(dir, 0755)
+	return &Library{dir: dir}
+}
+
 // Dir returns the library's root directory.
 func (l *Library) Dir() string {
 	return l.dir

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"image/color"
 	"log"
@@ -38,6 +39,7 @@ type App struct {
 	store    store.Store
 	settings *store.Settings
 	library  *store.Library
+	syncing  bool
 
 	exercise    *model.Exercise
 	editorState editor.EditorState
@@ -66,15 +68,13 @@ type App struct {
 }
 
 // NewApp creates a new App instance.
-func NewApp(st store.Store, settings *store.Settings, libraryDir string, w fyne.Window) *App {
+func NewApp(st store.Store, settings *store.Settings, lib *store.Library, w fyne.Window) *App {
 	a := &App{
 		window:   w,
 		store:    st,
 		settings: settings,
+		library:  lib,
 		editLang: string(i18n.CurrentLang()),
-	}
-	if libraryDir != "" {
-		a.library = store.NewLibrary(libraryDir)
 	}
 	a.editorState.ActiveTool = editor.ToolSelect
 	return a
@@ -730,7 +730,7 @@ func (a *App) handleSessionAction(ev SessionTabEvent) {
 	case SessionTabActionGenerate:
 		a.showPdfExportDialog()
 	case SessionTabActionRefresh:
-		a.sessionTab.SetExercises(a.buildManagedExercises())
+		a.syncLibrary()
 	case SessionTabActionOpenExercise:
 		a.openExercise(ev.Name)
 		a.tabs.SelectIndex(0)
@@ -1113,6 +1113,54 @@ func exercisesEqual(a, b *model.Exercise) bool {
 		return false
 	}
 	return string(dataA) == string(dataB)
+}
+
+// --- Library sync ---
+
+// syncLibrary fetches community exercises from GitHub in the background.
+func (a *App) syncLibrary() {
+	if a.syncing || a.library == nil {
+		return
+	}
+	a.syncing = true
+	a.statusBar.SetStatus(i18n.T("sync.in_progress"), 0)
+
+	token := a.settings.GithubToken
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+	}
+	cacheDir := a.library.Dir()
+
+	go func() {
+		result, err := store.SyncLibrary(context.Background(), cacheDir, token)
+		fyne.Do(func() {
+			a.syncing = false
+			if err != nil {
+				log.Printf("sync library: %v", err)
+				a.statusBar.SetStatus(i18n.T("sync.failed"), 1)
+			} else {
+				total := len(result.Added) + len(result.Updated) + len(result.Removed)
+				if total == 0 {
+					a.statusBar.SetStatus(i18n.T("sync.up_to_date"), 0)
+				} else {
+					a.statusBar.SetStatus(
+						i18n.Tf("sync.completed", len(result.Added), len(result.Updated), len(result.Removed)), 0)
+				}
+			}
+			a.sessionNeedsRefresh = true
+			a.refreshSessionTab()
+		})
+	}()
+}
+
+// SyncLibraryIfEmpty triggers a sync if the cache has no exercises.
+func (a *App) SyncLibraryIfEmpty() {
+	if a.library == nil {
+		return
+	}
+	if store.IsCacheEmpty(a.library.Dir()) {
+		a.syncLibrary()
+	}
 }
 
 // --- Utilities ---

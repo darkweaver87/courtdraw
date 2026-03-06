@@ -123,3 +123,15 @@ Goal: professional court rendering and in-app settings.
 54. Contribute via `go-github` — replace `gh` CLI with `go-github/v74` library for exercise PRs
 
 Deliverable: polished court rendering with apron, proportional elements, and in-app preferences.
+
+## Phase 11 — Community Library Remote Sync
+
+Goal: fetch community exercises from GitHub instead of shipping them with the binary.
+
+55. GitHub library sync — fetch `library/` from GitHub API, cache locally in `~/.courtdraw/library/` with SHA manifest for incremental sync
+56. Auto-sync on first launch if cache is empty
+57. Manual sync via Refresh button in session tab
+58. Offline-first — fallback to local cache if network unavailable
+59. Optional GitHub token for higher rate limit (60 req/h without, 5000 req/h with)
+
+Deliverable: community exercises are always up-to-date without recompiling.

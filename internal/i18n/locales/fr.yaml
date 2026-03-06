@@ -306,3 +306,9 @@ mobile.tab.props: "Propriétés"
 mobile.session.library: "Bibliothèque"
 mobile.session.preview: "Aperçu"
 mobile.session.session: "Séance"
+
+# Synchronisation de la bibliothèque
+sync.in_progress: "Synchronisation de la bibliothèque..."
+sync.up_to_date: "La bibliothèque est à jour"
+sync.completed: "Bibliothèque synchronisée : %d ajoutés, %d mis à jour, %d supprimés"
+sync.failed: "Échec de la synchronisation"

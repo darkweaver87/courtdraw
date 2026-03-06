@@ -129,12 +129,18 @@ Icons are PNG or SVG files in `assets/icons/`. They can be replaced for custom s
 
 ## Import / Export
 
-### Import from Community Library
+### Community Library (GitHub Sync)
 
-- Browse exercises from `library/` directory (shipped with the repo)
-- Importing copies the YAML file to `~/.courtdraw/exercises/`
+- Community exercises are fetched from the `library/` directory of the GitHub repo and cached locally in `~/.courtdraw/library/`
+- Sync is **incremental**: a `.manifest.yaml` tracks each file's git blob SHA, only changed files are downloaded
+- **Auto-sync on first launch** if the cache is empty
+- **Manual sync** via the Refresh button in the session tab
+- **Offline-first**: if the network is unavailable, the local cache is used silently
+- Token is **optional** — the GitHub API allows 60 req/h without authentication (sufficient for occasional syncs); if a token is configured (Preferences or `GITHUB_TOKEN` env), it is used for a higher rate limit
+- Status bar shows progress: syncing, up-to-date, or summary of changes (added/updated/removed)
+- Importing copies the YAML file from the cache to `~/.courtdraw/exercises/`
 - The user can then modify their local copy
-- Community exercises can also be **opened directly** without importing (read-only from library)
+- Community exercises can also be **opened directly** without importing (read-only from cache)
 
 ### Export / Contribute
 

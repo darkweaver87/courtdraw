@@ -306,3 +306,9 @@ mobile.tab.props: "Properties"
 mobile.session.library: "Library"
 mobile.session.preview: "Preview"
 mobile.session.session: "Session"
+
+# Library sync
+sync.in_progress: "Syncing community library..."
+sync.up_to_date: "Community library is up to date"
+sync.completed: "Library synced: %d added, %d updated, %d removed"
+sync.failed: "Failed to sync community library"

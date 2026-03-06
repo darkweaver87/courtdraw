@@ -18,10 +18,10 @@ Coaches create exercises visually on a court, animate them, compose sessions, an
 - **UI**: Fyne v2 (fyne.io/fyne/v2) — single codebase for Android, Linux, Windows, macOS
 - **Court rendering**: Framework-agnostic `image.RGBA` via `golang.org/x/image/vector`
 - **Storage**: YAML files in `~/.courtdraw/` — no database
-- **Offline-first**: no backend, no cloud, no accounts
+- **Offline-first**: no backend, no cloud, no accounts — network used only for community library sync and contributions
 - **Basketball only**: no multi-sport abstraction
 - **Court standards**: FIBA + NBA with all official markings
-- **Community exercises**: YAML collection in `library/` directory of this repo
+- **Community exercises**: fetched from `library/` in this repo via GitHub API, cached in `~/.courtdraw/library/`
 
 ## Key Commands
 
