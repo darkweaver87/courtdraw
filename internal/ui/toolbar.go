@@ -20,15 +20,15 @@ const (
 	FileActionNew
 	FileActionOpen
 	FileActionSave
-	FileActionDuplicate
+	FileActionSaveAs
 	FileActionImport
 	FileActionRecent
 	FileActionPreferences
 )
 
-// FileToolbar provides New, Open, Recent, Save, Duplicate, Import, Preferences buttons.
+// FileToolbar provides New, Open, Recent, Save, Save As, Import, Preferences buttons.
 type FileToolbar struct {
-	btns    [7]*TipButton // new, open, recent, save, duplicate, import, preferences
+	btns    [7]*TipButton // new, open, recent, save, save_as, import, preferences
 	saveBtn *TipButton
 	box     *fyne.Container
 	OnAction func(FileAction)
@@ -59,9 +59,9 @@ func NewFileToolbar() *FileToolbar {
 		}
 	})
 	ft.saveBtn = ft.btns[3]
-	ft.btns[4] = NewTipButton(icon.Duplicate(), i18n.T("tooltip.duplicate"), func() {
+	ft.btns[4] = NewTipButton(icon.Duplicate(), i18n.T("tooltip.save_as"), func() {
 		if ft.OnAction != nil {
-			ft.OnAction(FileActionDuplicate)
+			ft.OnAction(FileActionSaveAs)
 		}
 	})
 	ft.btns[5] = NewTipButton(icon.Import(), i18n.T("tooltip.import"), func() {
@@ -83,7 +83,7 @@ func NewFileToolbar() *FileToolbar {
 
 // RefreshLanguage updates tooltip text for the current language.
 func (ft *FileToolbar) RefreshLanguage() {
-	keys := [7]string{"tooltip.new", "tooltip.open", "tooltip.recent", "tooltip.save", "tooltip.duplicate", "tooltip.import", "tooltip.preferences"}
+	keys := [7]string{"tooltip.new", "tooltip.open", "tooltip.recent", "tooltip.save", "tooltip.save_as", "tooltip.import", "tooltip.preferences"}
 	for i, key := range keys {
 		ft.btns[i].SetTooltip(i18n.T(key))
 	}

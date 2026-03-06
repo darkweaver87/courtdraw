@@ -19,6 +19,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/anim"
@@ -378,6 +379,21 @@ func (a *App) SetExercise(ex *model.Exercise) {
 	}
 	a.court.SetPlayback(a.playback)
 	a.refreshEditor()
+	a.updateWindowTitle()
+}
+
+func (a *App) updateWindowTitle() {
+	title := i18n.T("app.title")
+	if a.exercise != nil && a.exercise.Name != "" {
+		displayName := a.exercise.Localized(a.editLang).Name
+		fileName := store.ToKebab(a.exercise.Name) + ".yaml"
+		if displayName != a.exercise.Name && displayName != "" {
+			title += " — " + displayName + " [" + fileName + "]"
+		} else {
+			title += " — " + fileName
+		}
+	}
+	a.window.SetTitle(title)
 }
 
 // NewExercise creates a blank exercise.
@@ -463,8 +479,8 @@ func (a *App) handleFileAction(action FileAction) {
 		a.showOpenDialog()
 	case FileActionSave:
 		a.saveExercise()
-	case FileActionDuplicate:
-		a.duplicateExercise()
+	case FileActionSaveAs:
+		a.saveAsExercise()
 	case FileActionImport:
 		a.showImportDialog()
 	case FileActionRecent:
@@ -510,62 +526,70 @@ func (a *App) saveExercise() {
 	a.fileToolbar.SetModified(false)
 	a.sessionNeedsRefresh = true
 	a.refreshSessionTab()
-	a.statusBar.SetStatus(i18n.Tf("status.saved", a.exercise.Name), 0)
+	fileName := store.ToKebab(a.exercise.Name) + ".yaml"
+	if ys, ok := a.store.(*store.YAMLStore); ok {
+		fileName = filepath.Join(ys.ExercisesDir(), fileName)
+	}
+	a.statusBar.SetStatus(i18n.Tf("status.saved", fileName), 0)
+	a.updateWindowTitle()
 }
 
-func (a *App) duplicateExercise() {
+func (a *App) saveAsExercise() {
 	if a.exercise == nil {
 		return
 	}
-	dup := &model.Exercise{
-		Name:          a.exercise.Name + i18n.T("file.copy_suffix"),
-		Description:   a.exercise.Description,
-		CourtType:     a.exercise.CourtType,
-		CourtStandard: a.exercise.CourtStandard,
-		Duration:      a.exercise.Duration,
-		Intensity:     a.exercise.Intensity,
-		Category:      a.exercise.Category,
-	}
-	dup.Tags = make([]string, len(a.exercise.Tags))
-	copy(dup.Tags, a.exercise.Tags)
-	if a.exercise.I18n != nil {
-		dup.I18n = make(map[string]model.ExerciseI18n, len(a.exercise.I18n))
-		for lang, tr := range a.exercise.I18n {
-			cp := model.ExerciseI18n{Name: tr.Name, Description: tr.Description}
-			if len(tr.Tags) > 0 {
-				cp.Tags = make([]string, len(tr.Tags))
-				copy(cp.Tags, tr.Tags)
+
+	entry := widget.NewEntry()
+	entry.SetPlaceHolder(i18n.T("save_as.placeholder"))
+	entry.SetText(a.exercise.Localized(a.editLang).Name)
+
+	d := dialog.NewForm(i18n.T("save_as.title"), i18n.T("prefs.save"), i18n.T("dialog.cancel"),
+		[]*widget.FormItem{widget.NewFormItem(i18n.T("save_as.name_label"), entry)},
+		func(ok bool) {
+			if !ok {
+				return
 			}
-			if len(tr.Sequences) > 0 {
-				cp.Sequences = make([]model.SequenceI18n, len(tr.Sequences))
-				for i, s := range tr.Sequences {
-					si := model.SequenceI18n{Label: s.Label}
-					if len(s.Instructions) > 0 {
-						si.Instructions = make([]string, len(s.Instructions))
-						copy(si.Instructions, s.Instructions)
-					}
-					cp.Sequences[i] = si
+			newName := strings.TrimSpace(entry.Text)
+			if newName == "" {
+				return
+			}
+
+			// Check if file already exists.
+			kebab := store.ToKebab(newName)
+			if ys, ok := a.store.(*store.YAMLStore); ok {
+				path := filepath.Join(ys.ExercisesDir(), kebab+".yaml")
+				if _, err := os.Stat(path); err == nil {
+					dialog.ShowConfirm(i18n.T("save_as.overwrite_title"),
+						i18n.Tf("save_as.overwrite_msg", kebab+".yaml"),
+						func(overwrite bool) {
+							if overwrite {
+								a.doSaveAs(newName)
+							}
+						}, a.window)
+					return
 				}
 			}
-			dup.I18n[lang] = cp
-		}
+			a.doSaveAs(newName)
+		}, a.window)
+	d.Resize(fyne.NewSize(400, 150))
+	d.Show()
+}
+
+func (a *App) doSaveAs(newName string) {
+	a.exercise.Name = newName
+	if err := a.store.SaveExercise(a.exercise); err != nil {
+		log.Printf("save as: %v", err)
+		a.statusBar.SetStatus(i18n.T("status.save_error"), 0)
+		return
 	}
-	dup.Sequences = make([]model.Sequence, len(a.exercise.Sequences))
-	for i, seq := range a.exercise.Sequences {
-		ns := model.Sequence{Label: seq.Label}
-		ns.Instructions = make([]string, len(seq.Instructions))
-		copy(ns.Instructions, seq.Instructions)
-		ns.Players = make([]model.Player, len(seq.Players))
-		copy(ns.Players, seq.Players)
-		ns.Accessories = make([]model.Accessory, len(seq.Accessories))
-		copy(ns.Accessories, seq.Accessories)
-		ns.Actions = make([]model.Action, len(seq.Actions))
-		copy(ns.Actions, seq.Actions)
-		dup.Sequences[i] = ns
+	a.editorState.ClearModified()
+	fileName := store.ToKebab(newName) + ".yaml"
+	if ys, ok := a.store.(*store.YAMLStore); ok {
+		fileName = filepath.Join(ys.ExercisesDir(), fileName)
 	}
-	a.SetExercise(dup)
-	a.editorState.MarkModified()
-	a.statusBar.SetStatus(i18n.T("status.duplicated"), 0)
+	a.statusBar.SetStatus(i18n.Tf("status.saved", fileName), 0)
+	a.updateWindowTitle()
+	a.refreshEditor()
 }
 
 func (a *App) showOpenDialog() {
@@ -868,6 +892,17 @@ func (a *App) showPdfExportDialog() {
 		a.generatePDFTo(path)
 	}, a.window)
 	d.SetFileName(a.pdfDefaultFilename() + ".pdf")
+
+	// Set initial location from settings or home directory.
+	dir := a.settings.PdfExportDir
+	if dir == "" {
+		dir, _ = os.UserHomeDir()
+	}
+	if dir != "" {
+		if listable, err := storage.ListerForURI(storage.NewFileURI(dir)); err == nil {
+			d.SetLocation(listable)
+		}
+	}
 	d.Show()
 }
 

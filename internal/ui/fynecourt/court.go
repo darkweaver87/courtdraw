@@ -31,7 +31,9 @@ var (
 	faceCache      = map[float64]font.Face{}
 )
 
-const baseFontSize = 16
+// baseFontSize is chosen so that a 1–2 character label fills the player
+// head circle (HeadRadius = 14px → 28px diameter).
+const baseFontSize = 18
 
 func getScaledFace(zoom float64) font.Face {
 	parsedFontOnce.Do(func() {
@@ -248,7 +250,12 @@ func (w *CourtWidget) draw(pixW, pixH int) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, pixW, pixH))
 	copy(img.Pix, w.courtBg.Pix)
 
-	face := getScaledFace(w.zoomLevel)
+	// Scale font with both element scale and zoom so labels fill the head.
+	es := w.viewport.ElementScale
+	if es <= 0 {
+		es = 1.0
+	}
+	face := getScaledFace(es * w.zoomLevel)
 
 	// Animation mode: call Update() at render time for smooth interpolation.
 	if w.animMode && w.playback != nil && w.playback.State() == anim.StatePlaying {
@@ -391,7 +398,7 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 	// Ball.
 	if frame.BallCarrier != "" && frame.BallOpacity > 0 {
 		ballPixel := vp.RelToPixel(frame.BallPos)
-		court.DrawBallWithOpacity(img, ballPixel, frame.BallOpacity)
+		court.DrawBallWithOpacity(img, vp, ballPixel, frame.BallOpacity)
 	}
 }
 

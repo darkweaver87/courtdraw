@@ -35,7 +35,7 @@ Source: NBA Official Rule Book — court diagram.
 - Orientation: vertical (baskets at top and bottom)
 - Half-court: only one basket end
 - Elements shared between standards: sidelines, baselines, midcourt line (full), center circle (full), free-throw line, free-throw circle, paint/lane, three-point arc, no-charge zone, basket (backboard + rim)
-- Element sizing (players, accessories) scales proportionally with court type — smaller on full court, larger on half court — via `ElementScale` on the viewport
+- Element sizing derived from physical dimensions — player body = 0.90m on the court (2× shoulder width for visibility), via `ElementScaleForCourt()` shared between screen and PDF renderers. Font scales with elements so labels fill the head circle.
 - Players are clamped to stay entirely within court boundaries (body radius accounted for, not just center point)
 
 ## Player Roles

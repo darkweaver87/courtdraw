@@ -117,9 +117,9 @@ Deliverable: fully usable mobile experience with zoom/pan for precise element pl
 Goal: professional court rendering and in-app settings.
 
 50. 2m dark-blue apron (run-off area) around the court (FIBA standard)
-51. Element scaling by court type — `ElementScale` on Viewport, capped so players look proportional on half court
+51. Element scaling from physical dimensions — player body = 2× shoulder width (0.90m) for visibility, unified `ElementScaleForCourt()` for screen and PDF
 52. Body-aware clamping — `ClampPosition` accounts for player body radius, not just center point
-53. Preferences dialog — GitHub token (password entry), language selector, exercise directory with folder picker
+53. Preferences dialog — GitHub token, language, exercise directory, PDF export directory with folder pickers
 54. Contribute via `go-github` — replace `gh` CLI with `go-github/v74` library for exercise PRs
 
 Deliverable: polished court rendering with apron, proportional elements, and in-app preferences.

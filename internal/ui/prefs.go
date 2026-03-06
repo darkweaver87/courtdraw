@@ -66,6 +66,33 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 
 	dirRow := container.NewBorder(nil, nil, nil, browseBtn, dirEntry)
 
+	// PDF export directory — default to home.
+	pdfDirValue := settings.PdfExportDir
+	if pdfDirValue == "" {
+		pdfDirValue, _ = os.UserHomeDir()
+	}
+
+	pdfDirEntry := widget.NewEntry()
+	pdfDirEntry.SetText(pdfDirValue)
+
+	pdfBrowseBtn := widget.NewButton(i18n.T("prefs.browse"), func() {
+		fd := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
+			if err != nil || uri == nil {
+				return
+			}
+			pdfDirEntry.SetText(uri.Path())
+		}, w)
+		if current := strings.TrimSpace(pdfDirEntry.Text); current != "" {
+			if listable, err := storage.ListerForURI(storage.NewFileURI(current)); err == nil {
+				fd.SetLocation(listable)
+			}
+		}
+		fd.Show()
+	})
+	pdfBrowseBtn.Importance = widget.LowImportance
+
+	pdfDirRow := container.NewBorder(nil, nil, nil, pdfBrowseBtn, pdfDirEntry)
+
 	form := container.NewVBox(
 		widget.NewLabel(i18n.T("prefs.github_token")),
 		tokenEntry,
@@ -73,6 +100,8 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 		langSelect,
 		widget.NewLabel(i18n.T("prefs.exercise_dir")),
 		dirRow,
+		widget.NewLabel(i18n.T("prefs.pdf_export_dir")),
+		pdfDirRow,
 		layout.NewSpacer(),
 	)
 
@@ -89,6 +118,7 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 			settings.GithubToken = strings.TrimSpace(tokenEntry.Text)
 			settings.Language = langSelect.Selected
 			settings.ExerciseDir = strings.TrimSpace(dirEntry.Text)
+			settings.PdfExportDir = strings.TrimSpace(pdfDirEntry.Text)
 
 			if ys != nil {
 				ys.SaveSettings(settings)
@@ -101,6 +131,6 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 		},
 		w,
 	)
-	d.Resize(fyne.NewSize(450, 350))
+	d.Resize(fyne.NewSize(450, 420))
 	d.Show()
 }

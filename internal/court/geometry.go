@@ -114,6 +114,24 @@ func courtDimensions(geom *CourtGeometry, courtType model.CourtType) (float64, f
 	return w, h
 }
 
+// ShoulderWidthMeters is the average human shoulder width (0.45m).
+// We use 2× (0.90m) for better visibility on small screens while keeping
+// elements proportional to the court.
+const ShoulderWidthMeters = 0.90
+
+// ElementScaleForCourt returns a scale factor that sizes elements to their
+// real physical proportions on the court. Both the on-screen court widget
+// and the PDF renderer use this function.
+//
+//   unitsPerMeter: how many pixels (screen) or mm (PDF) correspond to 1m of court.
+//   baseBodyWidth: the unscaled body width in the same unit (e.g. 2*BodyRX for screen, 5.0mm for PDF).
+func ElementScaleForCourt(unitsPerMeter, baseBodyWidth float64) float64 {
+	if baseBodyWidth <= 0 || unitsPerMeter <= 0 {
+		return 1.0
+	}
+	return ShoulderWidthMeters * unitsPerMeter / baseBodyWidth
+}
+
 // ComputeViewport computes a Viewport that fits the court (plus 2m apron)
 // into the given widget size while maintaining the court's aspect ratio.
 func ComputeViewport(courtType model.CourtType, geom *CourtGeometry, widgetSize image.Point, padding int) Viewport {
@@ -148,36 +166,11 @@ func ComputeViewport(courtType model.CourtType, geom *CourtGeometry, widgetSize 
 	totalOriginX := (float64(widgetSize.X) - fitW) / 2
 	totalOriginY := (float64(widgetSize.Y) - fitH) / 2
 
-	// Element scale: proportional to pixel density, normalized so half court = 1.0.
-	halfW, halfH := courtDimensions(geom, model.HalfCourt)
-	halfTotalW := halfW + 2*ApronMeters
-	halfTotalH := halfH + 2*ApronMeters
-	halfAspect := halfTotalW / halfTotalH
-	var halfFitW float64
-	if availW/availH > halfAspect {
-		halfFitW = availH * halfAspect
-	} else {
-		halfFitW = availW
-	}
-	halfPxPerMeter := halfFitW / halfTotalW
-
-	elementScale := 1.0
-	if halfPxPerMeter > 0 {
-		elementScale = pxPerMeter / halfPxPerMeter
-	}
-	// Cap so elements don't appear oversized relative to the court.
-	// The apron shrinks the court viewport; apply an extra 0.85 factor
-	// so players look well-proportioned on half court.
-	maxScale := geom.Width / (geom.Width + 2*ApronMeters) * 0.85
-	if elementScale > maxScale {
-		elementScale = maxScale
-	}
-
 	return Viewport{
 		OffsetX:      totalOriginX + apronPx,
 		OffsetY:      totalOriginY + apronPx,
 		Width:        vpW,
 		Height:       vpH,
-		ElementScale: elementScale,
+		ElementScale: ElementScaleForCourt(vpW/courtW, 2*BodyRX),
 	}
 }

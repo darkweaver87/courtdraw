@@ -117,8 +117,6 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 
 	y += 7
 
-	colW := (contentWidth - columnGap) / 2
-
 	// Court aspect ratio.
 	var aspectR float64
 	if ex.CourtType == model.FullCourt {
@@ -130,124 +128,86 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 		aspectR = 15.0 / 14.0
 	}
 
-	if numSeqs <= 1 {
-		// Single sequence: court left, instructions right (original layout).
-		diagramH := courtDiagramSize
-		courtActualW := diagramH * aspectR
-		if courtActualW > colW {
-			courtActualW = colW
-			diagramH = courtActualW / aspectR
+	// Uniform grid layout: up to 4 diagrams per row, instructions below each.
+	const seqCols = 4
+	gap := columnGap * 0.6
+	cellW := (contentWidth - gap*float64(seqCols-1)) / float64(seqCols)
+
+	seqDiagramH := courtDiagramSize * 0.45
+	courtActualW := seqDiagramH * aspectR
+	if courtActualW > cellW {
+		courtActualW = cellW
+		seqDiagramH = courtActualW / aspectR
+	}
+
+	actualSeqs := len(ex.Sequences)
+	if actualSeqs == 0 {
+		actualSeqs = 1
+	}
+
+	for si := 0; si < actualSeqs; si += seqCols {
+		rowEnd := si + seqCols
+		if rowEnd > actualSeqs {
+			rowEnd = actualSeqs
 		}
 
-		if y+diagramH+4 > pageHeight-marginBottom {
+		// Check page space.
+		rowEstimate := seqDiagramH + 25
+		if y+rowEstimate > pageHeight-marginBottom {
 			pdf.AddPage()
 			y = marginTop
 		}
 
-		drawCourtDiagram(pdf, marginLeft, y, courtActualW, diagramH, ex, 0)
-
-		instrX := marginLeft + colW + columnGap
-		instrY := y
-		if len(ex.Sequences) > 0 && ex.Sequences[0].Label != "" {
-			pdf.SetFont("Helvetica", "B", fontSizeBody)
-			pdf.SetXY(instrX, instrY)
-			pdf.CellFormat(colW, 4, tr(ex.Sequences[0].Label), "", 0, "L", false, 0, "")
-			instrY += 4.5
+		// Sequence labels.
+		for ci := 0; ci < rowEnd-si; ci++ {
+			seq := &ex.Sequences[si+ci]
+			colX := marginLeft + float64(ci)*(cellW+gap)
+			if seq.Label != "" {
+				pdf.SetFont("Helvetica", "B", fontSizeSmall)
+				pdf.SetTextColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
+				pdf.SetXY(colX, y)
+				pdf.CellFormat(cellW, 3.5, tr(seq.Label), "", 0, "L", false, 0, "")
+			}
 		}
-		pdf.SetFont("Helvetica", "", fontSizeBody)
+		y += 4
+
+		// Court diagrams side by side.
+		for ci := 0; ci < rowEnd-si; ci++ {
+			colX := marginLeft + float64(ci)*(cellW+gap)
+			drawCourtDiagram(pdf, colX, y, courtActualW, seqDiagramH, ex, si+ci)
+		}
+		y += seqDiagramH + 1
+
+		// Instructions below each diagram.
+		instrYs := make([]float64, rowEnd-si)
+		for ci := 0; ci < rowEnd-si; ci++ {
+			instrYs[ci] = y
+		}
+
+		pdf.SetFont("Helvetica", "", fontSizeSmall)
 		pdf.SetTextColor(colorBlack[0], colorBlack[1], colorBlack[2])
-		if len(ex.Sequences) > 0 {
-			for _, instr := range ex.Sequences[0].Instructions {
-				lines := wrapText(pdf, tr(instr), colW-4)
+		for ci := 0; ci < rowEnd-si; ci++ {
+			colX := marginLeft + float64(ci)*(cellW+gap)
+			seq := &ex.Sequences[si+ci]
+			iy := instrYs[ci]
+			for _, instr := range seq.Instructions {
+				lines := wrapText(pdf, tr(instr), cellW-2)
 				for _, line := range lines {
-					pdf.SetXY(instrX+2, instrY)
-					pdf.CellFormat(colW-4, 3.5, "- "+line, "", 0, "L", false, 0, "")
-					instrY += 3.8
+					pdf.SetXY(colX+1, iy)
+					pdf.CellFormat(cellW-2, 3.2, "- "+line, "", 0, "L", false, 0, "")
+					iy += 3.4
 				}
 			}
-		}
-		maxY := y + diagramH
-		if instrY > maxY {
-			maxY = instrY
-		}
-		y = maxY
-	} else {
-		// Multi-sequence: 4 diagrams per row, instructions below each.
-		const seqCols = 4
-		gap := columnGap * 0.6
-		cellW := (contentWidth - gap*float64(seqCols-1)) / float64(seqCols)
-
-		seqDiagramH := courtDiagramSize * 0.45
-		courtActualW := seqDiagramH * aspectR
-		if courtActualW > cellW {
-			courtActualW = cellW
-			seqDiagramH = courtActualW / aspectR
+			instrYs[ci] = iy
 		}
 
-		for si := 0; si < len(ex.Sequences); si += seqCols {
-			rowEnd := si + seqCols
-			if rowEnd > len(ex.Sequences) {
-				rowEnd = len(ex.Sequences)
+		maxY := y
+		for _, iy := range instrYs {
+			if iy > maxY {
+				maxY = iy
 			}
-
-			// Check page space.
-			rowEstimate := seqDiagramH + 25
-			if y+rowEstimate > pageHeight-marginBottom {
-				pdf.AddPage()
-				y = marginTop
-			}
-
-			// Sequence labels.
-			for ci := 0; ci < rowEnd-si; ci++ {
-				seq := &ex.Sequences[si+ci]
-				colX := marginLeft + float64(ci)*(cellW+gap)
-				if seq.Label != "" {
-					pdf.SetFont("Helvetica", "B", fontSizeSmall)
-					pdf.SetTextColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
-					pdf.SetXY(colX, y)
-					pdf.CellFormat(cellW, 3.5, tr(seq.Label), "", 0, "L", false, 0, "")
-				}
-			}
-			y += 4
-
-			// Court diagrams side by side.
-			for ci := 0; ci < rowEnd-si; ci++ {
-				colX := marginLeft + float64(ci)*(cellW+gap)
-				drawCourtDiagram(pdf, colX, y, courtActualW, seqDiagramH, ex, si+ci)
-			}
-			y += seqDiagramH + 1
-
-			// Instructions below each diagram.
-			instrYs := make([]float64, rowEnd-si)
-			for ci := 0; ci < rowEnd-si; ci++ {
-				instrYs[ci] = y
-			}
-
-			pdf.SetFont("Helvetica", "", fontSizeSmall)
-			pdf.SetTextColor(colorBlack[0], colorBlack[1], colorBlack[2])
-			for ci := 0; ci < rowEnd-si; ci++ {
-				colX := marginLeft + float64(ci)*(cellW+gap)
-				seq := &ex.Sequences[si+ci]
-				iy := instrYs[ci]
-				for _, instr := range seq.Instructions {
-					lines := wrapText(pdf, tr(instr), cellW-2)
-					for _, line := range lines {
-						pdf.SetXY(colX+1, iy)
-						pdf.CellFormat(cellW-2, 3.2, "- "+line, "", 0, "L", false, 0, "")
-						iy += 3.4
-					}
-				}
-				instrYs[ci] = iy
-			}
-
-			maxY := y
-			for _, iy := range instrYs {
-				if iy > maxY {
-					maxY = iy
-				}
-			}
-			y = maxY + 2
 		}
+		y = maxY + 2
 	}
 
 	// Variants.

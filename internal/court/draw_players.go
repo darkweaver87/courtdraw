@@ -10,19 +10,21 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
-// Player visual constants (base sizes at 1x zoom).
+// Player visual constants (base sizes at 1x ElementScale).
+// Sized so that ElementScaleForCourt maps them to real-world dimensions.
+// ×2 real size for visibility (real shoulder width = 0.45m → displayed as 0.90m).
 const (
 	PlayerRadius       = 28   // used for hit testing; visual size is head+body
 	PlayerOutlineWidth = 2
 	HeadRadius         = 14   // head circle radius
-	BodyRX             = 24   // shoulder ellipse horizontal radius
+	BodyRX             = 24   // shoulder ellipse horizontal radius (×2 of 0.225m)
 	BodyRY             = 14   // shoulder ellipse vertical radius
 	HeadBodyGap        = 2    // gap between head and body
 	ArmLength          = 20   // defender arm length
 	ArmWidth           = 4    // defender arm stroke
 	QueueRadius        = 14
 	QueueSpacing       = 36
-	BallRadius         = 10
+	BallRadius         = 13   // ×2 real ball radius 0.12m (size 7)
 	BallOutlineWidth   = 2
 	BallOffsetX        = 16
 	BallOffsetY        = 16
@@ -148,7 +150,7 @@ func DrawPlayerWithOpacity(img *image.RGBA, vp *Viewport, player *model.Player, 
 	ballPos := drawPlayerBody(img, vp, center, player, col, label, face, alpha)
 
 	if hasBall {
-		DrawBallWithOpacity(img, ballPos, opacity)
+		DrawBallWithOpacity(img, vp, ballPos, opacity)
 	}
 }
 
@@ -180,17 +182,17 @@ func DrawBallScaled(img *image.RGBA, vp *Viewport, center Point) {
 		color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0xff})
 }
 
-// DrawBallWithOpacity draws a ball with the given opacity.
-func DrawBallWithOpacity(img *image.RGBA, center Point, opacity float64) {
+// DrawBallWithOpacity draws a ball scaled by the viewport with the given opacity.
+func DrawBallWithOpacity(img *image.RGBA, vp *Viewport, center Point, opacity float64) {
 	if opacity <= 0 {
 		return
 	}
 	alpha := uint8(opacity * 255)
-	ballCenter := Pt(center.X+BallOffsetX, center.Y+BallOffsetY)
+	ballCenter := Pt(center.X+vp.Sf(BallOffsetX), center.Y+vp.Sf(BallOffsetY))
 	col := BallColor
 	col.A = alpha
-	DrawCircleFill(img, ballCenter, BallRadius, col)
-	DrawCircleOutline(img, ballCenter, BallRadius, BallOutlineWidth,
+	DrawCircleFill(img, ballCenter, vp.S(BallRadius), col)
+	DrawCircleOutline(img, ballCenter, vp.S(BallRadius), vp.S(BallOutlineWidth),
 		color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: alpha})
 }
 

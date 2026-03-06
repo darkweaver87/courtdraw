@@ -5,30 +5,40 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
+	"github.com/darkweaver87/courtdraw/internal/court"
 	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
+
+// pdfPlayerBodyWidth is the unscaled player body diameter in mm (2 × BodyRX equivalent).
+const pdfPlayerBodyWidth = 5.0
 
 // courtRenderer draws a court diagram into a PDF region.
 type courtRenderer struct {
 	pdf *fpdf.Fpdf
 	// Diagram bounding box in mm.
 	x, y, w, h float64
-	// Element scale factor (1.0 = reference 60mm diagram, smaller for tiny diagrams).
+	// Element scale factor derived from court physical dimensions.
 	es float64
+}
+
+// su converts a screen-space constant (from draw_players.go / draw_accessories.go)
+// to PDF mm, preserving the same physical proportions via ElementScaleForCourt.
+func (cr *courtRenderer) su(c float64) float64 {
+	return c * cr.es * pdfPlayerBodyWidth / (2.0 * float64(court.BodyRX))
 }
 
 // drawCourtDiagram renders the court background, markings, and a single sequence's elements.
 func drawCourtDiagram(pdf *fpdf.Fpdf, x, y, w, h float64, ex *model.Exercise, seqIdx int) {
-	// Scale decorative elements (players, lines, arrows) based on diagram size.
-	ref := math.Min(w, h)
-	es := ref / 60.0
-	if es > 1.0 {
-		es = 1.0
+	geom := court.FIBAGeometry()
+	if ex.CourtStandard == model.NBA {
+		geom = court.NBAGeometry()
 	}
-	if es < 0.4 {
-		es = 0.4
-	}
+
+	// Scale elements so a player body represents 0.45m (shoulder width)
+	// on the court, using the same function as the on-screen renderer.
+	mmPerMeter := w / geom.Width
+	es := court.ElementScaleForCourt(mmPerMeter, pdfPlayerBodyWidth)
 	cr := &courtRenderer{pdf: pdf, x: x, y: y, w: w, h: h, es: es}
 	cr.drawBackground()
 	cr.drawMarkings(ex.CourtType)
@@ -90,7 +100,6 @@ func (cr *courtRenderer) drawBasketEnd(mirrored bool, courtType model.CourtType)
 	centerX := cr.x + cr.w/2
 
 	// Real FIBA court dimensions → diagram mm.
-	// Court length depends on type: 14m (half) or 28m (full).
 	courtLen := 28.0
 	if courtType != model.FullCourt {
 		courtLen = 14.0
@@ -110,7 +119,6 @@ func (cr *courtRenderer) drawBasketEnd(mirrored bool, courtType model.CourtType)
 	cornerDist := xMM(0.90)
 	ftR := xMM(1.80)
 
-	// fromBaseline converts a distance from the baseline to a PDF Y coordinate.
 	fromBaseline := func(dist float64) float64 {
 		if mirrored {
 			return cr.y + dist
@@ -137,12 +145,11 @@ func (cr *courtRenderer) drawBasketEnd(mirrored bool, courtType model.CourtType)
 	// Rim.
 	cr.pdf.Circle(centerX, basketY, rimR, "D")
 
-	// Three-point line: corner straight lines + arc.
+	// Three-point line.
 	cornerXL := cr.x + cornerDist
 	cornerXR := cr.x + cr.w - cornerDist
 	baselineY := fromBaseline(0)
 
-	// Where the arc meets the corner lines.
 	dx := centerX - cornerXL
 	dy2 := tpR*tpR - dx*dx
 	if dy2 < 0 {
@@ -150,7 +157,6 @@ func (cr *courtRenderer) drawBasketEnd(mirrored bool, courtType model.CourtType)
 	}
 	arcMeet := math.Sqrt(dy2)
 
-	// Arc meet point Y — the arc extends into the court (away from baseline).
 	var arcMeetY float64
 	if mirrored {
 		arcMeetY = basketY + arcMeet
@@ -158,11 +164,9 @@ func (cr *courtRenderer) drawBasketEnd(mirrored bool, courtType model.CourtType)
 		arcMeetY = basketY - arcMeet
 	}
 
-	// Corner straight lines from baseline to arc meet point.
 	cr.pdf.Line(cornerXL, baselineY, cornerXL, arcMeetY)
 	cr.pdf.Line(cornerXR, baselineY, cornerXR, arcMeetY)
 
-	// Three-point arc from left meet point to right meet point.
 	leftDy := arcMeetY - basketY
 	rightDy := leftDy
 	startAngle := math.Atan2(leftDy, cornerXL-centerX) * 180 / math.Pi
@@ -187,109 +191,187 @@ func (cr *courtRenderer) drawArc(cx, cy, r, startDeg, endDeg float64) {
 	}
 }
 
+// --- Players (B2 style: head + body ellipse + arms) ---
+
 func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
-	s := cr.es
 	for i := range seq.Players {
 		p := &seq.Players[i]
 		px, py := cr.relToMM(p.Position)
-		r := 2.5 * s
 
-		// Queue circles behind the main player (opposite of facing direction).
+		rad := p.Rotation * math.Pi / 180
+		sinR := math.Sin(rad)
+		cosR := math.Cos(rad)
+
+		// Queue circles behind the main player (clamped to court bounds).
 		if p.Type == "queue" && p.Count > 1 {
 			col := roleColorPDF(p.Role)
 			qCount := p.Count
 			if qCount > 4 {
 				qCount = 4
 			}
-			rad := p.Rotation * math.Pi / 180
-			qdx := -math.Sin(rad)
-			qdy := math.Cos(rad)
+			qr := cr.su(float64(court.QueueRadius))
+			qs := cr.su(float64(court.QueueSpacing))
 			for qi := qCount - 1; qi >= 1; qi-- {
-				off := float64(qi) * 3.5 * s
-				qx := px + qdx*off
-				qy := py + qdy*off
+				off := float64(qi) * qs
+				qx := px - sinR*off
+				qy := py + cosR*off
+				// Skip circles that fall outside the court diagram.
+				if qx-qr < cr.x || qx+qr > cr.x+cr.w || qy-qr < cr.y || qy+qr > cr.y+cr.h {
+					continue
+				}
 				cr.pdf.SetFillColor(col[0], col[1], col[2])
 				cr.pdf.SetDrawColor(255, 255, 255)
-				cr.pdf.SetLineWidth(0.2 * s)
-				cr.pdf.Circle(qx, qy, 1.5*s, "FD")
+				cr.pdf.SetLineWidth(cr.su(0.5))
+				cr.pdf.Circle(qx, qy, qr, "FD")
 			}
 		}
 
-		// Role color.
+		// B2 style body.
 		col := roleColorPDF(p.Role)
+		brx := cr.su(float64(court.BodyRX))
+		bry := cr.su(float64(court.BodyRY))
+		hr := cr.su(float64(court.HeadRadius))
+		gap := cr.su(float64(court.HeadBodyGap))
+		headDist := bry*0.5 + gap
+		headX := px + sinR*headDist
+		headY := py - cosR*headDist
+
+		// Body ellipse (semi-transparent).
+		cr.drawRotatedEllipseFill(px, py, brx, bry, p.Rotation, col, 0.45)
+
+		// Head circle (full color).
 		cr.pdf.SetFillColor(col[0], col[1], col[2])
-		cr.pdf.Circle(px, py, r, "F")
+		cr.pdf.Circle(headX, headY, hr, "F")
 
-		// White outline.
-		cr.pdf.SetDrawColor(255, 255, 255)
-		cr.pdf.SetLineWidth(0.3 * s)
-		cr.pdf.Circle(px, py, r, "D")
+		// Default ball position (right side of body).
+		ballPosX := px + cosR*brx
+		ballPosY := py + sinR*brx
 
-		// Direction arrow inside the circle.
-		if p.Rotation != 0 {
-			rad := p.Rotation * math.Pi / 180
-			cos := math.Cos(rad)
-			sin := math.Sin(rad)
-			tipDist := r * 0.75
-			halfW := r * 0.3
-			rotate := func(lx, ly float64) (float64, float64) {
-				return px + lx*cos - ly*sin, py + lx*sin + ly*cos
-			}
-			tipX, tipY := rotate(0, -tipDist)
-			leftX, leftY := rotate(-halfW, tipDist*0.3)
-			rightX, rightY := rotate(halfW, tipDist*0.3)
-			cr.pdf.SetFillColor(255, 255, 255)
-			cr.pdf.SetAlpha(0.5, "Normal")
-			cr.pdf.MoveTo(tipX, tipY)
-			cr.pdf.LineTo(leftX, leftY)
-			cr.pdf.LineTo(rightX, rightY)
-			cr.pdf.ClosePath()
-			cr.pdf.DrawPath("F")
+		// Role-specific extras.
+		armLen := cr.su(float64(court.ArmLength))
+		armW := cr.su(float64(court.ArmWidth))
+
+		switch p.Role {
+		case model.RoleAttacker, model.RolePointGuard, model.RoleShootingGuard,
+			model.RoleSmallForward, model.RolePowerForward, model.RoleCenter:
+			// Right arm: starts at right side of body, extends forward-right.
+			raX := px + cosR*brx
+			raY := py + sinR*brx
+			reX := raX + sinR*armLen*0.7 + cosR*armLen*0.5
+			reY := raY - cosR*armLen*0.7 + sinR*armLen*0.5
+			cr.pdf.SetDrawColor(col[0], col[1], col[2])
+			cr.pdf.SetLineWidth(armW)
+			cr.pdf.Line(raX, raY, reX, reY)
+			ballPosX = reX
+			ballPosY = reY
+		case model.RoleDefender:
+			// Arms spread (\O/).
+			cr.pdf.SetDrawColor(col[0], col[1], col[2])
+			cr.pdf.SetLineWidth(armW)
+			lsX := px - cosR*brx
+			lsY := py - sinR*brx
+			leX := lsX - cosR*armLen + sinR*armLen*0.4
+			leY := lsY - sinR*armLen - cosR*armLen*0.4
+			rsX := px + cosR*brx
+			rsY := py + sinR*brx
+			reX := rsX + cosR*armLen + sinR*armLen*0.4
+			reY := rsY + sinR*armLen - cosR*armLen*0.4
+			cr.pdf.Line(lsX, lsY, leX, leY)
+			cr.pdf.Line(rsX, rsY, reX, reY)
+			ballPosX = reX
+			ballPosY = reY
+		case model.RoleCoach:
+			// Clipboard beside body.
+			cbDist := brx + cr.su(5)
+			cbCX := px + cosR*cbDist
+			cbCY := py + sinR*cbDist
+			cbW := cr.su(3)
+			cbH := cr.su(5)
+			cr.pdf.SetFillColor(144, 164, 174)
+			cr.pdf.SetAlpha(0.7, "Normal")
+			cr.pdf.Rect(cbCX-cbW, cbCY-cbH, cbW*2, cbH*2, "F")
 			cr.pdf.SetAlpha(1.0, "Normal")
 		}
 
-		// Label — translate default role labels.
+		// Label centered on head.
 		label := p.Label
 		if label == "" || label == model.RoleLabel(p.Role) {
 			label = roleLabelI18n(p.Role)
 		}
-		fontSize := 5.0 * s
-		if fontSize < 3.0 {
-			fontSize = 3.0
+		fontSize := hr * 1.4
+		if fontSize < 2.5 {
+			fontSize = 2.5
 		}
 		cr.pdf.SetFont("Helvetica", "B", fontSize)
 		cr.pdf.SetTextColor(255, 255, 255)
 		strW := cr.pdf.GetStringWidth(label)
-		cr.pdf.Text(px-strW/2, py+1.2*s, label)
+		// fpdf Text() y = baseline (mm). fontSize is in points.
+		// Cap-height in mm = fontSize × 0.3528 (pt→mm) × 0.72 (Helvetica cap ratio).
+		// Center caps vertically: baseline = centerY + capHeightMM / 2.
+		cr.pdf.Text(headX-strW/2, headY+fontSize*0.127, label)
 
 		// Ball indicator.
 		if seq.BallCarrier != "" && p.ID == seq.BallCarrier {
-			ballX := px + 1.8*s
-			ballY := py + 1.8*s
-			cr.pdf.SetFillColor(244, 162, 97) // #f4a261 orange
-			cr.pdf.Circle(ballX, ballY, 0.8*s, "F")
+			bx := ballPosX + cr.su(float64(court.BallOffsetX))
+			by := ballPosY + cr.su(float64(court.BallOffsetY))
+			ballR := cr.su(float64(court.BallRadius))
+			cr.pdf.SetFillColor(244, 162, 97)
+			cr.pdf.Circle(bx, by, ballR, "F")
 			cr.pdf.SetDrawColor(0, 0, 0)
-			cr.pdf.SetLineWidth(0.15 * s)
-			cr.pdf.Circle(ballX, ballY, 0.8*s, "D")
+			cr.pdf.SetLineWidth(cr.su(float64(court.BallOutlineWidth)))
+			cr.pdf.Circle(bx, by, ballR, "D")
 		}
 
 		// Callout label above player.
 		if p.Callout != "" {
 			calloutLabel := i18n.T("callout." + string(p.Callout))
-			calloutSize := 4.0 * s
-			if calloutSize < 3.0 {
-				calloutSize = 3.0
+			calloutSize := cr.su(float64(court.HeadRadius)) * 1.0
+			if calloutSize < 2.5 {
+				calloutSize = 2.5
 			}
 			cr.pdf.SetFont("Helvetica", "B", calloutSize)
 			cr.pdf.SetTextColor(60, 60, 60)
-			strW := cr.pdf.GetStringWidth(calloutLabel)
-			cr.pdf.Text(px-strW/2, py-r-1.0*s, calloutLabel)
+			cstrW := cr.pdf.GetStringWidth(calloutLabel)
+			pr := cr.su(float64(court.PlayerRadius))
+			cr.pdf.Text(px-cstrW/2, py-pr-cr.su(2), calloutLabel)
 		}
 	}
 }
 
+// drawRotatedEllipseFill draws a filled ellipse approximated as a polygon.
+func (cr *courtRenderer) drawRotatedEllipseFill(cx, cy, rx, ry, rotDeg float64, col [3]int, alpha float64) {
+	const steps = 24
+	rotRad := rotDeg * math.Pi / 180
+	cosR := math.Cos(rotRad)
+	sinR := math.Sin(rotRad)
+
+	for i := 0; i <= steps; i++ {
+		t := float64(i) / float64(steps) * 2 * math.Pi
+		lx := rx * math.Cos(t)
+		ly := ry * math.Sin(t)
+		ex := cx + lx*cosR - ly*sinR
+		ey := cy + lx*sinR + ly*cosR
+		if i == 0 {
+			cr.pdf.MoveTo(ex, ey)
+		} else {
+			cr.pdf.LineTo(ex, ey)
+		}
+	}
+	cr.pdf.ClosePath()
+
+	cr.pdf.SetFillColor(col[0], col[1], col[2])
+	if alpha < 1.0 {
+		cr.pdf.SetAlpha(alpha, "Normal")
+	}
+	cr.pdf.DrawPath("F")
+	if alpha < 1.0 {
+		cr.pdf.SetAlpha(1.0, "Normal")
+	}
+}
+
+// --- Accessories (same shapes as editor) ---
+
 func (cr *courtRenderer) drawAccessories(seq *model.Sequence) {
-	s := cr.es
 	for i := range seq.Accessories {
 		acc := &seq.Accessories[i]
 		ax, ay := cr.relToMM(acc.Position)
@@ -302,7 +384,7 @@ func (cr *courtRenderer) drawAccessories(seq *model.Sequence) {
 
 		switch acc.Type {
 		case model.AccessoryCone:
-			cs := 1.5 * s
+			cs := cr.su(float64(court.AccessoryConeSize))
 			cr.pdf.SetFillColor(255, 165, 0) // orange
 			tx, ty := rotate(0, -cs)
 			lx, ly := rotate(-cs*0.7, cs*0.5)
@@ -312,11 +394,16 @@ func (cr *courtRenderer) drawAccessories(seq *model.Sequence) {
 			cr.pdf.LineTo(rx, ry)
 			cr.pdf.ClosePath()
 			cr.pdf.DrawPath("F")
+
 		case model.AccessoryAgilityLadder:
-			w, h := 2.0*s, 5.0*s
+			w := cr.su(float64(court.AccessoryLadderWidth))
+			h := cr.su(float64(court.AccessoryLadderLength))
+			lw := cr.su(1.5)
+			if lw < 0.15 {
+				lw = 0.15
+			}
 			cr.pdf.SetDrawColor(255, 215, 0) // gold
-			cr.pdf.SetLineWidth(0.3 * s)
-			// Rotated rectangle corners.
+			cr.pdf.SetLineWidth(lw)
 			c0x, c0y := rotate(-w/2, -h/2)
 			c1x, c1y := rotate(w/2, -h/2)
 			c2x, c2y := rotate(w/2, h/2)
@@ -325,8 +412,7 @@ func (cr *courtRenderer) drawAccessories(seq *model.Sequence) {
 			cr.pdf.Line(c1x, c1y, c2x, c2y)
 			cr.pdf.Line(c2x, c2y, c3x, c3y)
 			cr.pdf.Line(c3x, c3y, c0x, c0y)
-			// Rungs.
-			rungs := 5
+			rungs := court.AccessoryLadderRungs
 			for ri := 1; ri < rungs; ri++ {
 				t := float64(ri) / float64(rungs)
 				rlx := c0x + (c3x-c0x)*t
@@ -335,21 +421,68 @@ func (cr *courtRenderer) drawAccessories(seq *model.Sequence) {
 				rry := c1y + (c2y-c1y)*t
 				cr.pdf.Line(rlx, rly, rrx, rry)
 			}
+
 		case model.AccessoryChair:
-			cr.pdf.SetDrawColor(128, 128, 128)
-			cr.pdf.SetLineWidth(0.5 * s)
-			// L-shape: vertical (back) + horizontal (seat), rotated.
-			bx, by := rotate(0, -2*s)
-			mx, my := rotate(0, 1*s)
-			ex, ey := rotate(1.5*s, 1*s)
-			cr.pdf.Line(bx, by, mx, my)
-			cr.pdf.Line(mx, my, ex, ey)
+			// Same shape as editor: seat rectangle + backrest bar + leg circles.
+			cs := cr.su(float64(court.AccessoryChairSize))
+			half := cs * 0.5
+			lw := cr.su(2)
+			if lw < 0.15 {
+				lw = 0.15
+			}
+
+			tlx, tly := rotate(-half, -half)
+			trx, trY := rotate(half, -half)
+			brx, brY := rotate(half, half)
+			blx, blY := rotate(-half, half)
+
+			// Seat fill.
+			cr.pdf.SetFillColor(0x90, 0x90, 0x90)
+			cr.pdf.SetAlpha(0.67, "Normal")
+			cr.pdf.MoveTo(tlx, tly)
+			cr.pdf.LineTo(trx, trY)
+			cr.pdf.LineTo(brx, brY)
+			cr.pdf.LineTo(blx, blY)
+			cr.pdf.ClosePath()
+			cr.pdf.DrawPath("F")
+			cr.pdf.SetAlpha(1.0, "Normal")
+
+			// Seat outline.
+			cr.pdf.SetDrawColor(0x80, 0x80, 0x80)
+			cr.pdf.SetLineWidth(lw)
+			cr.pdf.Line(tlx, tly, trx, trY)
+			cr.pdf.Line(trx, trY, brx, brY)
+			cr.pdf.Line(brx, brY, blx, blY)
+			cr.pdf.Line(blx, blY, tlx, tly)
+
+			// Backrest bar at top.
+			backLw := cr.su(4)
+			if backLw < 0.2 {
+				backLw = 0.2
+			}
+			btlx, btly := rotate(-half, -half-backLw/2)
+			btrx, btrY := rotate(half, -half-backLw/2)
+			cr.pdf.SetLineWidth(backLw)
+			cr.pdf.Line(btlx, btly, btrx, btrY)
+
+			// Leg circles at corners.
+			legR := cr.su(2.5)
+			if legR < 0.15 {
+				legR = 0.15
+			}
+			cr.pdf.SetFillColor(0x60, 0x60, 0x60)
+			cr.pdf.Circle(tlx, tly, legR, "F")
+			cr.pdf.Circle(trx, trY, legR, "F")
+			cr.pdf.Circle(brx, brY, legR, "F")
+			cr.pdf.Circle(blx, blY, legR, "F")
 		}
 	}
 }
 
+// --- Actions (same proportions as editor) ---
+
 func (cr *courtRenderer) drawActions(seq *model.Sequence) {
-	s := cr.es
+	lw := cr.su(float64(court.ArrowLineWidth))
 	for i := range seq.Actions {
 		act := &seq.Actions[i]
 		fromX, fromY := cr.resolveActionRef(act.From, seq.Players)
@@ -357,23 +490,26 @@ func (cr *courtRenderer) drawActions(seq *model.Sequence) {
 
 		col := actionColorPDF(act.Type)
 		cr.pdf.SetDrawColor(col[0], col[1], col[2])
-		cr.pdf.SetLineWidth(0.4 * s)
+		cr.pdf.SetLineWidth(lw)
 
 		switch act.Type {
 		case model.ActionPass:
-			// Dashed line.
-			cr.drawDashed(fromX, fromY, toX, toY, 1.5*s, 1.0*s)
+			dl := cr.su(float64(court.DashLen))
+			gl := cr.su(float64(court.GapLen))
+			cr.drawDashed(fromX, fromY, toX, toY, dl, gl)
 			cr.drawArrowHead(fromX, fromY, toX, toY, col)
 		case model.ActionDribble:
-			// Zigzag.
 			cr.drawZigzag(fromX, fromY, toX, toY)
 			cr.drawArrowHead(fromX, fromY, toX, toY, col)
 		case model.ActionScreen:
-			// Thick bar.
-			cr.pdf.SetLineWidth(1.0 * s)
+			cr.pdf.SetLineWidth(lw * 3)
 			cr.pdf.Line(fromX, fromY, toX, toY)
+		case model.ActionContest:
+			dl := cr.su(float64(court.DashLen))
+			gl := cr.su(float64(court.GapLen))
+			cr.drawDashed(fromX, fromY, toX, toY, dl, gl)
+			cr.drawArrowHead(fromX, fromY, toX, toY, col)
 		default:
-			// Solid line + arrow.
 			cr.pdf.Line(fromX, fromY, toX, toY)
 			cr.drawArrowHead(fromX, fromY, toX, toY, col)
 		}
@@ -428,11 +564,10 @@ func (cr *courtRenderer) drawZigzag(x1, y1, x2, y2 float64) {
 	if length == 0 {
 		return
 	}
-	segments := 6
-	amp := 1.0 * cr.es // mm amplitude
+	segments := court.ZigzagSegments
+	amp := cr.su(float64(court.ZigzagAmplitude))
 	ux := dx / length
 	uy := dy / length
-	// perpendicular
 	px := -uy
 	py := ux
 
@@ -446,7 +581,7 @@ func (cr *courtRenderer) drawZigzag(x1, y1, x2, y2 float64) {
 			side = -1.0
 		}
 		if i == segments {
-			side = 0 // end at target
+			side = 0
 		}
 		zx := mx + px*amp*side
 		zy := my + py*amp*side
@@ -465,8 +600,7 @@ func (cr *courtRenderer) drawArrowHead(fromX, fromY, toX, toY float64, col [3]in
 	ux := dx / length
 	uy := dy / length
 
-	size := 1.5 * cr.es // arrow head size in mm
-	// Arrow tip is at (toX, toY), two sides.
+	size := cr.su(float64(court.ArrowHeadSize))
 	lx := toX - ux*size + uy*size*0.5
 	ly := toY - uy*size - ux*size*0.5
 	rx := toX - ux*size - uy*size*0.5

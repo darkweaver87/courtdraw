@@ -8,13 +8,16 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
-// Accessory visual constants (base sizes at 1x zoom).
+// Accessory visual constants (base sizes at 1x ElementScale).
+// Sized so that ElementScaleForCourt maps them to real-world dimensions.
+// Players and small accessories use ×2 real size for visibility.
+// The agility ladder uses ×0.75 (real: 0.50m × 4.0m).
 const (
-	AccessoryConeSize     = 20
-	AccessoryLadderWidth  = 24
-	AccessoryLadderLength = 80
-	AccessoryLadderRungs  = 5
-	AccessoryChairSize    = 24
+	AccessoryConeSize     = 21  // ×2 real cone base ~0.20m
+	AccessoryLadderWidth  = 20  // ×0.75 real ladder width 0.50m
+	AccessoryLadderLength = 160 // ×0.75 real ladder length 4.0m
+	AccessoryLadderRungs  = 7
+	AccessoryChairSize    = 36  // ×1.5 real chair seat ~0.45m
 )
 
 var (
