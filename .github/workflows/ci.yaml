@@ -153,7 +153,9 @@ jobs:
 
       - name: Rename binary
         if: matrix.os != 'windows'
-        run: mv courtdraw "courtdraw-${{ matrix.os }}-${{ matrix.arch }}"
+        run: |
+          chmod +x courtdraw
+          mv courtdraw "courtdraw-${{ matrix.os }}-${{ matrix.arch }}"
         shell: bash
 
       - name: Download Mesa3D software OpenGL (Windows)
@@ -222,6 +224,7 @@ jobs:
         run: |
           mkdir -p release
           find artifacts/ -type f \( -name "courtdraw-*" -o -name "*.zip" -o -name "*.apk" \) -exec cp {} release/ \;
+          chmod +x release/courtdraw-linux-* release/courtdraw-darwin-* 2>/dev/null || true
           ls -la release/
 
       - uses: softprops/action-gh-release@v2
