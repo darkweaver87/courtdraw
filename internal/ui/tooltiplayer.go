@@ -36,14 +36,29 @@ func (tl *TooltipLayer) Widget() fyne.CanvasObject {
 }
 
 // Show displays the tooltip at the given absolute position.
+// The X coordinate is clamped so the tooltip stays within the window.
 func (tl *TooltipLayer) Show(text string, pos fyne.Position) {
 	tl.label.Text = text
 	tl.label.Refresh()
 	ts := tl.label.MinSize()
 	pad := float32(4)
-	tl.bg.Resize(fyne.NewSize(ts.Width+pad*2, ts.Height+pad))
-	tl.bg.Move(pos)
-	tl.label.Move(fyne.NewPos(pos.X+pad, pos.Y+pad/2))
+	bgW := ts.Width + pad*2
+
+	// Clamp X so tooltip doesn't overflow the right edge.
+	x := pos.X
+	if canvas := fyne.CurrentApp().Driver().CanvasForObject(tl.box); canvas != nil {
+		winW := canvas.Size().Width
+		if x+bgW > winW {
+			x = winW - bgW
+		}
+	}
+	if x < 0 {
+		x = 0
+	}
+
+	tl.bg.Resize(fyne.NewSize(bgW, ts.Height+pad))
+	tl.bg.Move(fyne.NewPos(x, pos.Y))
+	tl.label.Move(fyne.NewPos(x+pad, pos.Y+pad/2))
 	tl.bg.Show()
 	tl.label.Show()
 }

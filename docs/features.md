@@ -145,7 +145,7 @@ Icons are PNG or SVG files in `assets/icons/`. They can be replaced for custom s
 - Accessible via the gear icon (right side of the toolbar)
 - **GitHub Token**: stored base64-encoded in `settings.yaml` (mode 0600)
 - **Language**: switch between EN/FR (applies immediately)
-- **Exercise Directories**: additional directories to scan for exercises (one per line)
+- **Exercise Directory**: exercises storage path with folder picker (defaults to `~/.courtdraw/exercises/`)
 
 ## Localization
 

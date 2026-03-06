@@ -15,7 +15,7 @@ type Settings struct {
 	Language     string   `yaml:"language"`
 	PdfExportDir string   `yaml:"pdf_export_dir,omitempty"`
 	GithubToken  string   `yaml:"github_token,omitempty"`
-	ExerciseDirs []string `yaml:"exercise_dirs,omitempty"`
+	ExerciseDir  string   `yaml:"exercise_dir,omitempty"`
 	RecentFiles  []string `yaml:"recent_files,omitempty"`
 }
 
@@ -64,4 +64,9 @@ func (s *YAMLStore) SaveSettings(settings *Settings) error {
 		return fmt.Errorf("marshal settings: %w", err)
 	}
 	return os.WriteFile(path, data, 0600)
+}
+
+// ExercisesDir returns the exercises directory path.
+func (s *YAMLStore) ExercisesDir() string {
+	return s.exercisesDir
 }

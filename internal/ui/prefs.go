@@ -7,6 +7,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/i18n"
@@ -31,19 +33,47 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 		langSelect.SetSelected(string(i18n.CurrentLang()))
 	}
 
-	// Exercise directories.
-	dirsEntry := widget.NewMultiLineEntry()
-	dirsEntry.SetPlaceHolder(i18n.T("prefs.dirs_placeholder"))
-	dirsEntry.SetText(strings.Join(settings.ExerciseDirs, "\n"))
-	dirsEntry.SetMinRowsVisible(3)
+	// Exercise directory — default to store's exercises dir.
+	defaultDir := ""
+	if ys != nil {
+		defaultDir = ys.ExercisesDir()
+	}
+	dirValue := settings.ExerciseDir
+	if dirValue == "" {
+		dirValue = defaultDir
+	}
+
+	dirEntry := widget.NewEntry()
+	dirEntry.SetText(dirValue)
+	dirEntry.SetPlaceHolder(defaultDir)
+
+	browseBtn := widget.NewButton(i18n.T("prefs.browse"), func() {
+		fd := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
+			if err != nil || uri == nil {
+				return
+			}
+			dirEntry.SetText(uri.Path())
+		}, w)
+		// Try to start from the current value.
+		if current := strings.TrimSpace(dirEntry.Text); current != "" {
+			if listable, err := storage.ListerForURI(storage.NewFileURI(current)); err == nil {
+				fd.SetLocation(listable)
+			}
+		}
+		fd.Show()
+	})
+	browseBtn.Importance = widget.LowImportance
+
+	dirRow := container.NewBorder(nil, nil, nil, browseBtn, dirEntry)
 
 	form := container.NewVBox(
 		widget.NewLabel(i18n.T("prefs.github_token")),
 		tokenEntry,
 		widget.NewLabel(i18n.T("prefs.language")),
 		langSelect,
-		widget.NewLabel(i18n.T("prefs.exercise_dirs")),
-		dirsEntry,
+		widget.NewLabel(i18n.T("prefs.exercise_dir")),
+		dirRow,
+		layout.NewSpacer(),
 	)
 
 	d := dialog.NewCustomConfirm(
@@ -58,16 +88,7 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 			oldLang := settings.Language
 			settings.GithubToken = strings.TrimSpace(tokenEntry.Text)
 			settings.Language = langSelect.Selected
-
-			// Parse directories.
-			var dirs []string
-			for _, line := range strings.Split(dirsEntry.Text, "\n") {
-				d := strings.TrimSpace(line)
-				if d != "" {
-					dirs = append(dirs, d)
-				}
-			}
-			settings.ExerciseDirs = dirs
+			settings.ExerciseDir = strings.TrimSpace(dirEntry.Text)
 
 			if ys != nil {
 				ys.SaveSettings(settings)
@@ -80,6 +101,6 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 		},
 		w,
 	)
-	d.Resize(fyne.NewSize(450, 380))
+	d.Resize(fyne.NewSize(450, 350))
 	d.Show()
 }

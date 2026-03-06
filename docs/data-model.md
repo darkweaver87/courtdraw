@@ -363,8 +363,7 @@ Stored in `~/.courtdraw/settings.yaml` with file permissions `0600`.
 ```yaml
 language: en
 github_token: "base64-encoded-token"
-exercise_dirs:
-  - /path/to/extra/exercises
+exercise_dir: /home/user/.courtdraw/exercises
 pdf_export_dir: /home/user/Documents
 ```
 
@@ -373,5 +372,5 @@ pdf_export_dir: /home/user/Documents
 | `language` | string | UI language (`en` or `fr`) |
 | `pdf_export_dir` | string | Default directory for PDF exports |
 | `github_token` | string | GitHub PAT, base64-encoded in YAML, decoded at load |
-| `exercise_dirs` | []string | Additional directories to scan for exercises |
+| `exercise_dir` | string | Exercises storage directory (defaults to `~/.courtdraw/exercises/`) |
 | `recent_files` | []string | Recently opened exercise names (deprecated) |
