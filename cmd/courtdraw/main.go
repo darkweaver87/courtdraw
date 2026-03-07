@@ -15,6 +15,8 @@ import (
 	cdtheme "github.com/darkweaver87/courtdraw/internal/ui/theme"
 )
 
+var version = "dev"
+
 func main() {
 	// Create Fyne app first — needed for Storage() on mobile.
 	a := app.New()
@@ -46,13 +48,14 @@ func main() {
 	w.Resize(fyne.NewSize(1200, 800))
 
 	// Create and initialize the application.
-	application := ui.NewApp(st, settings, lib, w)
+	application := ui.NewApp(st, settings, lib, w, version)
 	w.SetContent(application.BuildUI())
 
 	// Initialize exercise and session after UI is built (court widget exists).
 	application.NewExercise()
 	application.NewSession()
 	application.SyncLibraryIfEmpty()
+	application.CheckVersionAtStartup()
 	w.ShowAndRun()
 }
 

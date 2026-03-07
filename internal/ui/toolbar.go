@@ -24,11 +24,12 @@ const (
 	FileActionImport
 	FileActionRecent
 	FileActionPreferences
+	FileActionAbout
 )
 
-// FileToolbar provides New, Open, Recent, Save, Save As, Import, Preferences buttons.
+// FileToolbar provides New, Open, Recent, Save, Save As, Import, About, Preferences buttons.
 type FileToolbar struct {
-	btns    [7]*TipButton // new, open, recent, save, save_as, import, preferences
+	btns    [8]*TipButton // new, open, recent, save, save_as, import, about, preferences
 	saveBtn *TipButton
 	box     *fyne.Container
 	OnAction func(FileAction)
@@ -69,21 +70,26 @@ func NewFileToolbar() *FileToolbar {
 			ft.OnAction(FileActionImport)
 		}
 	})
-	ft.btns[6] = NewTipButton(icon.Settings(), i18n.T("tooltip.preferences"), func() {
+	ft.btns[6] = NewTipButton(icon.Info(), i18n.T("tooltip.about"), func() {
+		if ft.OnAction != nil {
+			ft.OnAction(FileActionAbout)
+		}
+	})
+	ft.btns[7] = NewTipButton(icon.Settings(), i18n.T("tooltip.preferences"), func() {
 		if ft.OnAction != nil {
 			ft.OnAction(FileActionPreferences)
 		}
 	})
 
 	bg := canvas.NewRectangle(color.NRGBA{R: 0x2e, G: 0x2e, B: 0x2e, A: 0xff})
-	buttons := container.NewHBox(ft.btns[0], ft.btns[1], ft.btns[2], ft.btns[3], ft.btns[4], ft.btns[5], layout.NewSpacer(), ft.btns[6])
+	buttons := container.NewHBox(ft.btns[0], ft.btns[1], ft.btns[2], ft.btns[3], ft.btns[4], ft.btns[5], layout.NewSpacer(), ft.btns[6], ft.btns[7])
 	ft.box = container.NewStack(bg, buttons)
 	return ft
 }
 
 // RefreshLanguage updates tooltip text for the current language.
 func (ft *FileToolbar) RefreshLanguage() {
-	keys := [7]string{"tooltip.new", "tooltip.open", "tooltip.recent", "tooltip.save", "tooltip.save_as", "tooltip.import", "tooltip.preferences"}
+	keys := [8]string{"tooltip.new", "tooltip.open", "tooltip.recent", "tooltip.save", "tooltip.save_as", "tooltip.import", "tooltip.about", "tooltip.preferences"}
 	for i, key := range keys {
 		ft.btns[i].SetTooltip(i18n.T(key))
 	}

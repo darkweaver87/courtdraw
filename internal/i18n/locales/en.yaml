@@ -307,6 +307,14 @@ mobile.session.library: "Library"
 mobile.session.preview: "Preview"
 mobile.session.session: "Session"
 
+# About / Version
+about.title: "About"
+tooltip.about: "About"
+prefs.version: "Version"
+version.update_title: "Update Available"
+version.new_available: "A new version is available: %s"
+version.release_notes: "View release notes"
+
 # Library sync
 sync.in_progress: "Syncing community library..."
 sync.up_to_date: "Community library is up to date"

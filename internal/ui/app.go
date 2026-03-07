@@ -39,6 +39,7 @@ type App struct {
 	store    store.Store
 	settings *store.Settings
 	library  *store.Library
+	version  string
 	syncing  bool
 
 	exercise    *model.Exercise
@@ -71,12 +72,13 @@ type App struct {
 }
 
 // NewApp creates a new App instance.
-func NewApp(st store.Store, settings *store.Settings, lib *store.Library, w fyne.Window) *App {
+func NewApp(st store.Store, settings *store.Settings, lib *store.Library, w fyne.Window, version string) *App {
 	a := &App{
 		window:   w,
 		store:    st,
 		settings: settings,
 		library:  lib,
+		version:  version,
 		editLang: string(i18n.CurrentLang()),
 	}
 	a.editorState.ActiveTool = editor.ToolSelect
@@ -374,6 +376,32 @@ func (a *App) showPreferences() {
 	})
 }
 
+func (a *App) showAbout() {
+	showAboutDialog(a.window, a.version)
+}
+
+// CheckVersionAtStartup checks GitHub for a newer release in the background.
+func (a *App) CheckVersionAtStartup() {
+	if a.version == "dev" || a.version == "" {
+		return
+	}
+	token := a.settings.GithubToken
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+	}
+	go func() {
+		info, err := store.CheckLatestVersion(context.Background(), token)
+		if err != nil || info == nil {
+			return
+		}
+		if info.Tag != "" && info.Tag != a.version && info.Tag > a.version {
+			fyne.Do(func() {
+				showUpdateDialog(a.window, info.Tag, info.URL)
+			})
+		}
+	}()
+}
+
 // --- Exercise management ---
 
 // SetExercise sets the current exercise.
@@ -503,6 +531,8 @@ func (a *App) handleFileAction(action FileAction) {
 		a.showRecentFiles()
 	case FileActionPreferences:
 		a.showPreferences()
+	case FileActionAbout:
+		a.showAbout()
 	}
 }
 
