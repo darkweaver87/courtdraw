@@ -130,6 +130,7 @@ type SessionTab struct {
 
 	// Session overlay.
 	sessionOverlay *SessionListOverlay
+	responsive     *ResponsiveContainer
 
 	OnAction         func(SessionTabEvent)
 	OnSessionChanged func() // called when exercises are added/removed/reordered
@@ -329,7 +330,8 @@ func (st *SessionTab) buildLayout() {
 	}
 
 	bg := canvas.NewRectangle(theme.ColorDarkBg)
-	st.box = container.NewStack(bg, NewResponsiveContainer(st.buildDesktopLayout, st.buildMobileLayout))
+	st.responsive = NewResponsiveContainer(st.buildDesktopLayout, st.buildMobileLayout)
+	st.box = container.NewStack(bg, st.responsive)
 }
 
 func (st *SessionTab) buildDesktopLayout() fyne.CanvasObject {
@@ -566,6 +568,13 @@ func (st *SessionTab) updatePreview() {
 	st.previewLabel.Refresh()
 	st.previewName = mgd.Name
 
+	// Hide delete for remote-only exercises (not imported locally).
+	if mgd.Status == StatusRemoteOnly {
+		st.deleteExBtn.Hide()
+	} else {
+		st.deleteExBtn.Show()
+	}
+
 	// Load the exercise for the preview court.
 	var ex *model.Exercise
 	if mgd.LocalEx != nil {
@@ -766,6 +775,29 @@ func (st *SessionTab) RefreshLanguage() {
 			st.courtTypeSelect.SetSelected(st.buildCourtTypeOptions()[i])
 			break
 		}
+	}
+
+	// Preview placeholder.
+	if st.selectedIdx < 0 {
+		st.previewLabel.Text = i18n.T("session.select_to_preview")
+		st.previewLabel.Refresh()
+	}
+
+	// Toolbar button tooltips.
+	st.newBtn.SetTooltip(i18n.T("session.new"))
+	st.openBtn.SetTooltip(i18n.T("session.open"))
+	st.recentBtn.SetTooltip(i18n.T("session.recent"))
+	st.saveBtn.SetTooltip(i18n.T("session.save"))
+	st.genBtn.SetTooltip(i18n.T("session.generate_pdf"))
+	st.refreshBtn.SetTooltip(i18n.T("mgr.refresh"))
+	st.addBtn.SetTooltip(i18n.T("session.add_to_session"))
+	st.openExBtn.SetTooltip(i18n.T("session.open_exercise"))
+	st.deleteExBtn.SetTooltip(i18n.T("session.delete_exercise"))
+	st.contributeBtn.SetTooltip(i18n.T("mgr.contribute"))
+
+	// Rebuild responsive layout (mobile tab labels).
+	if st.responsive != nil {
+		st.responsive.ForceRebuild()
 	}
 
 	st.refreshTotal()

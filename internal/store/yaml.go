@@ -319,7 +319,7 @@ func (s *YAMLStore) RebuildSessionIndex() {
 	saveSessionIndex(s.sessionsDir, s.sessionIndex)
 }
 
-// ensureExerciseIndex loads the exercise index, rebuilding if absent.
+// ensureExerciseIndex loads the exercise index, rebuilding if absent or empty.
 func (s *YAMLStore) ensureExerciseIndex() {
 	path := filepath.Join(s.exercisesDir, indexFileName)
 	if _, err := os.Stat(path); err != nil {
@@ -328,9 +328,14 @@ func (s *YAMLStore) ensureExerciseIndex() {
 		return
 	}
 	s.exerciseIndex = loadExerciseIndex(s.exercisesDir)
+	// Rebuild if index is empty but directory has yaml files.
+	if len(s.exerciseIndex.Entries) == 0 && dirHasYAML(s.exercisesDir) {
+		s.exerciseIndex = rebuildExerciseIndex(s.exercisesDir)
+		saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
+	}
 }
 
-// ensureSessionIndex loads the session index, rebuilding if absent.
+// ensureSessionIndex loads the session index, rebuilding if absent or empty.
 func (s *YAMLStore) ensureSessionIndex() {
 	path := filepath.Join(s.sessionsDir, indexFileName)
 	if _, err := os.Stat(path); err != nil {
@@ -339,6 +344,32 @@ func (s *YAMLStore) ensureSessionIndex() {
 		return
 	}
 	s.sessionIndex = loadSessionIndex(s.sessionsDir)
+	// Rebuild if index is empty but directory has yaml files.
+	if len(s.sessionIndex.Entries) == 0 && dirHasYAML(s.sessionsDir) {
+		s.sessionIndex = rebuildSessionIndex(s.sessionsDir)
+		saveSessionIndex(s.sessionsDir, s.sessionIndex)
+	}
+}
+
+// dirHasYAML returns true if the directory contains at least one non-index yaml file.
+func dirHasYAML(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if name == indexFileName {
+			continue
+		}
+		if strings.HasSuffix(name, ".yaml") || strings.HasSuffix(name, ".yml") {
+			return true
+		}
+	}
+	return false
 }
 
 // migrateRecentFiles migrates settings.RecentFiles to index LastOpened entries.

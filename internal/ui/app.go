@@ -65,6 +65,9 @@ type App struct {
 	// Edit language buttons.
 	editLangBtns  [2]*widget.Button
 	editLangLabel *canvas.Text
+
+	// Responsive containers (for language rebuild).
+	editorResponsive *ResponsiveContainer
 }
 
 // NewApp creates a new App instance.
@@ -188,7 +191,8 @@ func (a *App) buildEditorTab() fyne.CanvasObject {
 	a.editLangLabel = canvas.NewText(i18n.T("edit_lang.label")+":", color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
 	a.editLangLabel.TextSize = 11
 
-	return NewResponsiveContainer(a.buildEditorDesktop, a.buildEditorMobile)
+	a.editorResponsive = NewResponsiveContainer(a.buildEditorDesktop, a.buildEditorMobile)
+	return a.editorResponsive
 }
 
 func (a *App) buildEditorDesktop() fyne.CanvasObject {
@@ -275,6 +279,15 @@ func (a *App) buildEditorMobile() fyne.CanvasObject {
 
 func (a *App) switchLang(lang string) {
 	i18n.SetLang(i18n.Lang(lang))
+	// Refresh translatable text in all panels BEFORE refreshEditor,
+	// so Select options are updated before Update() tries to SetSelected.
+	a.fileToolbar.RefreshLanguage()
+	a.toolPalette.RefreshLanguage()
+	a.propsPanel.RefreshLanguage()
+	a.animControls.RefreshLanguage()
+	a.instrPanel.RefreshLanguage()
+	a.sessionTab.RefreshLanguage()
+	// Now refresh editor (calls propsPanel.Update which uses new options).
 	a.propsPanel.SyncFromExercise()
 	a.instrPanel.ForceResync()
 	a.refreshEditor()
@@ -285,14 +298,12 @@ func (a *App) switchLang(lang string) {
 		a.tabs.Items[1].Text = i18n.T("tab.session")
 		a.tabs.Refresh()
 	}
-	// Refresh translatable text in all panels.
 	a.editLangLabel.Text = i18n.T("edit_lang.label") + ":"
 	a.editLangLabel.Refresh()
-	a.fileToolbar.RefreshLanguage()
-	a.toolPalette.RefreshLanguage()
-	a.animControls.RefreshLanguage()
-	a.instrPanel.RefreshLanguage()
-	a.sessionTab.RefreshLanguage()
+	a.statusBar.SetStatus("", 0)
+	if a.editorResponsive != nil {
+		a.editorResponsive.ForceRebuild()
+	}
 	a.sessionNeedsRefresh = true
 	// Persist language choice.
 	if ys, ok := a.store.(*store.YAMLStore); ok {
@@ -405,6 +416,11 @@ func (a *App) NewExercise() {
 		Sequences: []model.Sequence{
 			{Label: i18n.T("default.sequence_label")},
 		},
+	}
+	if a.editLang != "" && a.editLang != "en" {
+		tr := ex.EnsureI18n(a.editLang)
+		tr.Name = ex.Name
+		ex.SetI18n(a.editLang, tr)
 	}
 	a.SetExercise(ex)
 	a.statusBar.SetStatus(i18n.T("status.new_exercise"), 0)
@@ -730,6 +746,10 @@ func (a *App) handleSessionAction(ev SessionTabEvent) {
 	case SessionTabActionGenerate:
 		a.showPdfExportDialog()
 	case SessionTabActionRefresh:
+		if ys, ok := a.store.(*store.YAMLStore); ok {
+			ys.RebuildExerciseIndex()
+		}
+		a.sessionTab.SetExercises(a.buildManagedExercises())
 		a.syncLibrary()
 	case SessionTabActionOpenExercise:
 		a.openExercise(ev.Name)

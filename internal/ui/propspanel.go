@@ -118,8 +118,8 @@ func NewPropertiesPanel() *PropertiesPanel {
 		if pp.exercise == nil {
 			return
 		}
-		for i, label := range categories {
-			if label == s {
+		for i, label := range pp.categorySelect.Options {
+			if label == s && i < len(categoryKeys) {
 				pp.exercise.Category = categoryKeys[i]
 				pp.markModified()
 				return
@@ -140,8 +140,8 @@ func NewPropertiesPanel() *PropertiesPanel {
 		if pp.exercise == nil {
 			return
 		}
-		for i, label := range ageGroups {
-			if label == s {
+		for i, label := range pp.ageGroupSelect.Options {
+			if label == s && i < len(ageGroupKeys) {
 				pp.exercise.AgeGroup = ageGroupKeys[i]
 				pp.markModified()
 				return
@@ -184,7 +184,7 @@ func NewPropertiesPanel() *PropertiesPanel {
 		model.RolePowerForward, model.RoleCenter,
 	}
 	pp.playerRoleSelect = widget.NewSelect(roles, func(s string) {
-		pp.onPlayerRoleChanged(s, roles, roleKeys)
+		pp.onPlayerRoleChanged(s, pp.playerRoleSelect.Options, roleKeys)
 	})
 
 	pp.ballCheck = widget.NewCheck(i18n.T("props.ball"), func(checked bool) {
@@ -205,7 +205,7 @@ func NewPropertiesPanel() *PropertiesPanel {
 		calloutLabels = append(calloutLabels, i18n.T("callout."+string(c)))
 	}
 	pp.calloutSelect = widget.NewSelect(calloutLabels, func(s string) {
-		pp.onCalloutChanged(s, calloutLabels)
+		pp.onCalloutChanged(s, pp.calloutSelect.Options)
 	})
 
 	pp.content = container.NewVBox()
@@ -278,6 +278,58 @@ func (pp *PropertiesPanel) Update(exercise *model.Exercise, state *editor.Editor
 	// Exercise metadata.
 	pp.content.Add(pp.makeSection(i18n.T("props.exercise")))
 	pp.addMetadataFields(exercise, editLang)
+}
+
+// RefreshLanguage rebuilds all translatable Select options and labels.
+func (pp *PropertiesPanel) RefreshLanguage() {
+	// Court type.
+	pp.courtTypeSelect.Options = []string{i18n.T("props.court_half"), i18n.T("props.court_full")}
+	pp.courtTypeSelect.Refresh()
+
+	// Category.
+	pp.categorySelect.Options = []string{
+		i18n.T("props.category_none"),
+		i18n.T("category." + string(model.CategoryWarmup)),
+		i18n.T("category." + string(model.CategoryOffense)),
+		i18n.T("category." + string(model.CategoryDefense)),
+		i18n.T("category." + string(model.CategoryTransition)),
+		i18n.T("category." + string(model.CategoryScrimmage)),
+		i18n.T("category." + string(model.CategoryCooldown)),
+	}
+	pp.categorySelect.Refresh()
+
+	// Age group.
+	pp.ageGroupSelect.Options = []string{
+		i18n.T("props.category_none"),
+		"U9", "U11", "U13", "U15", "U17", "U19",
+		i18n.T("age_group." + string(model.AgeGroupSenior)),
+	}
+	pp.ageGroupSelect.Refresh()
+
+	// Player role.
+	pp.playerRoleSelect.Options = []string{
+		i18n.T("tool.player.attacker"), i18n.T("tool.player.defender"), i18n.T("tool.player.coach"),
+		i18n.T("tool.player.pg"), i18n.T("tool.player.sg"), i18n.T("tool.player.sf"),
+		i18n.T("tool.player.pf"), i18n.T("tool.player.center"),
+	}
+	pp.playerRoleSelect.Refresh()
+
+	// Callout.
+	calloutLabels := []string{i18n.T("callout.none")}
+	for _, c := range model.AllCallouts() {
+		calloutLabels = append(calloutLabels, i18n.T("callout."+string(c)))
+	}
+	pp.calloutSelect.Options = calloutLabels
+	pp.calloutSelect.Refresh()
+
+	// Checkboxes.
+	pp.ballCheck.Text = i18n.T("props.ball")
+	pp.ballCheck.Refresh()
+	pp.queueCheck.Text = i18n.T("tool.player.queue")
+	pp.queueCheck.Refresh()
+
+	// Force re-sync of metadata so Select values match new options.
+	pp.metaSynced = false
 }
 
 // SyncFromExercise resets sync flags so editors are refreshed.

@@ -53,6 +53,12 @@ func NewResponsiveContainer(desktopBuilder, mobileBuilder func() fyne.CanvasObje
 	return rc
 }
 
+// ForceRebuild marks the container as needing a layout rebuild on next render.
+func (rc *ResponsiveContainer) ForceRebuild() {
+	rc.initialized = false
+	rc.Refresh()
+}
+
 // CreateRenderer returns the renderer for the ResponsiveContainer.
 func (rc *ResponsiveContainer) CreateRenderer() fyne.WidgetRenderer {
 	return &responsiveRenderer{rc: rc}
