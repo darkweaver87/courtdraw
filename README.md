@@ -23,9 +23,10 @@ A cross-platform basketball session designer for coaches. Create exercises visua
 | Linux (amd64) | Supported | Native OpenGL |
 | Linux (arm64) | Supported | Native OpenGL |
 | Windows (amd64) | Supported | Includes Mesa software renderer fallback |
-| macOS (amd64) | Supported | Native OpenGL |
-| macOS (arm64) | Supported | Native OpenGL |
+| macOS (amd64) | Supported | DMG with .app bundle |
+| macOS (arm64) | Supported | DMG with .app bundle |
 | Android | Supported | Adaptive mobile layout with bottom tabs |
+| iOS | Not available | Requires paid Apple Developer account — see [iOS](#ios) |
 
 ## Screenshots
 
@@ -37,9 +38,25 @@ A cross-platform basketball session designer for coaches. Create exercises visua
 
 Grab the latest release from the [Releases page](https://github.com/darkweaver87/courtdraw/releases).
 
-- **Linux/macOS**: extract the archive and run `./courtdraw`
-- **Windows**: extract the zip and run `courtdraw.exe`. On machines without GPU drivers (VMs, RDP), use `courtdraw-mesa.bat` instead
-- **Android**: install the APK
+| Artifact | Platform |
+|----------|----------|
+| `courtdraw-linux-amd64` | Linux x86_64 |
+| `courtdraw-linux-arm64` | Linux ARM64 (Raspberry Pi, etc.) |
+| `courtdraw-darwin-amd64.dmg` | macOS Intel |
+| `courtdraw-darwin-arm64.dmg` | macOS Apple Silicon (M1/M2/M3/M4) |
+| `courtdraw-windows-amd64.zip` | Windows x86_64 (includes Mesa software renderer) |
+| `courtdraw-android.apk` | Android |
+
+- **Linux**: download the binary, `chmod +x courtdraw-linux-*`, then run it
+- **macOS**: open the `.dmg`, drag CourtDraw to Applications. Since the app is not signed, macOS will block it on first launch — right-click the app and select **Open**, or go to **System Settings > Privacy & Security** and click **Open Anyway**
+- **Windows**: extract the zip and run `courtdraw.exe`. Windows SmartScreen may warn about an unrecognized app — click **More info** then **Run anyway**. On machines without GPU drivers (VMs, RDP), use `courtdraw-mesa.bat` instead
+- **Android**: install the APK. You may need to enable **Install from unknown sources** in your device settings
+
+> **Note**: the binaries are currently not code-signed. Your operating system may display a security warning on first launch. This is expected — you just need to authorize the execution once.
+
+### iOS
+
+iOS is not currently supported. Apple requires a paid Developer account ($99/year) to sign and distribute apps. If the project receives funding or donations to cover this cost, an iOS version will be added — the codebase already supports it via Fyne's cross-platform framework.
 
 ### Build from source
 

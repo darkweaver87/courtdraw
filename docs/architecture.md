@@ -71,12 +71,14 @@ courtdraw/
 │   │   ├── index.go                 # Index structs, load/save/rebuild
 │   │   ├── settings.go              # App settings persistence
 │   │   ├── library.go              # Read-only access to library/ exercises
-│   │   └── library_sync.go         # GitHub fetch + SHA manifest for incremental sync
+│   │   ├── library_sync.go         # GitHub fetch + SHA manifest for incremental sync
+│   │   └── version.go              # GitHub Releases API version check
 │   ├── i18n/                        # Localization (EN/FR)
 │   │   └── i18n.go                  # T() translation function
 │   ├── ui/                          # Fyne UI layer
 │   │   ├── app.go                   # Root app, tab navigation, file operations
-│   │   ├── toolbar.go               # File toolbar (new/open/save/duplicate/import)
+│   │   ├── toolbar.go               # File toolbar (new/open/save/duplicate/import/about/prefs)
+│   │   ├── about.go                # About dialog (version display)
 │   │   ├── toolpalette.go           # Tool palette (players/actions/accessories)
 │   │   ├── propspanel.go            # Properties panel (element + exercise metadata)
 │   │   ├── seqtimeline.go           # Sequence timeline tabs
@@ -174,4 +176,11 @@ test → build-desktop (matrix 5 targets) ─┐
 
 ### Artifacts
 
-Each build produces an artifact (`courtdraw-{os}-{arch}.tar.gz` or `.zip` for Windows, `.apk` for Android) containing the binary and the `library/` directory. On tag push, all artifacts are uploaded to a GitHub Release.
+| Artifact | Format | Contents |
+|----------|--------|----------|
+| `courtdraw-linux-{arch}` | Plain binary | Executable (chmod +x required) |
+| `courtdraw-darwin-{arch}.dmg` | macOS DMG | `.app` bundle with Info.plist |
+| `courtdraw-windows-amd64.zip` | Zip | Executable + Mesa DLLs + `courtdraw-mesa.bat` fallback |
+| `courtdraw-android.apk` | APK | Android package |
+
+Version is injected at build time via `-ldflags "-X main.version=<tag>"`. On tag push, all artifacts are uploaded to a GitHub Release with auto-generated changelog (mikepenz/release-changelog-builder-action, commit mode).

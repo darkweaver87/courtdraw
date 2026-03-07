@@ -149,6 +149,13 @@ Icons are PNG or SVG files in `assets/icons/`. They can be replaced for custom s
 - Requires a GitHub Personal Access Token configured in **Preferences** (or via `GITHUB_TOKEN` env)
 - If no token is configured, the status bar shows a message directing the user to Preferences
 
+### About / Version
+
+- Accessible via the info icon (right side of the toolbar, next to Preferences)
+- Displays the application version in a dialog
+- Version is injected at build time via `-ldflags "-X main.version=vX.Y.Z"` (defaults to `dev` for local builds)
+- At startup, checks GitHub Releases API for a newer version and shows a notification in the status bar
+
 ### Preferences
 
 - Accessible via the gear icon (right side of the toolbar)

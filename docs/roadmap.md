@@ -135,3 +135,14 @@ Goal: fetch community exercises from GitHub instead of shipping them with the bi
 59. Optional GitHub token for higher rate limit (60 req/h without, 5000 req/h with)
 
 Deliverable: community exercises are always up-to-date without recompiling.
+
+## Phase 12 — Version Display & Update Check
+
+Goal: show app version and notify users of new releases.
+
+60. Build-time version injection via `ldflags` (`-X main.version=vX.Y.Z`)
+61. About dialog accessible from toolbar info icon — displays current version
+62. Startup version check — queries GitHub Releases API for latest release, shows status bar notification if newer version available
+63. CI/CD injects version tag automatically for all platforms (desktop + Android)
+
+Deliverable: users see their current version and get notified when updates are available.
