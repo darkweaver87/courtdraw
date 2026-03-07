@@ -136,6 +136,14 @@ jobs:
             libxxf86vm-dev:arm64 \
             libvulkan-dev:arm64
 
+      - name: Inject version in metadata
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          sed -i.bak "s/Version = \"dev\"/Version = \"${VERSION}\"/" FyneApp.toml
+          cat FyneApp.toml
+        shell: bash
+
       - name: Build binary
         env:
           GOOS: ${{ matrix.os }}
@@ -148,7 +156,7 @@ jobs:
           if [ "${{ matrix.os }}" = "windows" ]; then
             binary=courtdraw.exe
           fi
-          go build -ldflags "-X main.version=${{ github.ref_name }}" -o "${binary}" ./cmd/courtdraw
+          go build -o "${binary}" ./cmd/courtdraw
         shell: bash
 
       - name: Rename binary (Linux)
@@ -165,8 +173,7 @@ jobs:
           mkdir -p "${APP}/Contents/MacOS" "${APP}/Contents/Resources"
           cp courtdraw "${APP}/Contents/MacOS/"
           chmod +x "${APP}/Contents/MacOS/courtdraw"
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
+          VERSION=$(grep 'Version' FyneApp.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
           cat > "${APP}/Contents/Info.plist" << PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -245,9 +252,16 @@ jobs:
       - name: Install fyne-cross
         run: go install github.com/fyne-io/fyne-cross@latest
 
+      - name: Inject version in metadata
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          sed -i "s/Version = \"dev\"/Version = \"${VERSION}\"/" FyneApp.toml
+          cat FyneApp.toml
+
       - name: Build Android APK
         run: |
-          fyne-cross android -app-id com.darkweaver87.courtdraw -ldflags "-X main.version=${{ github.ref_name }}" ./cmd/courtdraw
+          fyne-cross android -app-id com.darkweaver87.courtdraw ./cmd/courtdraw
           cp fyne-cross/dist/android/*.apk courtdraw-android.apk
 
       - uses: actions/upload-artifact@v4
