@@ -784,7 +784,9 @@ func (a *App) handleSessionAction(ev SessionTabEvent) {
 		a.showPdfExportDialog()
 	case SessionTabActionRefresh:
 		if ys, ok := a.store.(*store.YAMLStore); ok {
-			ys.RebuildExerciseIndex()
+			if errs := ys.RebuildExerciseIndex(); len(errs) > 0 {
+				a.statusBar.SetStatus(i18n.Tf("status.index_parse_errors", len(errs), strings.Join(errs, "; ")), 1)
+			}
 		}
 		a.sessionTab.SetExercises(a.buildManagedExercises())
 		a.syncLibrary()

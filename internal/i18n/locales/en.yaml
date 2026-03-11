@@ -245,6 +245,7 @@ status.new_exercise: "New exercise created"
 status.new_session: "New session created"
 status.saved: "Saved: %s"
 status.save_error: "Save failed"
+status.index_parse_errors: "%d file(s) skipped: %s"
 status.opened: "Opened: %s"
 # Save As
 save_as.title: "Save As"

@@ -245,6 +245,7 @@ status.new_exercise: "Nouvel exercice créé"
 status.new_session: "Nouvelle séance créée"
 status.saved: "Enregistré : %s"
 status.save_error: "Échec de l'enregistrement"
+status.index_parse_errors: "%d fichier(s) ignoré(s) : %s"
 status.opened: "Ouvert : %s"
 # Enregistrer sous
 save_as.title: "Enregistrer sous"

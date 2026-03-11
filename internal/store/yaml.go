@@ -308,9 +308,12 @@ func (s *YAMLStore) ExerciseIndexEntries() []ExerciseIndexEntry {
 }
 
 // RebuildExerciseIndex rebuilds the exercise index from disk.
-func (s *YAMLStore) RebuildExerciseIndex() {
-	s.exerciseIndex = rebuildExerciseIndex(s.exercisesDir)
+// Returns file names that failed to parse (nil if all succeeded).
+func (s *YAMLStore) RebuildExerciseIndex() []string {
+	idx, errs := rebuildExerciseIndex(s.exercisesDir)
+	s.exerciseIndex = idx
 	saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
+	return errs
 }
 
 // RebuildSessionIndex rebuilds the session index from disk.
@@ -323,7 +326,8 @@ func (s *YAMLStore) RebuildSessionIndex() {
 func (s *YAMLStore) ensureExerciseIndex() {
 	path := filepath.Join(s.exercisesDir, indexFileName)
 	if _, err := os.Stat(path); err != nil {
-		s.exerciseIndex = rebuildExerciseIndex(s.exercisesDir)
+		idx, _ := rebuildExerciseIndex(s.exercisesDir)
+		s.exerciseIndex = idx
 		saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 		return
 	}
@@ -331,7 +335,8 @@ func (s *YAMLStore) ensureExerciseIndex() {
 	// Rebuild if the number of index entries doesn't match the YAML files on disk
 	// (handles externally added or removed files).
 	if countYAMLFiles(s.exercisesDir) != len(s.exerciseIndex.Entries) {
-		s.exerciseIndex = rebuildExerciseIndex(s.exercisesDir)
+		idx, _ := rebuildExerciseIndex(s.exercisesDir)
+		s.exerciseIndex = idx
 		saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 	}
 }

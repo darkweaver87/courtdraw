@@ -77,7 +77,7 @@ func TestRebuildExerciseIndex(t *testing.T) {
 		}
 	}
 
-	idx := rebuildExerciseIndex(dir)
+	idx, _ := rebuildExerciseIndex(dir)
 	if len(idx.Entries) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(idx.Entries))
 	}
@@ -111,7 +111,7 @@ func TestRebuildIndex_SkipsIndexFile(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "drill.yaml"), data, 0644)
 	os.WriteFile(filepath.Join(dir, "index.yaml"), []byte("version: 1\nentries: []\n"), 0644)
 
-	idx := rebuildExerciseIndex(dir)
+	idx, _ := rebuildExerciseIndex(dir)
 	if len(idx.Entries) != 1 {
 		t.Fatalf("expected 1 entry (index.yaml skipped), got %d", len(idx.Entries))
 	}

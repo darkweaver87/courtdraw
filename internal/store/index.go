@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -132,11 +133,12 @@ func saveSessionIndex(dir string, idx *SessionIndex) error {
 }
 
 // rebuildExerciseIndex scans the directory and builds a fresh index.
-func rebuildExerciseIndex(dir string) *ExerciseIndex {
+func rebuildExerciseIndex(dir string) (*ExerciseIndex, []string) {
 	idx := &ExerciseIndex{Version: 1}
+	var parseErrors []string
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return idx
+		return idx, parseErrors
 	}
 	for _, e := range entries {
 		if e.IsDir() {
@@ -153,10 +155,12 @@ func rebuildExerciseIndex(dir string) *ExerciseIndex {
 		path := filepath.Join(dir, name)
 		data, err := os.ReadFile(path)
 		if err != nil {
+			parseErrors = append(parseErrors, fmt.Sprintf("%s: %v", name, err))
 			continue
 		}
 		var ex model.Exercise
 		if err := yaml.Unmarshal(data, &ex); err != nil {
+			parseErrors = append(parseErrors, fmt.Sprintf("%s: %v", name, err))
 			continue
 		}
 		info, err := e.Info()
@@ -166,7 +170,7 @@ func rebuildExerciseIndex(dir string) *ExerciseIndex {
 		}
 		idx.Entries = append(idx.Entries, exerciseEntryFromExercise(base, &ex, modTime))
 	}
-	return idx
+	return idx, parseErrors
 }
 
 // rebuildSessionIndex scans the directory and builds a fresh index.
