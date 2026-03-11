@@ -395,10 +395,20 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 		}
 	}
 
-	// Balls.
+	// Balls — position at carrier's hand, not center.
+	playerByID := make(map[string]*model.Player, len(frame.Players))
+	for i := range frame.Players {
+		playerByID[frame.Players[i].Player.ID] = &frame.Players[i].Player
+	}
 	for _, b := range frame.Balls {
 		if b.Opacity > 0 {
 			ballPixel := vp.RelToPixel(b.Pos)
+			// Compute hand offset using carrier's rotation and role.
+			if p, ok := playerByID[b.CarrierID]; ok {
+				tmp := *p
+				tmp.Position = b.Pos
+				ballPixel = court.BallPosForPlayer(vp, ballPixel, &tmp)
+			}
 			court.DrawBallWithOpacity(img, vp, ballPixel, b.Opacity)
 		}
 	}
