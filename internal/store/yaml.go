@@ -319,7 +319,7 @@ func (s *YAMLStore) RebuildSessionIndex() {
 	saveSessionIndex(s.sessionsDir, s.sessionIndex)
 }
 
-// ensureExerciseIndex loads the exercise index, rebuilding if absent or empty.
+// ensureExerciseIndex loads the exercise index, rebuilding if absent or stale.
 func (s *YAMLStore) ensureExerciseIndex() {
 	path := filepath.Join(s.exercisesDir, indexFileName)
 	if _, err := os.Stat(path); err != nil {
@@ -328,14 +328,15 @@ func (s *YAMLStore) ensureExerciseIndex() {
 		return
 	}
 	s.exerciseIndex = loadExerciseIndex(s.exercisesDir)
-	// Rebuild if index is empty but directory has yaml files.
-	if len(s.exerciseIndex.Entries) == 0 && dirHasYAML(s.exercisesDir) {
+	// Rebuild if the number of index entries doesn't match the YAML files on disk
+	// (handles externally added or removed files).
+	if countYAMLFiles(s.exercisesDir) != len(s.exerciseIndex.Entries) {
 		s.exerciseIndex = rebuildExerciseIndex(s.exercisesDir)
 		saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 	}
 }
 
-// ensureSessionIndex loads the session index, rebuilding if absent or empty.
+// ensureSessionIndex loads the session index, rebuilding if absent or stale.
 func (s *YAMLStore) ensureSessionIndex() {
 	path := filepath.Join(s.sessionsDir, indexFileName)
 	if _, err := os.Stat(path); err != nil {
@@ -344,32 +345,33 @@ func (s *YAMLStore) ensureSessionIndex() {
 		return
 	}
 	s.sessionIndex = loadSessionIndex(s.sessionsDir)
-	// Rebuild if index is empty but directory has yaml files.
-	if len(s.sessionIndex.Entries) == 0 && dirHasYAML(s.sessionsDir) {
+	// Rebuild if the number of index entries doesn't match the YAML files on disk.
+	if countYAMLFiles(s.sessionsDir) != len(s.sessionIndex.Entries) {
 		s.sessionIndex = rebuildSessionIndex(s.sessionsDir)
 		saveSessionIndex(s.sessionsDir, s.sessionIndex)
 	}
 }
 
-// dirHasYAML returns true if the directory contains at least one non-index yaml file.
-func dirHasYAML(dir string) bool {
+// countYAMLFiles counts non-index YAML files in a directory.
+func countYAMLFiles(dir string) int {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return false
+		return 0
 	}
+	n := 0
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
 		name := e.Name()
-		if name == indexFileName {
+		if isIndexFile(name) {
 			continue
 		}
 		if strings.HasSuffix(name, ".yaml") || strings.HasSuffix(name, ".yml") {
-			return true
+			n++
 		}
 	}
-	return false
+	return n
 }
 
 // migrateRecentFiles migrates settings.RecentFiles to index LastOpened entries.
