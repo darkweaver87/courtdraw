@@ -716,6 +716,7 @@ func (a *App) importExercise(name string) {
 	}
 	a.SetExercise(ex)
 	a.sessionNeedsRefresh = true
+	a.refreshSessionTab()
 	a.recordRecentFile(store.ToKebab(ex.Name))
 	a.statusBar.SetStatus(i18n.Tf("status.imported", ex.Name), 0)
 }
@@ -765,6 +766,7 @@ func (a *App) deleteExercise(name string) {
 		a.SetExercise(nil)
 	}
 	a.sessionNeedsRefresh = true
+	a.refreshSessionTab()
 	a.statusBar.SetStatus(i18n.Tf("status.deleted", name), 0)
 }
 
@@ -1024,6 +1026,7 @@ func (a *App) updateExerciseFromRemote(name string) {
 		a.SetExercise(ex)
 	}
 	a.sessionNeedsRefresh = true
+	a.refreshSessionTab()
 	log.Printf("updated exercise from community: %s", name)
 }
 
