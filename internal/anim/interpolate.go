@@ -234,17 +234,9 @@ func interpolateBalls(fromSeq, toSeq *model.Sequence, fromMap, toMap map[string]
 	}
 
 	for _, id := range fromSeq.BallCarrier {
-		if toSeq.BallCarrier.HasBall(id) {
-			// Ball stays with the same player — interpolate with movement.
-			balls = append(balls, AnimatedBall{
-				CarrierID: id,
-				Pos:       InterpolatePosition(playerPos(fromMap, id), playerPos(toMap, id), t),
-				Opacity:   1.0,
-			})
-			handled[id] = true
-			continue
-		}
-		// Ball leaves this carrier — check for shot or pass action.
+		// Check for shot or pass action first — even if the player is still
+		// a carrier in the next sequence (supports ball exchanges where both
+		// players keep a ball but swap them via simultaneous passes).
 		if target, hasShot := findShotTarget(toSeq, id); hasShot {
 			balls = append(balls, AnimatedBall{
 				CarrierID: id,
@@ -261,6 +253,16 @@ func interpolateBalls(fromSeq, toSeq *model.Sequence, fromMap, toMap map[string]
 				Opacity:   1.0,
 			})
 			handled[targetID] = true
+			continue
+		}
+		if toSeq.BallCarrier.HasBall(id) {
+			// No action and still a carrier — ball stays with the player.
+			balls = append(balls, AnimatedBall{
+				CarrierID: id,
+				Pos:       InterpolatePosition(playerPos(fromMap, id), playerPos(toMap, id), t),
+				Opacity:   1.0,
+			})
+			handled[id] = true
 			continue
 		}
 		// No action — fade out.
