@@ -191,10 +191,14 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 			seq := &ex.Sequences[si+ci]
 			iy := instrYs[ci]
 			for _, instr := range seq.Instructions {
-				lines := wrapText(pdf, tr(instr), cellW-2)
-				for _, line := range lines {
+				lines := wrapText(pdf, tr(instr), cellW-4)
+				for li, line := range lines {
 					pdf.SetXY(colX+1, iy)
-					pdf.CellFormat(cellW-2, 3.2, "- "+line, "", 0, "L", false, 0, "")
+					if li == 0 {
+						pdf.CellFormat(cellW-2, 3.2, "- "+line, "", 0, "L", false, 0, "")
+					} else {
+						pdf.CellFormat(cellW-2, 3.2, "  "+line, "", 0, "L", false, 0, "")
+					}
 					iy += 3.4
 				}
 			}
