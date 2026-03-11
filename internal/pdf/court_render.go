@@ -311,7 +311,7 @@ func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
 		cr.pdf.Text(headX-strW/2, headY+fontSize*0.127, label)
 
 		// Ball indicator.
-		if seq.BallCarrier != "" && p.ID == seq.BallCarrier {
+		if seq.BallCarrier.HasBall(p.ID) {
 			bx := ballPosX + cr.su(float64(court.BallOffsetX))
 			by := ballPosY + cr.su(float64(court.BallOffsetY))
 			ballR := cr.su(float64(court.BallRadius))

@@ -347,7 +347,7 @@ func (pp *PropertiesPanel) addPlayerProps(seq *model.Sequence, idx int) {
 	pp.playerRoleSelect.SetSelected(roleDisplayLabel(p.Role))
 
 	// Ball carrier checkbox.
-	pp.ballCheck.SetChecked(seq.BallCarrier == p.ID)
+	pp.ballCheck.SetChecked(seq.BallCarrier.HasBall(p.ID))
 	pp.content.Add(container.NewPadded(pp.ballCheck))
 
 	// Queue checkbox.
@@ -576,9 +576,9 @@ func (pp *PropertiesPanel) toggleBallCarrier(checked bool) {
 	}
 	p := &seq.Players[sel.Index]
 	if checked {
-		seq.BallCarrier = p.ID
+		seq.BallCarrier.AddBall(p.ID)
 	} else {
-		seq.BallCarrier = ""
+		seq.BallCarrier.RemoveBall(p.ID)
 	}
 	pp.markModified()
 }

@@ -321,7 +321,7 @@ func (w *CourtWidget) drawSequence(img *image.RGBA, face font.Face, seq *model.S
 	// Players.
 	for i := range seq.Players {
 		selected := selElem != nil && selElem.Kind == editor.SelectPlayer && selElem.Index == i && selElem.SeqIndex == w.seqIndex
-		hasBall := seq.BallCarrier != "" && seq.Players[i].ID == seq.BallCarrier
+		hasBall := seq.BallCarrier.HasBall(seq.Players[i].ID)
 		label := resolvePlayerLabel(&seq.Players[i])
 		court.DrawPlayerWithLabel(img, &w.viewport, &seq.Players[i], label, face, selected, hasBall)
 	}
@@ -395,10 +395,12 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 		}
 	}
 
-	// Ball.
-	if frame.BallCarrier != "" && frame.BallOpacity > 0 {
-		ballPixel := vp.RelToPixel(frame.BallPos)
-		court.DrawBallWithOpacity(img, vp, ballPixel, frame.BallOpacity)
+	// Balls.
+	for _, b := range frame.Balls {
+		if b.Opacity > 0 {
+			ballPixel := vp.RelToPixel(b.Pos)
+			court.DrawBallWithOpacity(img, vp, ballPixel, b.Opacity)
+		}
 	}
 }
 
@@ -714,7 +716,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 			if sel != nil && sel.Kind == editor.SelectPlayer &&
 				sel.SeqIndex == w.seqIndex && sel.Index < len(seq.Players) {
 				id := seq.Players[sel.Index].ID
-				if model.RequiresBall(state.ToolActionType) && seq.BallCarrier != id {
+				if model.RequiresBall(state.ToolActionType) && !seq.BallCarrier.HasBall(id) {
 					state.SetStatus(i18n.T("status.requires_ball"), 1)
 					w.notifyChanged()
 					return
@@ -726,7 +728,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 		if state.ActionFrom == nil {
 			if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
 				id := seq.Players[pi].ID
-				if model.RequiresBall(state.ToolActionType) && seq.BallCarrier != id {
+				if model.RequiresBall(state.ToolActionType) && !seq.BallCarrier.HasBall(id) {
 					state.SetStatus(i18n.T("status.requires_ball"), 1)
 					w.notifyChanged()
 					return
@@ -754,7 +756,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 			if state.ToolActionType == model.ActionPass && toRef.IsPlayer {
 				nextIdx := w.seqIndex + 1
 				if nextIdx < len(w.exercise.Sequences) {
-					w.exercise.Sequences[nextIdx].BallCarrier = toRef.PlayerID
+					w.exercise.Sequences[nextIdx].BallCarrier.AddBall(toRef.PlayerID)
 				}
 			}
 			state.ActionFrom = nil
@@ -785,9 +787,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 			playerID := seq.Players[pi].ID
 			seq.Players = append(seq.Players[:pi], seq.Players[pi+1:]...)
 			removeActionsForPlayer(seq, playerID)
-			if seq.BallCarrier == playerID {
-				seq.BallCarrier = ""
-			}
+			seq.BallCarrier.RemoveBall(playerID)
 			state.Deselect()
 			state.MarkModified()
 			w.Refresh()
@@ -930,9 +930,7 @@ func (w *CourtWidget) DeleteSelected() {
 			playerID := seq.Players[sel.Index].ID
 			seq.Players = append(seq.Players[:sel.Index], seq.Players[sel.Index+1:]...)
 			removeActionsForPlayer(seq, playerID)
-			if seq.BallCarrier == playerID {
-				seq.BallCarrier = ""
-			}
+			seq.BallCarrier.RemoveBall(playerID)
 		}
 	case editor.SelectAccessory:
 		if sel.Index < len(seq.Accessories) {

@@ -95,12 +95,88 @@ func (e *Exercise) Localized(lang string) *Exercise {
 
 // Sequence is one chronological step of an exercise.
 type Sequence struct {
-	Label        string      `yaml:"label,omitempty"`
-	Instructions []string    `yaml:"instructions,omitempty"`
-	Players      []Player    `yaml:"players,omitempty"`
-	Accessories  []Accessory `yaml:"accessories,omitempty"`
-	Actions      []Action    `yaml:"actions,omitempty"`
-	BallCarrier  string      `yaml:"ball_carrier,omitempty"`
+	Label        string       `yaml:"label,omitempty"`
+	Instructions []string     `yaml:"instructions,omitempty"`
+	Players      []Player     `yaml:"players,omitempty"`
+	Accessories  []Accessory  `yaml:"accessories,omitempty"`
+	Actions      []Action     `yaml:"actions,omitempty"`
+	BallCarrier  BallCarriers `yaml:"ball_carrier,omitempty"`
+}
+
+// BallCarriers holds zero or more player IDs that currently have a ball.
+// YAML: accepts a single string ("p1") or a list (["p1","p2"]).
+type BallCarriers []string
+
+// HasBall returns true if the given player ID is a ball carrier.
+func (bc BallCarriers) HasBall(id string) bool {
+	for _, c := range bc {
+		if c == id {
+			return true
+		}
+	}
+	return false
+}
+
+// AddBall adds a player ID as a ball carrier (no duplicates).
+func (bc *BallCarriers) AddBall(id string) {
+	if !bc.HasBall(id) {
+		*bc = append(*bc, id)
+	}
+}
+
+// RemoveBall removes a player ID from the ball carriers.
+func (bc *BallCarriers) RemoveBall(id string) {
+	for i, c := range *bc {
+		if c == id {
+			*bc = append((*bc)[:i], (*bc)[i+1:]...)
+			return
+		}
+	}
+}
+
+// Any returns true if there is at least one ball carrier.
+func (bc BallCarriers) Any() bool { return len(bc) > 0 }
+
+// First returns the first ball carrier, or "" if empty.
+func (bc BallCarriers) First() string {
+	if len(bc) > 0 {
+		return bc[0]
+	}
+	return ""
+}
+
+// UnmarshalYAML accepts either a scalar string or a sequence of strings.
+func (bc *BallCarriers) UnmarshalYAML(value *yaml.Node) error {
+	switch value.Kind {
+	case yaml.ScalarNode:
+		if value.Value == "" {
+			*bc = nil
+			return nil
+		}
+		*bc = BallCarriers{value.Value}
+		return nil
+	case yaml.SequenceNode:
+		var list []string
+		if err := value.Decode(&list); err != nil {
+			return fmt.Errorf("ball_carrier list: %w", err)
+		}
+		*bc = list
+		return nil
+	default:
+		return fmt.Errorf("ball_carrier must be a string or list, got %v", value.Kind)
+	}
+}
+
+// MarshalYAML outputs a single string when len==1, a list otherwise.
+func (bc BallCarriers) MarshalYAML() (interface{}, error) {
+	switch len(bc) {
+	case 0:
+		return nil, nil
+	case 1:
+		return bc[0], nil
+	default:
+		return []string(bc), nil
+	}
 }
 
 // Player is a person on the court.

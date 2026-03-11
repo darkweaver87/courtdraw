@@ -480,10 +480,11 @@ func (a *App) addSequence() {
 		copy(newSeq.Players, current.Players)
 		newSeq.Accessories = make([]model.Accessory, len(current.Accessories))
 		copy(newSeq.Accessories, current.Accessories)
-		newSeq.BallCarrier = current.BallCarrier
+		newSeq.BallCarrier = append(model.BallCarriers{}, current.BallCarrier...)
 		for _, act := range current.Actions {
 			if act.Type == model.ActionPass && act.To.IsPlayer {
-				newSeq.BallCarrier = act.To.PlayerID
+				newSeq.BallCarrier.RemoveBall(act.From.PlayerID)
+				newSeq.BallCarrier.AddBall(act.To.PlayerID)
 			}
 		}
 	}

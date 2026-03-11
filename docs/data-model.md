@@ -125,7 +125,7 @@ A sequence is one chronological step of an exercise. It captures the state of th
 | `players` | []Player | no | All players on the court at this step |
 | `accessories` | []Accessory | no | Equipment on the court |
 | `actions` | []Action | no | Movements/actions happening in this step |
-| `ball_carrier` | string | no | Player ID of the current ball carrier |
+| `ball_carrier` | string or []string | no | Player ID(s) holding a ball — single string or list for multiple balls |
 
 ## Player
 

@@ -24,14 +24,19 @@ type AnimatedAction struct {
 	Progress float64 // 0.0 = not drawn, 1.0 = fully drawn
 }
 
+// AnimatedBall holds the interpolated state of a single ball.
+type AnimatedBall struct {
+	CarrierID string
+	Pos       model.Position
+	Opacity   float64
+}
+
 // AnimatedFrame holds the interpolated state between two sequences.
 type AnimatedFrame struct {
 	Players     []AnimatedPlayer
 	Accessories []AnimatedAccessory
 	Actions     []AnimatedAction
-	BallCarrier string         // player ID who has the ball in this frame
-	BallPos     model.Position // interpolated ball position (relative coords)
-	BallOpacity float64        // 0.0 = invisible, 1.0 = fully visible
+	Balls       []AnimatedBall // all balls in this frame
 }
 
 // InterpolatePosition linearly interpolates between two positions.
@@ -184,51 +189,8 @@ func InterpolateFrame(fromSeq, toSeq *model.Sequence, t float64) AnimatedFrame {
 		})
 	}
 
-	// Ball: interpolate position between old carrier and new carrier.
-	fromCarrier := fromSeq.BallCarrier
-	toCarrier := toSeq.BallCarrier
-
-	// Check for shot actions in the destination sequence — if the ball carrier
-	// shoots, the ball travels from the shooter to the shot target.
-	shotTarget, hasShot := findShotTarget(toSeq, fromCarrier)
-
-	switch {
-	case hasShot && fromCarrier != "":
-		// Ball travels from shooter to shot target position.
-		frame.BallCarrier = fromCarrier
-		frame.BallOpacity = 1.0
-		var fromPos model.Position
-		if fp, ok := fromMap[fromCarrier]; ok {
-			fromPos = fp.Position
-		}
-		frame.BallPos = InterpolatePosition(fromPos, shotTarget, t)
-	case fromCarrier != "" && toCarrier != "":
-		// Ball moves from one player to another (or stays on same).
-		frame.BallCarrier = toCarrier
-		frame.BallOpacity = 1.0
-		var fromPos, toPos model.Position
-		if fp, ok := fromMap[fromCarrier]; ok {
-			fromPos = fp.Position
-		}
-		if tp, ok := toMap[toCarrier]; ok {
-			toPos = tp.Position
-		}
-		frame.BallPos = InterpolatePosition(fromPos, toPos, t)
-	case fromCarrier == "" && toCarrier != "":
-		// Ball appears: fade in at new carrier position.
-		frame.BallCarrier = toCarrier
-		frame.BallOpacity = t
-		if tp, ok := toMap[toCarrier]; ok {
-			frame.BallPos = tp.Position
-		}
-	case fromCarrier != "" && toCarrier == "":
-		// Ball disappears: fade out at old carrier position.
-		frame.BallCarrier = fromCarrier
-		frame.BallOpacity = 1.0 - t
-		if fp, ok := fromMap[fromCarrier]; ok {
-			frame.BallPos = fp.Position
-		}
-	}
+	// Ball interpolation for multiple carriers.
+	frame.Balls = interpolateBalls(fromSeq, toSeq, fromMap, toMap, t)
 
 	return frame
 }
@@ -259,17 +221,95 @@ func findShotTarget(seq *model.Sequence, playerID string) (model.Position, bool)
 	return model.Position{}, false
 }
 
+// interpolateBalls computes animated balls between two sequences.
+func interpolateBalls(fromSeq, toSeq *model.Sequence, fromMap, toMap map[string]*model.Player, t float64) []AnimatedBall {
+	var balls []AnimatedBall
+	handled := make(map[string]bool) // to-carriers already accounted for
+
+	playerPos := func(m map[string]*model.Player, id string) model.Position {
+		if p, ok := m[id]; ok {
+			return p.Position
+		}
+		return model.Position{}
+	}
+
+	for _, id := range fromSeq.BallCarrier {
+		if toSeq.BallCarrier.HasBall(id) {
+			// Ball stays with the same player — interpolate with movement.
+			balls = append(balls, AnimatedBall{
+				CarrierID: id,
+				Pos:       InterpolatePosition(playerPos(fromMap, id), playerPos(toMap, id), t),
+				Opacity:   1.0,
+			})
+			handled[id] = true
+			continue
+		}
+		// Ball leaves this carrier — check for shot or pass action.
+		if target, hasShot := findShotTarget(toSeq, id); hasShot {
+			balls = append(balls, AnimatedBall{
+				CarrierID: id,
+				Pos:       InterpolatePosition(playerPos(fromMap, id), target, t),
+				Opacity:   1.0,
+			})
+			continue
+		}
+		if targetID, hasPass := findPassTargetPlayer(toSeq, id); hasPass {
+			toPos := playerPos(toMap, targetID)
+			balls = append(balls, AnimatedBall{
+				CarrierID: id,
+				Pos:       InterpolatePosition(playerPos(fromMap, id), toPos, t),
+				Opacity:   1.0,
+			})
+			handled[targetID] = true
+			continue
+		}
+		// No action — fade out.
+		balls = append(balls, AnimatedBall{
+			CarrierID: id,
+			Pos:       playerPos(fromMap, id),
+			Opacity:   1.0 - t,
+		})
+	}
+
+	// New carriers that fade in.
+	for _, id := range toSeq.BallCarrier {
+		if handled[id] || fromSeq.BallCarrier.HasBall(id) {
+			continue
+		}
+		balls = append(balls, AnimatedBall{
+			CarrierID: id,
+			Pos:       playerPos(toMap, id),
+			Opacity:   t,
+		})
+	}
+
+	return balls
+}
+
+// findPassTargetPlayer checks if the given player has a pass action in the
+// sequence and returns the target player ID.
+func findPassTargetPlayer(seq *model.Sequence, playerID string) (string, bool) {
+	for i := range seq.Actions {
+		a := &seq.Actions[i]
+		if a.Type == model.ActionPass && a.From.IsPlayer && a.From.PlayerID == playerID && a.To.IsPlayer {
+			return a.To.PlayerID, true
+		}
+	}
+	return "", false
+}
+
 // snapshotFrame creates a fully-visible frame from a single sequence.
 func snapshotFrame(seq *model.Sequence) AnimatedFrame {
-	frame := AnimatedFrame{
-		BallCarrier: seq.BallCarrier,
-		BallOpacity: 1.0,
-	}
-	// Set ball position from carrier.
-	if seq.BallCarrier != "" {
+	frame := AnimatedFrame{}
+	// Create one ball per carrier.
+	for _, id := range seq.BallCarrier {
 		for i := range seq.Players {
-			if seq.Players[i].ID == seq.BallCarrier {
-				frame.BallPos = seq.Players[i].Position
+			if seq.Players[i].ID == id {
+				frame.Balls = append(frame.Balls, AnimatedBall{
+					CarrierID: id,
+					Pos:       seq.Players[i].Position,
+					Opacity:   1.0,
+				})
 				break
 			}
 		}
