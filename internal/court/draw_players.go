@@ -26,8 +26,8 @@ const (
 	QueueSpacing       = 36
 	BallRadius         = 13   // ×2 real ball radius 0.12m (size 7)
 	BallOutlineWidth   = 2
-	BallOffsetX        = 16
-	BallOffsetY        = 16
+	BallOffsetX        = 0
+	BallOffsetY        = 0
 )
 
 var (
@@ -194,6 +194,37 @@ func DrawBallWithOpacity(img *image.RGBA, vp *Viewport, center Point, opacity fl
 	DrawCircleFill(img, ballCenter, vp.S(BallRadius), col)
 	DrawCircleOutline(img, ballCenter, vp.S(BallRadius), vp.S(BallOutlineWidth),
 		color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: alpha})
+}
+
+// BallPosForPlayer computes the ball/hand pixel position for a player
+// without drawing anything. Uses the same geometry as drawPlayerBody.
+func BallPosForPlayer(vp *Viewport, center Point, player *model.Player) Point {
+	brx := vp.Sf(BodyRX)
+	rad := player.Rotation * math.Pi / 180
+	sinR := float32(math.Sin(rad))
+	cosR := float32(math.Cos(rad))
+
+	bodyCenter := center
+
+	switch player.Role {
+	case model.RoleAttacker, model.RolePointGuard, model.RoleShootingGuard,
+		model.RoleSmallForward, model.RolePowerForward, model.RoleCenter:
+		armLen := vp.Sf(ArmLength)
+		rightArm := Pt(bodyCenter.X+cosR*brx, bodyCenter.Y+sinR*brx)
+		return Pt(
+			rightArm.X+sinR*armLen*0.7+cosR*armLen*0.5,
+			rightArm.Y-cosR*armLen*0.7+sinR*armLen*0.5,
+		)
+	case model.RoleDefender:
+		armLen := vp.Sf(ArmLength)
+		rightStart := Pt(bodyCenter.X+cosR*brx, bodyCenter.Y+sinR*brx)
+		return Pt(
+			rightStart.X+cosR*armLen+sinR*armLen*0.4,
+			rightStart.Y+sinR*armLen-cosR*armLen*0.4,
+		)
+	default:
+		return Pt(bodyCenter.X+cosR*brx, bodyCenter.Y+sinR*brx)
+	}
 }
 
 // DrawCallout draws a speech bubble with text above the player.
