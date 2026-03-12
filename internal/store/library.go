@@ -49,7 +49,7 @@ func (l *Library) ListExercises() ([]string, error) {
 			continue
 		}
 		name := e.Name()
-		if isIndexFile(name) {
+		if strings.HasPrefix(name, ".") || isIndexFile(name) {
 			continue
 		}
 		if strings.HasSuffix(name, ".yaml") || strings.HasSuffix(name, ".yml") {
