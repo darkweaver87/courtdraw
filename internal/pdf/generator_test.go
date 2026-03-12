@@ -64,7 +64,7 @@ func TestGenerate_BasicSession(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(dir, "test-output.pdf")
-	err = Generate(session, st.LoadExercise,outputPath)
+	err = Generate(session, st.LoadExercise, outputPath, LayoutPortrait)
 	if err != nil {
 		t.Fatalf("generate PDF: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestGenerate_EmptySession(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(dir, "empty.pdf")
-	err = Generate(session, st.LoadExercise,outputPath)
+	err = Generate(session, st.LoadExercise, outputPath, LayoutPortrait)
 	if err != nil {
 		t.Fatalf("generate PDF: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestGenerate_EmptySession(t *testing.T) {
 func TestGenerate_NilSession(t *testing.T) {
 	dir := t.TempDir()
 	st, _ := store.NewYAMLStore(dir)
-	err := Generate(nil, st.LoadExercise, filepath.Join(dir, "nil.pdf"))
+	err := Generate(nil, st.LoadExercise, filepath.Join(dir, "nil.pdf"), LayoutPortrait)
 	if err == nil {
 		t.Error("expected error for nil session")
 	}
@@ -135,6 +135,56 @@ func TestParseDurationMins(t *testing.T) {
 }
 
 
+func TestGenerate_Landscape2Up(t *testing.T) {
+	dir := t.TempDir()
+	st, err := store.NewYAMLStore(dir)
+	if err != nil {
+		t.Fatalf("create store: %v", err)
+	}
+
+	ex := &model.Exercise{
+		Name:          "Test Exercise",
+		CourtType:     model.HalfCourt,
+		CourtStandard: model.FIBA,
+		Duration:      "10m",
+		Intensity:     2,
+		Category:      model.CategoryOffense,
+		Sequences: []model.Sequence{
+			{Label: "Setup", Players: []model.Player{
+				{ID: "p1", Label: "A", Role: model.RoleAttacker, Position: model.Position{0.3, 0.5}},
+			}},
+			{Label: "Go", Players: []model.Player{
+				{ID: "p1", Label: "A", Role: model.RoleAttacker, Position: model.Position{0.5, 0.3}},
+			}},
+		},
+	}
+	if err := st.SaveExercise(ex); err != nil {
+		t.Fatalf("save exercise: %v", err)
+	}
+
+	session := &model.Session{
+		Title: "Landscape Test",
+		Exercises: []model.ExerciseEntry{
+			{Exercise: "test-exercise"},
+			{Exercise: "test-exercise"},
+		},
+	}
+
+	outputPath := filepath.Join(dir, "landscape.pdf")
+	err = Generate(session, st.LoadExercise, outputPath, LayoutLandscape2Up)
+	if err != nil {
+		t.Fatalf("generate landscape PDF: %v", err)
+	}
+
+	info, err := os.Stat(outputPath)
+	if err != nil {
+		t.Fatalf("stat output: %v", err)
+	}
+	if info.Size() < 100 {
+		t.Errorf("PDF file too small: %d bytes", info.Size())
+	}
+}
+
 func TestGenerateBytes(t *testing.T) {
 	dir := t.TempDir()
 	st, err := store.NewYAMLStore(dir)
@@ -146,7 +196,7 @@ func TestGenerateBytes(t *testing.T) {
 		Title: "Bytes Test",
 	}
 
-	data, err := GenerateBytes(session, st.LoadExercise)
+	data, err := GenerateBytes(session, st.LoadExercise, LayoutPortrait)
 	if err != nil {
 		t.Fatalf("generate bytes: %v", err)
 	}

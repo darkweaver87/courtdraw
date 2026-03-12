@@ -167,6 +167,9 @@ session.generate_pdf: "Generate PDF"
 pdf.export_title: "Export PDF"
 pdf.export_confirm: "Generate"
 pdf.export_cancel: "Cancel"
+pdf.layout_label: "Page layout"
+pdf.layout_portrait: "Portrait (A4)"
+pdf.layout_landscape_2up: "Landscape 2-up (A4)"
 
 # PDF output
 pdf.summary: "Summary"

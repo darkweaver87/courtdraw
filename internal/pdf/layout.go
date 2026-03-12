@@ -11,8 +11,6 @@ import (
 )
 
 // wrapText splits a cp1252-encoded string into lines that fit within maxW mm.
-// Unlike fpdf.SplitText, this works safely with cp1252 byte strings because
-// GetStringWidth uses byte-level width lookup for standard fonts.
 func wrapText(p *fpdf.Fpdf, txt string, maxW float64) []string {
 	if p.GetStringWidth(txt) <= maxW {
 		return []string{txt}
@@ -46,74 +44,76 @@ type exerciseBlock struct {
 	index    int
 }
 
-// layoutHeader draws the header bar with session title and metadata.
-func layoutHeader(pdf *fpdf.Fpdf, tr func(string) string, session *model.Session) {
+// layoutHeader draws the header bar for portrait mode.
+func layoutHeader(pdf *fpdf.Fpdf, tr func(string) string, session *model.Session, ctx *layoutContext) {
+	if session == nil {
+		return
+	}
+	x := ctx.colX
+	w := ctx.contentW
+
 	pdf.SetFillColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
-	pdf.Rect(marginLeft, marginTop, contentWidth, headerHeight, "F")
+	pdf.Rect(x, ctx.margin, w, headerHeight, "F")
 
 	pdf.SetFont("Helvetica", "B", fontSizeTitle)
 	pdf.SetTextColor(colorWhite[0], colorWhite[1], colorWhite[2])
-	pdf.SetXY(marginLeft+4, marginTop+2)
-	pdf.CellFormat(contentWidth-8, 7, tr(session.Title), "", 0, "L", false, 0, "")
+	pdf.SetXY(x+4, ctx.margin+2)
+	pdf.CellFormat(w-8, 7, tr(session.Title), "", 0, "L", false, 0, "")
 
 	if session.Subtitle != "" {
 		pdf.SetFont("Helvetica", "", fontSizeSubtitle)
-		pdf.SetXY(marginLeft+4, marginTop+9)
-		pdf.CellFormat(contentWidth-8, 5, tr(session.Subtitle), "", 0, "L", false, 0, "")
+		pdf.SetXY(x+4, ctx.margin+9)
+		pdf.CellFormat(w-8, 5, tr(session.Subtitle), "", 0, "L", false, 0, "")
 	}
 
 	if session.AgeGroup != "" {
 		pdf.SetFont("Helvetica", "B", fontSizeSubtitle)
-		pdf.SetXY(marginLeft+contentWidth-40, marginTop+2)
+		pdf.SetXY(x+w-40, ctx.margin+2)
 		pdf.CellFormat(36, 7, tr(session.AgeGroup), "", 0, "R", false, 0, "")
 	}
 
 	if session.Date != "" {
 		pdf.SetFont("Helvetica", "", fontSizeSubtitle)
-		pdf.SetXY(marginLeft+contentWidth-40, marginTop+9)
+		pdf.SetXY(x+w-40, ctx.margin+9)
 		pdf.CellFormat(36, 5, tr(session.Date), "", 0, "R", false, 0, "")
 	}
 }
 
-// layoutExerciseBlock draws one exercise block (header + per-sequence court diagrams + instructions).
-// Returns the Y position after the block.
-func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, block exerciseBlock) float64 {
+// layoutExerciseBlock draws one exercise block.
+// IMPORTANT: always reads ctx.colX (not a local copy) so that mid-block
+// page breaks in 2-up mode correctly shift rendering to the right column.
+func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, block exerciseBlock, ctx *layoutContext) float64 {
 	ex := block.exercise
 	if ex == nil {
 		return y
 	}
 
-	numSeqs := len(ex.Sequences)
-	if numSeqs == 0 {
-		numSeqs = 1
-	}
+	colW := ctx.colW
 
 	// Check if we need a new page for the header.
-	if y+20 > pageHeight-marginBottom {
-		pdf.AddPage()
-		y = marginTop
+	if y+20 > ctx.maxY {
+		y = ctx.nextPage(pdf)
 	}
 
-	// Exercise header line — white text on blue background.
+	// Exercise header line.
 	pdf.SetFillColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
-	pdf.Rect(marginLeft, y, contentWidth, 6, "F")
+	pdf.Rect(ctx.colX, y, colW, 6, "F")
 
 	pdf.SetFont("Helvetica", "B", fontSizeHeader)
 	pdf.SetTextColor(colorWhite[0], colorWhite[1], colorWhite[2])
-	pdf.SetXY(marginLeft, y)
+	pdf.SetXY(ctx.colX, y)
 
 	headerText := fmt.Sprintf("%d. %s", block.index+1, ex.Name)
-	pdf.CellFormat(contentWidth*0.6, 6, tr(headerText), "", 0, "L", false, 0, "")
+	pdf.CellFormat(colW*0.6, 6, tr(headerText), "", 0, "L", false, 0, "")
 
 	// Duration.
 	pdf.SetFont("Helvetica", "", fontSizeSmall)
 	pdf.SetTextColor(colorWhite[0], colorWhite[1], colorWhite[2])
 	if ex.Duration != "" {
-		pdf.SetXY(marginLeft+contentWidth*0.6, y)
-		pdf.CellFormat(contentWidth*0.4-20, 6, ex.Duration, "", 0, "R", false, 0, "")
+		pdf.SetXY(ctx.colX+colW*0.6, y)
+		pdf.CellFormat(colW*0.4-20, 6, ex.Duration, "", 0, "R", false, 0, "")
 	}
-	// Intensity dots (green/yellow/red).
-	drawIntensityDots(pdf, marginLeft+contentWidth-16, y+3, int(ex.Intensity))
+	drawIntensityDots(pdf, ctx.colX+colW-16, y+3, int(ex.Intensity))
 
 	y += 7
 
@@ -128,10 +128,13 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 		aspectR = 15.0 / 14.0
 	}
 
-	// Uniform grid layout: up to 4 diagrams per row, instructions below each.
-	const seqCols = 4
+	seqCols := 4
+	if colW < 150 {
+		seqCols = 2
+	}
+
 	gap := columnGap * 0.6
-	cellW := (contentWidth - gap*float64(seqCols-1)) / float64(seqCols)
+	cellW := (colW - gap*float64(seqCols-1)) / float64(seqCols)
 
 	seqDiagramH := courtDiagramSize * 0.45
 	courtActualW := seqDiagramH * aspectR
@@ -151,34 +154,30 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 			rowEnd = actualSeqs
 		}
 
-		// Check page space.
 		rowEstimate := seqDiagramH + 25
-		if y+rowEstimate > pageHeight-marginBottom {
-			pdf.AddPage()
-			y = marginTop
+		if y+rowEstimate > ctx.maxY {
+			y = ctx.nextPage(pdf)
 		}
 
-		// Sequence labels.
+		// Sequence labels — use ctx.colX (may have changed after nextPage).
 		for ci := 0; ci < rowEnd-si; ci++ {
 			seq := &ex.Sequences[si+ci]
-			colX := marginLeft + float64(ci)*(cellW+gap)
+			cx := ctx.colX + float64(ci)*(cellW+gap)
 			if seq.Label != "" {
 				pdf.SetFont("Helvetica", "B", fontSizeSmall)
 				pdf.SetTextColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
-				pdf.SetXY(colX, y)
+				pdf.SetXY(cx, y)
 				pdf.CellFormat(cellW, 3.5, tr(seq.Label), "", 0, "L", false, 0, "")
 			}
 		}
 		y += 4
 
-		// Court diagrams side by side.
 		for ci := 0; ci < rowEnd-si; ci++ {
-			colX := marginLeft + float64(ci)*(cellW+gap)
-			drawCourtDiagram(pdf, colX, y, courtActualW, seqDiagramH, ex, si+ci)
+			cx := ctx.colX + float64(ci)*(cellW+gap)
+			drawCourtDiagram(pdf, cx, y, courtActualW, seqDiagramH, ex, si+ci)
 		}
 		y += seqDiagramH + 1
 
-		// Instructions below each diagram.
 		instrYs := make([]float64, rowEnd-si)
 		for ci := 0; ci < rowEnd-si; ci++ {
 			instrYs[ci] = y
@@ -187,13 +186,13 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 		pdf.SetFont("Helvetica", "", fontSizeSmall)
 		pdf.SetTextColor(colorBlack[0], colorBlack[1], colorBlack[2])
 		for ci := 0; ci < rowEnd-si; ci++ {
-			colX := marginLeft + float64(ci)*(cellW+gap)
+			cx := ctx.colX + float64(ci)*(cellW+gap)
 			seq := &ex.Sequences[si+ci]
 			iy := instrYs[ci]
 			for _, instr := range seq.Instructions {
 				lines := wrapText(pdf, tr(instr), cellW-4)
 				for li, line := range lines {
-					pdf.SetXY(colX+1, iy)
+					pdf.SetXY(cx+1, iy)
 					if li == 0 {
 						pdf.CellFormat(cellW-2, 3.2, "- "+line, "", 0, "L", false, 0, "")
 					} else {
@@ -205,13 +204,13 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 			instrYs[ci] = iy
 		}
 
-		maxY := y
+		localMaxY := y
 		for _, iy := range instrYs {
-			if iy > maxY {
-				maxY = iy
+			if iy > localMaxY {
+				localMaxY = iy
 			}
 		}
-		y = maxY + 2
+		y = localMaxY + 2
 	}
 
 	// Variants.
@@ -220,8 +219,8 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 		pdf.SetFont("Helvetica", "I", fontSizeSmall)
 		pdf.SetTextColor(colorNeutral[0], colorNeutral[1], colorNeutral[2])
 		for _, v := range block.entry.Variants {
-			pdf.SetXY(marginLeft+4, y)
-			pdf.CellFormat(contentWidth, 3.5, tr(i18n.Tf("pdf.variant", v.Exercise)), "", 0, "L", false, 0, "")
+			pdf.SetXY(ctx.colX+4, y)
+			pdf.CellFormat(colW, 3.5, tr(i18n.Tf("pdf.variant", v.Exercise)), "", 0, "L", false, 0, "")
 			y += 4
 		}
 	}
@@ -229,29 +228,36 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 	return y + exerciseBlockGap
 }
 
-// layoutSummaryTable draws the summary table at the end.
-func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, blocks []exerciseBlock) float64 {
-	// Check page space.
+// layoutSummaryTable draws the summary table.
+func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, blocks []exerciseBlock, ctx *layoutContext) float64 {
+	colW := ctx.colW
+
 	tableHeight := float64(len(blocks)+1)*6 + 10
-	if y+tableHeight > pageHeight-marginBottom {
-		pdf.AddPage()
-		y = marginTop
+	if y+tableHeight > ctx.maxY {
+		y = ctx.nextPage(pdf)
 	}
 
-	// Header.
 	pdf.SetFont("Helvetica", "B", fontSizeHeader)
 	pdf.SetTextColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
-	pdf.SetXY(marginLeft, y)
-	pdf.CellFormat(contentWidth, 6, tr(i18n.T("pdf.summary")), "", 0, "L", false, 0, "")
+	pdf.SetXY(ctx.colX, y)
+	pdf.CellFormat(colW, 6, tr(i18n.T("pdf.summary")), "", 0, "L", false, 0, "")
 	y += 8
 
-	// Table header.
-	colWidths := []float64{10, contentWidth * 0.5, 30, 20, contentWidth*0.5 - 50}
+	nameW := colW*0.5 - 10
+	if nameW < 30 {
+		nameW = 30
+	}
+	catW := colW - 10 - nameW - 30 - 20
+	if catW < 10 {
+		catW = 10
+	}
+	colWidths := []float64{10, nameW, 30, 20, catW}
 	headers := []string{tr(i18n.T("pdf.col_num")), tr(i18n.T("pdf.col_exercise")), tr(i18n.T("pdf.col_duration")), tr(i18n.T("pdf.col_intensity")), tr(i18n.T("pdf.col_category"))}
 	pdf.SetFont("Helvetica", "B", fontSizeSmall)
 	pdf.SetFillColor(colorLightBg[0], colorLightBg[1], colorLightBg[2])
+	pdf.SetDrawColor(colorBlack[0], colorBlack[1], colorBlack[2])
 	pdf.SetTextColor(colorBlack[0], colorBlack[1], colorBlack[2])
-	x := marginLeft
+	x := ctx.colX
 	for i, h := range headers {
 		pdf.SetXY(x, y)
 		pdf.CellFormat(colWidths[i], 5, h, "1", 0, "C", true, 0, "")
@@ -259,94 +265,108 @@ func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, block
 	}
 	y += 5
 
-	// Rows.
 	pdf.SetFont("Helvetica", "", fontSizeSmall)
 	totalMinutes := 0
+	lineH := 3.6
 	for _, b := range blocks {
 		if b.exercise == nil {
 			continue
 		}
-		x = marginLeft
 		cells := []string{
 			fmt.Sprintf("%d", b.index+1),
 			tr(b.exercise.Name),
 			tr(b.exercise.Duration),
-			"", // intensity drawn as colored dots below
+			"",
 			tr(i18n.T("category." + string(b.exercise.Category))),
 		}
+		aligns := []string{"C", "L", "C", "C", "C"}
+
+		// Compute wrapped lines per cell and row height.
+		wrappedCells := make([][]string, len(cells))
+		maxLines := 1
 		for i, cell := range cells {
-			pdf.SetXY(x, y)
-			pdf.CellFormat(colWidths[i], 5, cell, "1", 0, "C", false, 0, "")
+			wrappedCells[i] = wrapText(pdf, cell, colWidths[i]-2)
+			if len(wrappedCells[i]) > maxLines {
+				maxLines = len(wrappedCells[i])
+			}
+		}
+		rowH := float64(maxLines) * lineH
+
+		// Draw bordered cells with wrapped text.
+		x = ctx.colX
+		for i := range cells {
+			// Draw the cell border/background.
+			pdf.Rect(x, y, colWidths[i], rowH, "D")
+			// Draw each line of text inside the cell.
+			for li, line := range wrappedCells[i] {
+				pdf.SetXY(x+1, y+float64(li)*lineH)
+				pdf.CellFormat(colWidths[i]-2, lineH, line, "", 0, aligns[i], false, 0, "")
+			}
 			x += colWidths[i]
 		}
-		// Draw intensity dots centered in the intensity column.
-		intColX := marginLeft + colWidths[0] + colWidths[1] + colWidths[2]
-		drawIntensityDots(pdf, intColX+colWidths[3]/2-5, y+2.5, int(b.exercise.Intensity))
-		y += 5
+		intColX := ctx.colX + colWidths[0] + colWidths[1] + colWidths[2]
+		drawIntensityDots(pdf, intColX+colWidths[3]/2-5, y+rowH/2, int(b.exercise.Intensity))
+		y += rowH
 		totalMinutes += parseDurationMins(b.exercise.Duration)
 	}
 
-	// Total row.
 	y += 2
 	pdf.SetFont("Helvetica", "B", fontSizeBody)
-	pdf.SetXY(marginLeft, y)
+	pdf.SetXY(ctx.colX, y)
 	totalStr := i18n.Tf("pdf.total_format", i18n.Tf("session.duration_m", totalMinutes))
 	if totalMinutes >= 60 {
 		totalStr = i18n.Tf("pdf.total_format", i18n.Tf("session.duration_hm", totalMinutes/60, totalMinutes%60))
 	}
-	pdf.CellFormat(contentWidth, 5, tr(totalStr), "", 0, "R", false, 0, "")
+	pdf.CellFormat(colW, 5, tr(totalStr), "", 0, "R", false, 0, "")
 	y += 7
 
 	return y
 }
 
 // layoutCoachNotes draws coach notes and philosophy sections.
-func layoutCoachNotes(pdf *fpdf.Fpdf, tr func(string) string, y float64, session *model.Session) float64 {
+func layoutCoachNotes(pdf *fpdf.Fpdf, tr func(string) string, y float64, session *model.Session, ctx *layoutContext) float64 {
 	if len(session.CoachNotes) == 0 && session.Philosophy == "" {
 		return y
 	}
 
-	if y+30 > pageHeight-marginBottom {
-		pdf.AddPage()
-		y = marginTop
+	colW := ctx.colW
+
+	if y+30 > ctx.maxY {
+		y = ctx.nextPage(pdf)
 	}
 
-	// Coach notes.
 	if len(session.CoachNotes) > 0 {
 		pdf.SetFont("Helvetica", "B", fontSizeHeader)
 		pdf.SetTextColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
-		pdf.SetXY(marginLeft, y)
-		pdf.CellFormat(contentWidth, 6, tr(i18n.T("pdf.coach_notes")), "", 0, "L", false, 0, "")
+		pdf.SetXY(ctx.colX, y)
+		pdf.CellFormat(colW, 6, tr(i18n.T("pdf.coach_notes")), "", 0, "L", false, 0, "")
 		y += 7
 
 		pdf.SetFont("Helvetica", "", fontSizeBody)
 		pdf.SetTextColor(colorBlack[0], colorBlack[1], colorBlack[2])
 		for _, note := range session.CoachNotes {
-			pdf.SetXY(marginLeft+2, y)
-			lines := wrapText(pdf, tr(note), contentWidth-4)
+			pdf.SetXY(ctx.colX+2, y)
+			lines := wrapText(pdf, tr(note), colW-4)
 			for _, line := range lines {
-				pdf.SetXY(marginLeft+2, y)
-				pdf.CellFormat(contentWidth-4, 4, "- "+line, "", 0, "L", false, 0, "")
+				pdf.SetXY(ctx.colX+2, y)
+				pdf.CellFormat(colW-4, 4, "- "+line, "", 0, "L", false, 0, "")
 				y += 4.2
 			}
 		}
 		y += 3
 	}
 
-	// Philosophy.
 	if session.Philosophy != "" {
-		if y+20 > pageHeight-marginBottom {
-			pdf.AddPage()
-			y = marginTop
+		if y+20 > ctx.maxY {
+			y = ctx.nextPage(pdf)
 		}
 
 		pdf.SetFont("Helvetica", "B", fontSizeHeader)
 		pdf.SetTextColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
-		pdf.SetXY(marginLeft, y)
-		pdf.CellFormat(contentWidth, 6, tr(i18n.T("pdf.philosophy")), "", 0, "L", false, 0, "")
+		pdf.SetXY(ctx.colX, y)
+		pdf.CellFormat(colW, 6, tr(i18n.T("pdf.philosophy")), "", 0, "L", false, 0, "")
 		y += 7
 
-		// Philosophy box.
 		pdf.SetFillColor(colorLightBg[0], colorLightBg[1], colorLightBg[2])
 		pdf.SetFont("Helvetica", "I", fontSizeBody)
 		pdf.SetTextColor(colorBlack[0], colorBlack[1], colorBlack[2])
@@ -354,20 +374,20 @@ func layoutCoachNotes(pdf *fpdf.Fpdf, tr func(string) string, y float64, session
 		lines := strings.Split(tr(session.Philosophy), "\n")
 		boxY := y
 		for _, line := range lines {
-			wrapped := wrapText(pdf, line, contentWidth-8)
+			wrapped := wrapText(pdf, line, colW-8)
 			for range wrapped {
 				y += 4
 			}
 		}
 		boxH := y - boxY + 4
-		pdf.Rect(marginLeft, boxY-1, contentWidth, boxH, "F")
+		pdf.Rect(ctx.colX, boxY-1, colW, boxH, "F")
 
 		y = boxY
 		for _, line := range lines {
-			wrapped := wrapText(pdf, line, contentWidth-8)
+			wrapped := wrapText(pdf, line, colW-8)
 			for _, wl := range wrapped {
-				pdf.SetXY(marginLeft+4, y)
-				pdf.CellFormat(contentWidth-8, 4, wl, "", 0, "L", false, 0, "")
+				pdf.SetXY(ctx.colX+4, y)
+				pdf.CellFormat(colW-8, 4, wl, "", 0, "L", false, 0, "")
 				y += 4
 			}
 		}
@@ -378,7 +398,6 @@ func layoutCoachNotes(pdf *fpdf.Fpdf, tr func(string) string, y float64, session
 }
 
 // drawIntensityDots draws 3 colored circles (green/yellow/red) at the given position.
-// Active dots use their color; inactive dots are gray.
 func drawIntensityDots(pdf *fpdf.Fpdf, x, y float64, level int) {
 	colors := [3][3]int{colorIntGreen, colorIntYellow, colorIntRed}
 	r := intensityDotR

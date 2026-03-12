@@ -939,6 +939,41 @@ func (a *App) showPdfExportDialog() {
 		return
 	}
 
+	pageLayout := pdf.LayoutPortrait
+	opts := []string{
+		i18n.T("pdf.layout_portrait"),
+		i18n.T("pdf.layout_landscape_2up"),
+	}
+	radio := widget.NewRadioGroup(opts, func(selected string) {
+		if selected == opts[1] {
+			pageLayout = pdf.LayoutLandscape2Up
+		} else {
+			pageLayout = pdf.LayoutPortrait
+		}
+	})
+	radio.SetSelected(opts[0])
+
+	content := container.NewVBox(
+		widget.NewLabel(i18n.T("pdf.layout_label")),
+		radio,
+	)
+
+	dialog.ShowCustomConfirm(
+		i18n.T("pdf.export_title"),
+		i18n.T("pdf.export_confirm"),
+		i18n.T("pdf.export_cancel"),
+		content,
+		func(ok bool) {
+			if !ok {
+				return
+			}
+			a.showFileSaveDialog(pageLayout)
+		},
+		a.window,
+	)
+}
+
+func (a *App) showFileSaveDialog(pageLayout pdf.PageLayout) {
 	d := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
 		if err != nil || writer == nil {
 			return
@@ -948,7 +983,7 @@ func (a *App) showPdfExportDialog() {
 		if !strings.HasSuffix(strings.ToLower(path), ".pdf") {
 			path += ".pdf"
 		}
-		a.generatePDFTo(path)
+		a.generatePDFTo(path, pageLayout)
 	}, a.window)
 	d.SetFileName(a.pdfDefaultFilename() + ".pdf")
 
@@ -983,7 +1018,7 @@ func (a *App) pdfDefaultFilename() string {
 	return filename
 }
 
-func (a *App) generatePDFTo(path string) {
+func (a *App) generatePDFTo(path string, pageLayout pdf.PageLayout) {
 	s := a.sessionTab.Session()
 	if s == nil {
 		log.Printf("no session to generate PDF for")
@@ -1004,7 +1039,7 @@ func (a *App) generatePDFTo(path string) {
 		}
 		return ex.Localized(lang), nil
 	}
-	if err := pdf.Generate(s, loader, path); err != nil {
+	if err := pdf.Generate(s, loader, path, pageLayout); err != nil {
 		log.Printf("generate PDF: %v", err)
 		return
 	}
