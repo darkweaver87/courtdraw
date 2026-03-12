@@ -7,13 +7,10 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/ui/icon"
 )
-
-const dragRowHeight float32 = 36
 
 // DragList is a reorderable list with drag-and-drop support.
 type DragList struct {
@@ -35,6 +32,7 @@ type DragList struct {
 	OnReorder func(from, to int)
 	OnDelete  func(idx int)
 	OnMove    func(idx, dir int)
+	OnPreview func(idx int)
 }
 
 // DragListItem represents one entry in the list.
@@ -44,7 +42,6 @@ type DragListItem struct {
 
 var _ fyne.Widget = (*DragList)(nil)
 var _ fyne.Draggable = (*DragList)(nil)
-var _ fyne.Tappable = (*DragList)(nil)
 var _ desktop.Hoverable = (*DragList)(nil)
 
 // NewDragList creates a new draggable list.
@@ -88,8 +85,6 @@ func (dl *DragList) Widget() fyne.CanvasObject {
 func (dl *DragList) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(dl.scroll)
 }
-
-func (dl *DragList) Tapped(*fyne.PointEvent) {}
 
 func (dl *DragList) MouseIn(*desktop.MouseEvent)  {}
 func (dl *DragList) MouseMoved(*desktop.MouseEvent) {}
@@ -144,29 +139,44 @@ func (dl *DragList) DragEnd() {
 	}
 }
 
+func (dl *DragList) rowY(idx int) float32 {
+	var y float32
+	for i := 0; i < idx && i < len(dl.rows); i++ {
+		y += dl.rows[i].container.Size().Height
+	}
+	return y
+}
+
 func (dl *DragList) hitRow(pos fyne.Position) int {
-	// Account for scroll offset.
 	y := pos.Y + dl.scroll.Offset.Y
-	idx := int(y / dragRowHeight)
-	if idx < 0 {
-		idx = 0
+	var cumY float32
+	for i, row := range dl.rows {
+		h := row.container.Size().Height
+		if y < cumY+h {
+			return i
+		}
+		cumY += h
 	}
-	if idx >= len(dl.items) {
-		idx = len(dl.items) - 1
+	if len(dl.rows) > 0 {
+		return len(dl.rows) - 1
 	}
-	return idx
+	return -1
 }
 
 func (dl *DragList) computeDropTarget(pos fyne.Position) int {
 	y := pos.Y + dl.scroll.Offset.Y
-	target := int(y / dragRowHeight)
-	if target < 0 {
-		target = 0
+	var cumY float32
+	for i, row := range dl.rows {
+		h := row.container.Size().Height
+		if y < cumY+h {
+			return i
+		}
+		cumY += h
 	}
-	if target >= len(dl.items) {
-		target = len(dl.items) - 1
+	if len(dl.rows) > 0 {
+		return len(dl.rows) - 1
 	}
-	return target
+	return 0
 }
 
 func (dl *DragList) showIndicator(target int) {
@@ -174,9 +184,9 @@ func (dl *DragList) showIndicator(target int) {
 		dl.indicator.Hide()
 		return
 	}
-	indicatorY := float32(target) * dragRowHeight
+	indicatorY := dl.rowY(target)
 	if target > dl.dragIdx {
-		indicatorY += dragRowHeight
+		indicatorY += dl.rows[target].container.Size().Height
 	}
 	dl.indicator.Resize(fyne.NewSize(dl.box.Size().Width, 2))
 	dl.indicator.Move(fyne.NewPos(0, indicatorY))
@@ -188,7 +198,7 @@ func (dl *DragList) showIndicator(target int) {
 
 type dragRow struct {
 	container *fyne.Container
-	label     *canvas.Text
+	label     *widget.Label
 	bg        *canvas.Rectangle
 	delBtn    *widget.Button
 	idx       int
@@ -197,14 +207,20 @@ type dragRow struct {
 func newDragRow(idx int, text string, dl *DragList) *dragRow {
 	r := &dragRow{idx: idx}
 	r.bg = canvas.NewRectangle(color.Transparent)
-	r.bg.Resize(fyne.NewSize(300, dragRowHeight))
 
 	handle := canvas.NewImageFromResource(icon.DragHandle())
 	handle.FillMode = canvas.ImageFillContain
 	handle.SetMinSize(fyne.NewSize(16, 16))
 
-	r.label = canvas.NewText(text, color.White)
-	r.label.TextSize = 12
+	r.label = widget.NewLabel(text)
+	r.label.Wrapping = fyne.TextWrapWord
+
+	previewBtn := widget.NewButtonWithIcon("", icon.Preview(), func() {
+		if dl.OnPreview != nil {
+			dl.OnPreview(idx)
+		}
+	})
+	previewBtn.Importance = widget.LowImportance
 
 	upBtn := widget.NewButtonWithIcon("", icon.MoveUp(), func() {
 		if dl.OnMove != nil {
@@ -225,10 +241,32 @@ func newDragRow(idx int, text string, dl *DragList) *dragRow {
 	})
 	r.delBtn.Importance = widget.LowImportance
 
-	row := container.NewHBox(handle, r.label, layout.NewSpacer(), upBtn, downBtn, r.delBtn)
+	row := container.NewBorder(nil, nil, handle, container.NewHBox(previewBtn, upBtn, downBtn, r.delBtn), r.label)
 	r.container = container.NewStack(r.bg, row)
-	r.container.Resize(fyne.NewSize(300, dragRowHeight))
 	return r
+}
+
+
+// tappableArea is an invisible widget that captures tap events.
+type tappableArea struct {
+	widget.BaseWidget
+	onTap func()
+}
+
+func newTappableArea(onTap func()) *tappableArea {
+	t := &tappableArea{onTap: onTap}
+	t.ExtendBaseWidget(t)
+	return t
+}
+
+func (t *tappableArea) Tapped(*fyne.PointEvent) {
+	if t.onTap != nil {
+		t.onTap()
+	}
+}
+
+func (t *tappableArea) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(canvas.NewRectangle(color.Transparent))
 }
 
 func (r *dragRow) setDragging(on bool) {
