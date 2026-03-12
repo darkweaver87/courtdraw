@@ -33,16 +33,35 @@ const (
 
 // ManagedExercise is an entry in the exercise library list.
 type ManagedExercise struct {
-	Name        string
-	Status      ExerciseSyncStatus
-	LocalEx     *model.Exercise
-	RemoteEx    *model.Exercise
-	DisplayName string
-	Category    string
-	AgeGroup    string
-	CourtType   string
-	Duration    string
-	Tags        []string
+	Name              string
+	Status            ExerciseSyncStatus
+	LocalEx           *model.Exercise
+	RemoteEx          *model.Exercise
+	DisplayName       string
+	RemoteDisplayName string
+	Category          string
+	AgeGroup          string
+	CourtType         string
+	Duration          string
+	Tags              []string
+	RemoteTags        []string
+}
+
+// EffectiveDisplayName returns the display name based on the filter index.
+// filterIndex 1 (local) uses the local display name; otherwise remote takes priority.
+func (m ManagedExercise) EffectiveDisplayName(filterIndex int) string {
+	if filterIndex != 1 && m.RemoteDisplayName != "" {
+		return m.RemoteDisplayName
+	}
+	return m.DisplayName
+}
+
+// EffectiveTags returns the tags based on the filter index.
+func (m ManagedExercise) EffectiveTags(filterIndex int) []string {
+	if filterIndex != 1 && len(m.RemoteTags) > 0 {
+		return m.RemoteTags
+	}
+	return m.Tags
 }
 
 const maxMgrItems = 200
@@ -509,7 +528,7 @@ func (st *SessionTab) filteredExercises() []ManagedExercise {
 			match := true
 			for _, ft := range st.filterTags {
 				found := false
-				for _, t := range item.Tags {
+				for _, t := range item.EffectiveTags(st.filterIndex) {
 					if t == ft {
 						found = true
 						break
@@ -525,7 +544,7 @@ func (st *SessionTab) filteredExercises() []ManagedExercise {
 			}
 		}
 		// Search filter.
-		if search != "" && !strings.Contains(strings.ToLower(item.DisplayName), search) {
+		if search != "" && !strings.Contains(strings.ToLower(item.EffectiveDisplayName(st.filterIndex)), search) {
 			continue
 		}
 		result = append(result, item)
@@ -540,7 +559,7 @@ func (st *SessionTab) refreshLibraryList() {
 		idx := i
 		mgd := ex
 
-		displayName := mgd.DisplayName
+		displayName := mgd.EffectiveDisplayName(st.filterIndex)
 		if displayName == "" {
 			displayName = mgd.Name
 		}
@@ -591,7 +610,7 @@ func (st *SessionTab) updatePreview() {
 		return
 	}
 
-	st.previewLabel.Text = mgd.DisplayName
+	st.previewLabel.Text = mgd.EffectiveDisplayName(st.filterIndex)
 	st.previewLabel.Refresh()
 	st.previewName = mgd.Name
 
@@ -606,8 +625,11 @@ func (st *SessionTab) updatePreview() {
 	}
 
 	// Load the exercise for the preview court.
+	// When filtering community or all, prefer remote exercise for accurate i18n.
 	var rawEx *model.Exercise
-	if mgd.LocalEx != nil {
+	if st.filterIndex != 1 && mgd.RemoteEx != nil {
+		rawEx = mgd.RemoteEx
+	} else if mgd.LocalEx != nil {
 		rawEx = mgd.LocalEx
 	} else if mgd.RemoteEx != nil {
 		rawEx = mgd.RemoteEx

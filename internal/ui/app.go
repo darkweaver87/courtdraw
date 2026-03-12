@@ -1165,11 +1165,13 @@ func (a *App) buildManagedExercises() []ManagedExercise {
 		}
 
 		displayName := name
+		remoteDisplayName := ""
 		category := ""
 		ageGroup := ""
 		courtType := ""
 		duration := ""
 		var tags []string
+		var remoteTags []string
 		// Pick the primary exercise for metadata.
 		primary := local
 		if primary == nil {
@@ -1187,18 +1189,25 @@ func (a *App) buildManagedExercises() []ManagedExercise {
 			duration = primary.Duration
 			tags = loc.Tags
 		}
+		if remote != nil {
+			rloc := remote.Localized(lang)
+			remoteDisplayName = rloc.Name
+			remoteTags = rloc.Tags
+		}
 
 		items = append(items, ManagedExercise{
-			Name:        name,
-			Status:      status,
-			LocalEx:     local,
-			RemoteEx:    remote,
-			DisplayName: displayName,
-			Category:    category,
-			AgeGroup:    ageGroup,
-			CourtType:   courtType,
-			Duration:    duration,
-			Tags:        tags,
+			Name:              name,
+			Status:            status,
+			LocalEx:           local,
+			RemoteEx:          remote,
+			DisplayName:       displayName,
+			RemoteDisplayName: remoteDisplayName,
+			Category:          category,
+			AgeGroup:          ageGroup,
+			CourtType:         courtType,
+			Duration:          duration,
+			Tags:              tags,
+			RemoteTags:        remoteTags,
 		})
 	}
 	return items
