@@ -113,7 +113,7 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 		pdf.SetXY(ctx.colX+colW*0.6, y)
 		pdf.CellFormat(colW*0.4-20, 6, ex.Duration, "", 0, "R", false, 0, "")
 	}
-	drawIntensityDots(pdf, ctx.colX+colW-16, y+3, int(ex.Intensity))
+	drawIntensityDots(pdf, ctx.colX+colW-16, y+3, int(ex.Intensity), ctx.dotRadius())
 
 	y += 7
 
@@ -305,7 +305,7 @@ func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, block
 			x += colWidths[i]
 		}
 		intColX := ctx.colX + colWidths[0] + colWidths[1] + colWidths[2]
-		drawIntensityDots(pdf, intColX+colWidths[3]/2-5, y+rowH/2, int(b.exercise.Intensity))
+		drawIntensityDots(pdf, intColX+colWidths[3]/2-5, y+rowH/2, int(b.exercise.Intensity), ctx.dotRadius())
 		y += rowH
 		totalMinutes += parseDurationMins(b.exercise.Duration)
 	}
@@ -398,9 +398,8 @@ func layoutCoachNotes(pdf *fpdf.Fpdf, tr func(string) string, y float64, session
 }
 
 // drawIntensityDots draws 3 colored circles (green/yellow/red) at the given position.
-func drawIntensityDots(pdf *fpdf.Fpdf, x, y float64, level int) {
+func drawIntensityDots(pdf *fpdf.Fpdf, x, y float64, level int, r float64) {
 	colors := [3][3]int{colorIntGreen, colorIntYellow, colorIntRed}
-	r := intensityDotR
 	for i := 0; i < 3; i++ {
 		cx := x + float64(i)*(r*2+1.5)
 		if i < level {

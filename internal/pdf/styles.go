@@ -73,7 +73,8 @@ const (
 	lineWidthThin  = 0.3
 	lineWidthThick = 0.6
 
-	intensityDotR = 2.0 // intensity dot radius
+	intensityDotR      = 2.0 // intensity dot radius (portrait)
+	intensityDotR_a5   = 1.3 // intensity dot radius (landscape A5)
 )
 
 // layoutContext holds geometry for the current layout mode.
@@ -92,6 +93,13 @@ type layoutContext struct {
 
 	// Y position just below the full-width header (start of content area).
 	contentStartY float64
+}
+
+func (ctx *layoutContext) dotRadius() float64 {
+	if ctx.mode == LayoutLandscape2Up {
+		return intensityDotR_a5
+	}
+	return intensityDotR
 }
 
 func newLayoutContext(mode PageLayout) *layoutContext {
