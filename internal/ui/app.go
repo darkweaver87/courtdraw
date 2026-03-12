@@ -150,6 +150,9 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	a.sessionTab.OnStatus = func(msg string, level int) {
 		a.statusBar.SetStatus(msg, level)
 	}
+	a.sessionTab.LoadExercise = func(name string) (*model.Exercise, error) {
+		return a.loadExerciseAny(name)
+	}
 
 	// Build editor tab content.
 	editorContent := a.buildEditorTab()
@@ -1127,7 +1130,7 @@ func (a *App) buildManagedExercises() []ManagedExercise {
 	if a.library != nil {
 		if names, err := a.library.ListExercises(); err == nil {
 			for _, name := range names {
-				if ex, err := a.library.LoadExercise(name); err == nil {
+				if ex, err := a.library.LoadExercise(name); err == nil && ex.Name != "" {
 					remoteMap[name] = ex
 					allNames[name] = true
 				}
