@@ -148,8 +148,8 @@ sequences:
       ball_carrier: a1
 i18n:
     fr:
-        name: Passe et va a 45
-        description: 'Passe et va depuis le haut : passe a l''ailier a 45, recoit sur la coupe, finit en course'
+        name: Passe et va à 45
+        description: 'Passe et va depuis le haut : passe à l''ailier à 45, reçoit sur la coupe, finit en course'
         tags:
             - passe-et-va
             - passes
@@ -158,23 +158,23 @@ i18n:
         sequences:
             - label: Mise en place
               instructions:
-                - Colonne A a la ligne mediane avec le ballon
-                - B a 45 degres sur l'aile
+                - Colonne A à la ligne médiane avec le ballon
+                - B à 45 degrés sur l'aile
                 - A part en direction du panier avec le ballon
-            - label: A passe a B
+            - label: A passe à B
               instructions:
                 - A avance vers le panier
-                - A passe a B a 45 degres
-                - Passe seche — pas de cloche
+                - A passe à B à 45 degrés
+                - Passe sèche — pas de cloche
             - label: B redonne, A coupe vers le panier
               instructions:
-                - A coupe FORT vers le panier apres la passe
-                - B redonne le ballon a A sur la coupe
+                - A coupe FORT vers le panier après la passe
+                - B redonne le ballon à A sur la coupe
                 - 'Timing : la passe arrive quand A entre dans la raquette'
             - label: Layup
               instructions:
                 - A finit en course — finition forte, pas de mollesse
-                - A prend le rebond, repasse a B
+                - A prend le rebond, repasse à B
                 - A retourne au bout de la file
-                - Le suivant enchaine immediatement
-                - Alterner les cotes toutes les quelques repetitions
+                - Le suivant enchaîne immédiatement
+                - Alterner les côtés toutes les quelques répétitions
