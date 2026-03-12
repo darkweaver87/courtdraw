@@ -29,6 +29,7 @@ func Upload() fyne.Resource    { return theme.UploadIcon() }
 func MoveUp() fyne.Resource     { return theme.MoveUpIcon() }
 func MoveDown() fyne.Resource   { return theme.MoveDownIcon() }
 func DragHandle() fyne.Resource { return theme.MenuIcon() }
+func Preview() fyne.Resource    { return theme.VisibilityIcon() }
 
 // LoadPngResource loads a PNG icon from assets/icons/ as a Fyne static resource.
 func LoadPngResource(name string) fyne.Resource {
