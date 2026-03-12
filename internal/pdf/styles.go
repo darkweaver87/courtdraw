@@ -73,7 +73,7 @@ const (
 	lineWidthThin  = 0.3
 	lineWidthThick = 0.6
 
-	intensityDotR      = 2.0 // intensity dot radius (portrait)
+	intensityDotR      = 1.3 // intensity dot radius (portrait)
 	intensityDotR_a5   = 1.3 // intensity dot radius (landscape A5)
 )
 
