@@ -83,7 +83,8 @@ type SessionTab struct {
 	filterCategory  model.Category
 	filterCourtType model.CourtType
 	filterTags      []string
-	libraryList     *widget.List
+	libraryBox      *fyne.Container
+	libraryScroll   *container.Scroll
 	selectedIdx     int
 	categorySelect  *widget.Select
 	courtTypeSelect *widget.Select
@@ -120,10 +121,11 @@ type SessionTab struct {
 	totalLabel *canvas.Text
 
 	// Preview column.
-	previewCourt *fynecourt.CourtWidget
-	previewPB    *anim.Playback
-	previewLabel *canvas.Text
-	previewName  string // name of currently previewed exercise (avoid restart)
+	previewCourt  *fynecourt.CourtWidget
+	previewPB     *anim.Playback
+	previewLabel  *canvas.Text
+	previewName   string // name of currently previewed exercise (avoid restart)
+	previewDetail *fyne.Container // exercise details (duration, intensity, instructions)
 
 	// Event channel — consumed by App each frame.
 	pendingEvent SessionTabEvent
@@ -135,6 +137,7 @@ type SessionTab struct {
 	OnAction         func(SessionTabEvent)
 	OnSessionChanged func() // called when exercises are added/removed/reordered
 	OnStatus         func(string, int)
+	LoadExercise     func(name string) (*model.Exercise, error) // fallback loader
 }
 
 // NewSessionTab creates a new session tab.
@@ -150,35 +153,9 @@ func NewSessionTab() *SessionTab {
 		st.refreshLibraryList()
 	}
 
-	// Library list.
-	st.libraryList = widget.NewList(
-		func() int {
-			return len(st.filteredExercises())
-		},
-		func() fyne.CanvasObject {
-			return container.NewHBox(
-				canvas.NewText("Exercise Name", color.White),
-				layout.NewSpacer(),
-				canvas.NewText("cat", color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff}),
-			)
-		},
-		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			filtered := st.filteredExercises()
-			if id >= len(filtered) {
-				return
-			}
-			ex := filtered[id]
-			items := obj.(*fyne.Container).Objects
-			items[0].(*canvas.Text).Text = ex.DisplayName
-			items[0].(*canvas.Text).Refresh()
-			items[2].(*canvas.Text).Text = ex.Category
-			items[2].(*canvas.Text).Refresh()
-		},
-	)
-	st.libraryList.OnSelected = func(id widget.ListItemID) {
-		st.selectedIdx = id
-		st.updatePreview()
-	}
+	// Library list (VBox + scroll for variable row heights).
+	st.libraryBox = container.NewVBox()
+	st.libraryScroll = container.NewVScroll(st.libraryBox)
 
 	// Session metadata entries.
 	st.titleEntry = widget.NewEntry()
@@ -222,6 +199,9 @@ func NewSessionTab() *SessionTab {
 		}
 	}
 
+	// Preview detail container (exercise metadata + instructions).
+	st.previewDetail = container.NewVBox()
+
 	// Session exercise list with drag-and-drop reordering.
 	st.sessionList = NewDragList()
 	st.sessionList.OnReorder = func(from, to int) {
@@ -232,6 +212,9 @@ func NewSessionTab() *SessionTab {
 	}
 	st.sessionList.OnMove = func(idx, dir int) {
 		st.moveExercise(idx, dir)
+	}
+	st.sessionList.OnPreview = func(idx int) {
+		st.previewSessionExercise(idx)
 	}
 
 	// Category filter.
@@ -342,14 +325,18 @@ func (st *SessionTab) buildDesktopLayout() fyne.CanvasObject {
 	libraryCol := container.NewBorder(
 		container.NewVBox(searchRow, statusRow, filterGrid, st.tagScroll),
 		nil, nil, nil,
-		st.libraryList,
+		st.libraryScroll,
 	)
 
+	detailScroll := container.NewVScroll(st.previewDetail)
+	detailScroll.SetMinSize(fyne.NewSize(0, 80))
+	courtAndDetail := container.NewVSplit(st.previewCourt, detailScroll)
+	courtAndDetail.SetOffset(0.6)
 	previewCol := container.NewBorder(
 		st.previewLabel,
 		container.NewVBox(st.addBtn, container.NewGridWithColumns(3, st.openExBtn, st.contributeBtn, st.deleteExBtn)),
 		nil, nil,
-		st.previewCourt,
+		courtAndDetail,
 	)
 
 	metadataForm := container.NewVBox(
@@ -379,15 +366,19 @@ func (st *SessionTab) buildMobileLayout() fyne.CanvasObject {
 	libraryTab := container.NewBorder(
 		container.NewVBox(searchRow, statusRow, filterGrid, st.tagScroll),
 		nil, nil, nil,
-		st.libraryList,
+		st.libraryScroll,
 	)
 
 	// Preview tab.
+	mobileDetailScroll := container.NewVScroll(st.previewDetail)
+	mobileDetailScroll.SetMinSize(fyne.NewSize(0, 80))
+	mobileCourtAndDetail := container.NewVSplit(st.previewCourt, mobileDetailScroll)
+	mobileCourtAndDetail.SetOffset(0.6)
 	previewTab := container.NewBorder(
 		st.previewLabel,
 		container.NewVBox(st.addBtn, container.NewGridWithColumns(3, st.openExBtn, st.contributeBtn, st.deleteExBtn)),
 		nil, nil,
-		st.previewCourt,
+		mobileCourtAndDetail,
 	)
 
 	// Session tab.
@@ -543,7 +534,41 @@ func (st *SessionTab) filteredExercises() []ManagedExercise {
 }
 
 func (st *SessionTab) refreshLibraryList() {
-	st.libraryList.Refresh()
+	st.libraryBox.RemoveAll()
+	filtered := st.filteredExercises()
+	for i, ex := range filtered {
+		idx := i
+		mgd := ex
+
+		displayName := mgd.DisplayName
+		if displayName == "" {
+			displayName = mgd.Name
+		}
+		nameLabel := widget.NewLabel(displayName)
+		nameLabel.Wrapping = fyne.TextWrapWord
+
+		catText := canvas.NewText(mgd.Category, color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
+		catText.TextSize = 11
+
+		eyeBtn := widget.NewButtonWithIcon("", icon.Preview(), func() {
+			st.selectedIdx = idx
+			st.updatePreview()
+		})
+		eyeBtn.Importance = widget.LowImportance
+
+		bg := canvas.NewRectangle(color.Transparent)
+		tap := newTappableArea(func() {
+			st.selectedIdx = idx
+			st.updatePreview()
+		})
+
+		row := container.NewBorder(nil, nil, nil, container.NewHBox(catText, eyeBtn), nameLabel)
+		st.libraryBox.Add(container.NewStack(bg, tap, row))
+	}
+	if len(filtered) == 0 {
+		st.libraryBox.Add(widget.NewLabel(i18n.T("session.no_exercises")))
+	}
+	st.libraryBox.Refresh()
 }
 
 func (st *SessionTab) updatePreview() {
@@ -555,6 +580,8 @@ func (st *SessionTab) updatePreview() {
 		st.previewCourt.SetExercise(nil)
 		st.previewPB = nil
 		st.previewName = ""
+		st.previewDetail.RemoveAll()
+		st.previewDetail.Refresh()
 		return
 	}
 	mgd := filtered[st.selectedIdx]
@@ -568,7 +595,10 @@ func (st *SessionTab) updatePreview() {
 	st.previewLabel.Refresh()
 	st.previewName = mgd.Name
 
-	// Hide delete for remote-only exercises (not imported locally).
+	// Restore library action buttons.
+	st.addBtn.Show()
+	st.openExBtn.Show()
+	st.contributeBtn.Show()
 	if mgd.Status == StatusRemoteOnly {
 		st.deleteExBtn.Hide()
 	} else {
@@ -576,18 +606,23 @@ func (st *SessionTab) updatePreview() {
 	}
 
 	// Load the exercise for the preview court.
-	var ex *model.Exercise
+	var rawEx *model.Exercise
 	if mgd.LocalEx != nil {
-		ex = mgd.LocalEx
+		rawEx = mgd.LocalEx
 	} else if mgd.RemoteEx != nil {
-		ex = mgd.RemoteEx
+		rawEx = mgd.RemoteEx
 	}
-	if ex == nil {
+	if rawEx == nil {
 		st.previewCourt.SetAnimMode(false)
 		st.previewCourt.SetExercise(nil)
 		st.previewPB = nil
+		st.previewDetail.RemoveAll()
+		st.previewDetail.Refresh()
 		return
 	}
+
+	// Localize exercise for display.
+	ex := rawEx.Localized(string(i18n.CurrentLang()))
 
 	st.previewCourt.SetExercise(ex)
 	if len(ex.Sequences) > 1 {
@@ -599,6 +634,115 @@ func (st *SessionTab) updatePreview() {
 		st.previewCourt.SetAnimMode(false)
 		st.previewPB = nil
 	}
+
+	st.populatePreviewDetail(ex)
+}
+
+func (st *SessionTab) previewSessionExercise(idx int) {
+	if st.session == nil || idx < 0 || idx >= len(st.session.Exercises) {
+		return
+	}
+	name := st.session.Exercises[idx].Exercise
+	lang := string(i18n.CurrentLang())
+
+	// Try resolved exercises first, then fallback to direct load.
+	ex, ok := st.resolvedExercises[name]
+	if !ok || ex == nil {
+		if st.LoadExercise != nil {
+			raw, err := st.LoadExercise(name)
+			if err != nil {
+				return
+			}
+			ex = raw.Localized(lang)
+		} else {
+			return
+		}
+	}
+
+	// Deselect library list to avoid confusion.
+	// No library selection to clear (VBox-based list).
+	st.selectedIdx = -1
+	st.previewName = "session:" + name
+
+	st.previewLabel.Text = ex.Name
+	st.previewLabel.Refresh()
+
+	// Hide action buttons that don't apply to session exercises.
+	st.deleteExBtn.Hide()
+	st.contributeBtn.Hide()
+	st.addBtn.Hide()
+	st.openExBtn.Show()
+
+	// Load court preview.
+	st.previewCourt.SetExercise(ex)
+	if len(ex.Sequences) > 1 {
+		st.previewPB = anim.NewPlayback(ex)
+		st.previewCourt.SetPlayback(st.previewPB)
+		st.previewPB.Play()
+		st.previewCourt.SetAnimMode(true)
+	} else {
+		st.previewCourt.SetAnimMode(false)
+		st.previewPB = nil
+	}
+
+	st.populatePreviewDetail(ex)
+}
+
+func (st *SessionTab) populatePreviewDetail(ex *model.Exercise) {
+	st.previewDetail.RemoveAll()
+
+	// Metadata row with colored intensity dots.
+	var metaParts []fyne.CanvasObject
+	if ex.Duration != "" {
+		lbl := canvas.NewText(i18n.T("props.duration")+": "+ex.Duration, color.White)
+		lbl.TextSize = 11
+		lbl.TextStyle.Bold = true
+		metaParts = append(metaParts, lbl)
+	}
+	if ex.Intensity > 0 {
+		intLabel := canvas.NewText(i18n.T("props.intensity")+": ", color.White)
+		intLabel.TextSize = 11
+		intLabel.TextStyle.Bold = true
+		dots := intensityColorDots(int(ex.Intensity))
+		metaParts = append(metaParts, container.NewHBox(append([]fyne.CanvasObject{intLabel}, dots...)...))
+	}
+	if ex.Category != "" {
+		lbl := canvas.NewText(i18n.T("props.category")+": "+i18n.T("category."+string(ex.Category)), color.White)
+		lbl.TextSize = 11
+		lbl.TextStyle.Bold = true
+		metaParts = append(metaParts, lbl)
+	}
+	if len(metaParts) > 0 {
+		st.previewDetail.Add(container.NewHBox(metaParts...))
+	}
+
+	// Description.
+	if ex.Description != "" {
+		descLabel := widget.NewLabel(ex.Description)
+		descLabel.Wrapping = fyne.TextWrapWord
+		st.previewDetail.Add(descLabel)
+	}
+
+	// Instructions per sequence.
+	for si, seq := range ex.Sequences {
+		if len(seq.Instructions) == 0 {
+			continue
+		}
+		label := seq.Label
+		if label == "" {
+			label = fmt.Sprintf(i18n.T("seq.format"), si+1)
+		}
+		seqTitle := widget.NewRichTextFromMarkdown("**" + label + "**")
+		st.previewDetail.Add(seqTitle)
+
+		for _, instr := range seq.Instructions {
+			instrLabel := widget.NewLabel("  - " + instr)
+			instrLabel.Wrapping = fyne.TextWrapWord
+			st.previewDetail.Add(instrLabel)
+		}
+	}
+
+	st.previewDetail.Refresh()
 }
 
 func (st *SessionTab) addExerciseByRef(name string) {
@@ -622,11 +766,17 @@ func (st *SessionTab) refreshSessionList() {
 		st.sessionList.SetItems(nil)
 		return
 	}
+	lang := string(i18n.CurrentLang())
 	items := make([]DragListItem, len(st.session.Exercises))
 	for i, entry := range st.session.Exercises {
 		displayName := entry.Exercise
 		if ex, ok := st.resolvedExercises[entry.Exercise]; ok {
 			displayName = ex.Name
+		} else if st.LoadExercise != nil {
+			if raw, err := st.LoadExercise(entry.Exercise); err == nil {
+				loc := raw.Localized(lang)
+				displayName = loc.Name
+			}
 		}
 		items[i] = DragListItem{Text: fmt.Sprintf("%d. %s", i+1, displayName)}
 	}
@@ -850,19 +1000,25 @@ func parseDurationMinutes(s string) int {
 	return total
 }
 
-// intensityDots returns a 3-character string of filled/empty dots.
-func intensityDots(n int) string {
-	filled := "●"
-	empty := "○"
-	var b strings.Builder
-	for i := 0; i < 3; i++ {
-		if i < n {
-			b.WriteString(filled)
-		} else {
-			b.WriteString(empty)
-		}
+// intensityColorDots returns colored dot characters as canvas.Text objects.
+func intensityColorDots(level int) []fyne.CanvasObject {
+	colors := [3]color.NRGBA{
+		{R: 76, G: 175, B: 80, A: 255},  // green
+		{R: 255, G: 193, B: 7, A: 255},  // yellow
+		{R: 244, G: 67, B: 54, A: 255},  // red
 	}
-	return b.String()
+	off := color.NRGBA{R: 120, G: 120, B: 120, A: 255}
+	dots := make([]fyne.CanvasObject, 3)
+	for i := 0; i < 3; i++ {
+		c := off
+		if i < level {
+			c = colors[i]
+		}
+		dot := canvas.NewText("●", c)
+		dot.TextSize = 14
+		dots[i] = dot
+	}
+	return dots
 }
 
 // --- SessionListOverlay ---
