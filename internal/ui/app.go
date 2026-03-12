@@ -897,6 +897,7 @@ func (a *App) openSession(name string) {
 		return
 	}
 	a.sessionTab.SetSession(s)
+	a.resolveSessionExercises()
 	if ys, ok := a.store.(*store.YAMLStore); ok {
 		ys.RecordRecentSession(name)
 	}
