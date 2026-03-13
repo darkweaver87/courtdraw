@@ -294,3 +294,56 @@ The court widget supports zoom and pan for precise element placement:
 A "2.0x" overlay indicator appears in the top-right corner when zoomed.
 Pan is clamped so the court stays within view.
 Zoom level resets when loading a new exercise.
+
+## Training Mode
+
+View for running a session during practice. The training view replaces the app content in the same window (no OS-level fullscreen).
+
+### Desktop Layout
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ [Quit]  [◀]     3 / 7 — Transition Drill     [▶]   04:32   │
+│ ████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+├────────────────────────────────┬─────────────────────────────┤
+│                                │ Warmup  ●●○  10m            │
+│                                │ ◀ Seq 2 / 4 ▶               │
+│       COURT (read-only)        │ ⚠ Time expired               │
+│                                │                             │
+│                                │ • Instruction 1             │
+│                                │ • Instruction 2             │
+│                                ├─────────────────────────────┤
+│                                │ [Countdown][Stopwatch][Léger]│
+│                                │        00:30                │
+│                                │    [Start] [Reset]          │
+└────────────────────────────────┴─────────────────────────────┘
+```
+
+### Mobile Layout
+
+```
+┌──────────────────────────────────┐
+│ [Quit] 3/7     04:32    [◀] [▶] │
+│ ████████████░░░░░░░░░░░░░░░░░░░  │
+│ Transition Drill                 │
+│ ⚠ Time expired                   │
+│ ┌──────────────────────────────┐ │
+│ │                              │ │
+│ │      COURT (read-only)       │ │
+│ │                              │ │
+│ └──────────────────────────────┘ │
+│ Warmup ●●○ 10m  ◀ Seq 2/4 ▶     │
+├──[Court]──[Instructions]──[Tools]┤
+└──────────────────────────────────┘
+```
+
+### Components
+
+- **Progress bar**: one segment per exercise — green (completed), white (current), dark grey (upcoming)
+- **Exercise timer**: auto-counts down from exercise duration, turns red at 0:00, shows negative time
+- **Sequence nav**: Prev/Next buttons + "Seq 2/4" label (hidden for single-sequence exercises)
+- **Coach tools**: manual tab buttons (not AppTabs) switching between Countdown, Stopwatch, and Luc Léger panels; fixed-height content area prevents layout shifts; tools run independently from the exercise timer
+  - **Countdown**: -1m / -10s / +10s / +1m buttons adjust duration; Start/Pause/Reset buttons; beep at zero
+  - **Stopwatch**: displays mm:ss.SSS; Start/Pause/Reset buttons
+  - **Luc Léger**: shows current stage, shuttle count, and speed; beeps on each shuttle interval
+- **Quit**: returns to normal session tab

@@ -30,6 +30,9 @@ func MoveUp() fyne.Resource     { return theme.MoveUpIcon() }
 func MoveDown() fyne.Resource   { return theme.MoveDownIcon() }
 func DragHandle() fyne.Resource { return theme.MenuIcon() }
 func Preview() fyne.Resource    { return theme.VisibilityIcon() }
+func Training() fyne.Resource   { return theme.MediaPlayIcon() }
+func Back() fyne.Resource       { return theme.NavigateBackIcon() }
+func Timer() fyne.Resource      { return theme.HistoryIcon() }
 
 // LoadPngResource loads a PNG icon from assets/icons/ as a Fyne static resource.
 func LoadPngResource(name string) fyne.Resource {

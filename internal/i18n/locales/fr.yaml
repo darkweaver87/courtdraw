@@ -324,3 +324,29 @@ sync.in_progress: "Synchronisation de la bibliothèque..."
 sync.up_to_date: "La bibliothèque est à jour"
 sync.completed: "Bibliothèque synchronisée : %d ajoutés, %d mis à jour, %d supprimés"
 sync.failed: "Échec de la synchronisation"
+
+# Mode entraînement
+training.quit: "Quitter"
+training.progress: "%d / %d"
+training.seq: "Seq %d / %d"
+training.no_duration: "Pas de durée"
+training.time_expired: "Temps écoulé"
+training.start: "Lancer"
+tooltip.training: "Entraînement"
+
+# Outils du coach
+coach.tools: "Outils"
+coach.countdown: "Minuteur"
+coach.stopwatch: "Chronomètre"
+coach.leger: "Luc Léger"
+coach.start: "Démarrer"
+coach.pause: "Pause"
+coach.reset: "Réinitialiser"
+coach.stage: "Palier %d"
+coach.shuttle: "Navette %d / %d"
+coach.set_duration: "Durée (secondes)"
+
+# Onglets mobile entraînement
+mobile.training.court: "Terrain"
+mobile.training.instructions: "Consignes"
+mobile.training.tools: "Outils"

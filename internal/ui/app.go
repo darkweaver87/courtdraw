@@ -68,6 +68,10 @@ type App struct {
 
 	// Responsive containers (for language rebuild).
 	editorResponsive *ResponsiveContainer
+
+	// Training mode.
+	trainingMode  *TrainingMode
+	normalContent fyne.CanvasObject
 }
 
 // NewApp creates a new App instance.
@@ -804,6 +808,8 @@ func (a *App) handleSessionAction(ev SessionTabEvent) {
 		a.deleteExercise(ev.Name)
 	case SessionTabActionRecent:
 		a.showRecentSessions()
+	case SessionTabActionTraining:
+		a.enterTrainingMode()
 	}
 }
 
@@ -1110,6 +1116,50 @@ func (a *App) contributeExercise(name string) {
 			}
 		})
 	}()
+}
+
+// --- Training mode ---
+
+func (a *App) enterTrainingMode() {
+	s := a.sessionTab.Session()
+	if s == nil || len(s.Exercises) == 0 {
+		return
+	}
+
+	// Resolve all exercises in order.
+	lang := string(i18n.CurrentLang())
+	exercises := make([]*model.Exercise, 0, len(s.Exercises))
+	for _, entry := range s.Exercises {
+		ex, err := a.loadExerciseAny(entry.Exercise)
+		if err != nil {
+			continue
+		}
+		exercises = append(exercises, ex.Localized(lang))
+	}
+	if len(exercises) == 0 {
+		return
+	}
+
+	// Store normal content for restoration.
+	a.normalContent = a.window.Content()
+
+	// Create training mode.
+	a.trainingMode = NewTrainingMode(a.window, s, exercises, func() {
+		a.exitTrainingMode()
+	})
+
+	a.window.SetContent(a.trainingMode.Widget())
+}
+
+func (a *App) exitTrainingMode() {
+	if a.trainingMode != nil {
+		a.trainingMode.Stop()
+		a.trainingMode = nil
+	}
+	if a.normalContent != nil {
+		a.window.SetContent(a.normalContent)
+		a.normalContent = nil
+	}
 }
 
 // --- Build managed exercises list ---

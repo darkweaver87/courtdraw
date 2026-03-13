@@ -4,5 +4,5 @@ Website = "https://github.com/darkweaver87/courtdraw"
   Icon = "Icon.png"
   Name = "CourtDraw"
   ID = "com.darkweaver87.courtdraw"
-  Version = "dev"
+  Version = "0.1.0"
   Build = 1

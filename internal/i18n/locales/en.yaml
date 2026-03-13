@@ -324,3 +324,29 @@ sync.in_progress: "Syncing community library..."
 sync.up_to_date: "Community library is up to date"
 sync.completed: "Library synced: %d added, %d updated, %d removed"
 sync.failed: "Failed to sync community library"
+
+# Training mode
+training.quit: "Quit"
+training.progress: "%d / %d"
+training.seq: "Seq %d / %d"
+training.no_duration: "No duration"
+training.time_expired: "Time expired"
+training.start: "Start"
+tooltip.training: "Training"
+
+# Coach tools
+coach.tools: "Tools"
+coach.countdown: "Countdown"
+coach.stopwatch: "Stopwatch"
+coach.leger: "Luc Léger"
+coach.start: "Start"
+coach.pause: "Pause"
+coach.reset: "Reset"
+coach.stage: "Stage %d"
+coach.shuttle: "Shuttle %d / %d"
+coach.set_duration: "Set duration (seconds)"
+
+# Mobile training tabs
+mobile.training.court: "Court"
+mobile.training.instructions: "Instructions"
+mobile.training.tools: "Tools"

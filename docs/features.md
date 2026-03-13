@@ -285,3 +285,55 @@ Layout overflows to additional pages automatically.
 - Pan is clamped to keep the court visible
 - Court background cache includes zoom/pan in its cache key
 - Zoom resets when loading a new exercise
+
+## Training Mode
+
+View for coaches to run sessions during practice from their phone or desktop. Activated from the session tab; the training view replaces the app content in the same window (no OS-level fullscreen).
+
+### Access
+
+- **Training button** (play icon) in the session tab toolbar, active when session has exercises
+- Replaces the normal app content in the same window
+- **Quit button** returns to the session tab
+
+### Exercise Navigation
+
+- **Prev / Next buttons** to move between exercises
+- Progress indicator: "3 / 7" with exercise name
+- Progress bar — one segment per exercise: green (completed), white (current), dark grey (upcoming)
+
+### Exercise Display
+
+- Read-only court widget (zoomable, no editing)
+- Sequence navigation (Prev/Next + "Seq 2/4") for multi-sequence exercises
+- Scrollable instructions showing all sequences, with the current sequence highlighted in gold
+- Metadata bar: category, intensity dots, duration
+
+### Exercise Timer (Timebox)
+
+- Auto-starts from `exercise.Duration` when navigating to an exercise
+- Counts down automatically — always visible
+- At 0:00: turns red, continues in negative (-0:15, -0:30…), shows "Time expired" banner
+- The coach is never blocked — can continue or move to the next exercise
+
+### Coach Tools
+
+Independent tools accessible via manual tab buttons (not Fyne AppTabs) with a fixed-height content area so the layout does not shift between tools:
+
+| Tool | Description |
+|------|-------------|
+| **Countdown** | Configurable timer with -1m / -10s / +10s / +1m buttons to adjust duration; start/pause/reset; alert beep at zero |
+| **Stopwatch** | Counts up in mm:ss.SSS format; start/pause/reset |
+| **Luc Léger** | 20m shuttle run beep test — progressive stages with automatic beep intervals |
+
+Tools run independently from the exercise timer.
+
+### Audio Alert
+
+- On desktop (Linux, Windows, macOS): a 200ms sine tone at 880 Hz is generated via the `oto` library and played through the system audio output (ALSA on Linux)
+- On mobile (Android, iOS): audio alert is a no-op (silent); native audio is not yet implemented
+
+### Responsive Layout
+
+- Desktop: court left (60%), instructions + tools right
+- Mobile: 3 bottom tabs — Court, Instructions, Tools
