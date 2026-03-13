@@ -146,3 +146,30 @@ Goal: show app version and notify users of new releases.
 63. CI/CD injects version tag automatically for all platforms (desktop + Android)
 
 Deliverable: users see their current version and get notified when updates are available.
+
+## Phase 13 — Training Mode
+
+Goal: a dedicated view for coaches to run sessions on the court, with timing tools.
+
+64. Training mode entry — button in session tab, opens full-screen read-only view
+65. Exercise navigation — Prev/Next buttons, progress indicator ("3 / 7"), progress bar with category-colored segments
+66. Exercise display — read-only `CourtWidget`, sequence navigation (prev/next + "Seq 2/4"), scrollable instructions, metadata (category, intensity, duration)
+67. Exercise timer (timebox) — auto-starts from `exercise.Duration`, turns red at 0:00, continues in negative, vibration + sound alert
+68. Coach tools — manual countdown timer (configurable duration), stopwatch (start/stop/reset), Luc Léger test (progressive beep intervals by stage)
+69. Responsive layout — desktop: court left + instructions/tools right; mobile: court top (2/3), instructions bottom, metadata bar
+70. Wake lock — screen stays on while training mode is active
+
+Deliverable: coaches run their sessions from the app with built-in timing tools.
+
+## Phase 14 — Session Sharing (PC → Mobile)
+
+Goal: transfer sessions from desktop to mobile without technical knowledge.
+
+71. Bundle format — `.courtdraw` file: gzip archive containing session YAML + all referenced exercise YAMLs
+72. Export — "Share" button on session, generates `.courtdraw` bundle for manual sharing (email, WhatsApp, USB)
+73. Import — "Import" button on mobile, opens file picker for `.courtdraw` files, extracts session + exercises into local store
+74. Cloud transfer — upload encrypted bundle to tmpfiles.org (60 min auto-delete, no account), display QR code with URL + AES-256-GCM decryption key in fragment
+75. QR scan import — mobile scans QR code, downloads blob, decrypts with key from fragment, imports session + exercises
+76. Fallback — file.io as alternative upload service if tmpfiles.org is unavailable
+
+Deliverable: coaches share sessions from PC to phone by scanning a QR code or sending a file.
