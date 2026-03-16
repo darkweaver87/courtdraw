@@ -173,3 +173,176 @@ Goal: transfer sessions from desktop to mobile without technical knowledge.
 76. Fallback — file.io as alternative upload service if tmpfiles.org is unavailable
 
 Deliverable: coaches share sessions from PC to phone by scanning a QR code or sending a file.
+
+## Phase 15 — Mobile UX Overhaul ⚡ P0
+
+Goal: make the mobile experience feel native, with large touch targets and visual clarity — coaches use the app on the court with sweaty hands, not at a desk.
+
+77. Enlarge touch targets — increase TipButton mobile size from 44dp to 56dp (icon 36dp + padding 10dp), tool palette grid cells from 54dp to 64dp
+78. Icon-first buttons — replace all text-only mobile buttons with icon + optional small label below:
+    - Speed control: replace "1.0x" text with gauge icon + value label
+    - Timer adjustments: replace "-1m"/"+10s" text with `−`/`+` icons sized 48dp minimum, reduce grid from 4 to 2 columns (coarse +/− only)
+    - Filter chips: replace "All"/"Orphan" text with icon chips (grid icon / unlinked icon)
+    - Sequence label: replace "Seq 2/4" text with dots/pills progress indicator
+79. Tool palette labels — add a small label (9pt) below each tool icon on mobile so users don't have to guess (Player / Pass / Cone…), use 2-column grid instead of wrapped grid for readability
+80. Bottom tab bar — increase tab height from 40dp to 52dp with larger icons (28dp) and label (10pt), use `container.NewCustom` if Fyne's default is too constrained
+81. Floating action button (FAB) — add a primary action FAB on mobile court view (56dp circle, bottom-right): tap to expand radial menu with most-used tools (Add Player, Add Action, Delete), avoids switching to Tools tab for common operations
+82. Properties panel mobile — replace cramped form layout with bottom-sheet style: large tappable rows (56dp height each) instead of small form fields, role/category as icon grid instead of dropdown
+
+Deliverable: coaches can comfortably create and edit exercises on a phone held in one hand.
+
+## Phase 16 — Visual Polish & Feedback ⚡ P1
+
+Goal: match modern app standards with smooth interactions and clear visual feedback.
+
+83. Hover/tap feedback — highlight player circle (glow outline) when pointer/finger is over a valid drop target during action creation, pulsing ring on selected element
+84. Action snap preview — when creating an action (e.g., pass), show a ghost arrow following the cursor/finger from source player to current position, snap to nearest player with magnetic effect (within 30dp)
+85. Transition animations — smooth fade when switching sequences (cross-dissolve on court canvas), slide-up for properties panel on mobile
+86. Court theme refinement — subtle wood grain texture on court background (embedded PNG tile), anti-aliased court lines, shadow under players for depth
+87. Empty state illustrations — when no exercise is loaded or session is empty, show a helpful illustration with "Create your first exercise" / "Add exercises to your session" call-to-action
+88. Status bar improvements — animated slide-in/out for notifications, color-coded by type (success=green, warning=orange, error=red)
+
+Deliverable: the app feels responsive and polished, with clear visual cues at every interaction.
+
+## Phase 17 — Export GIF/MP4 ⚡ P1
+
+Goal: coaches can share animated exercises on social media and messaging apps.
+
+89. GIF export — render animation frames to `image.RGBA` sequence (reuse existing court renderer), encode with Go `image/gif` package, configurable frame rate (10/15/20 fps) and resolution (480p/720p)
+90. Export dialog — choose format (GIF/MP4), resolution, speed, include/exclude watermark, output file picker
+91. MP4 export — encode frames via `ffmpeg` (bundled or system) or pure-Go encoder (`github.com/gen2brain/x264-go`), H.264 baseline profile for maximum compatibility
+92. Progress indicator — show export progress bar with frame count ("Rendering 45/120…")
+93. Quick share — after export, offer direct share via OS share sheet (Android Intent, desktop file manager)
+94. Social-ready defaults — square 1:1 aspect ratio option (crop court to fit), loop count for GIF (infinite), 5-second minimum duration with intro/outro hold frames
+
+Deliverable: export any exercise as a GIF or MP4 video for sharing on WhatsApp, Instagram, or team chats.
+
+## Phase 18 — Onboarding & Tutorials ⚡ P1
+
+Goal: new users understand the app within 2 minutes without external help.
+
+95. First-launch wizard — 3-screen overlay: (1) "Create exercises on the court" with court screenshot, (2) "Build sessions from your library" with session screenshot, (3) "Run training on the field" with training mode screenshot — skip button always visible
+96. Interactive tooltips — on first use of each major feature, show a floating tooltip pointing to the relevant UI element: "Tap here to add a player", "Drag to create a pass", "Tap Play to animate" — dismiss on interaction, don't repeat
+97. Sample exercise — ship a pre-loaded "Welcome" exercise that demonstrates all element types (players, actions, accessories, 3 sequences) — auto-opens on first launch if no exercises exist
+98. Help overlay — accessible from toolbar "?" icon, shows translucent overlay with labeled arrows pointing to each panel/zone, tap anywhere to dismiss
+
+Deliverable: coaches discover the app's capabilities without reading a manual.
+
+## Phase 19 — Team & Roster Management ⚡ P1
+
+Goal: coaches manage their team roster — foundation for match mode and season stats.
+
+99. Team model — new entity in `internal/model/`: `Team` (name, club, season, logo) and `Member` (first name, last name, number, license number, birth year, role [player/coach/assistant], position, photo, email, phone) — stored as YAML in `~/.courtdraw/teams/`. Coaches and assistants are team members with role=coach/assistant (license number mandatory for all — required by federation)
+100. Team tab — new third app tab "Team" with member list (sortable by number/name/role), add/edit/remove members, team photo grid view. Coaches/assistants displayed in a separate "Staff" section at the top, players below sorted by jersey number
+101. Member card — tap a member to see/edit their profile: photo (camera or gallery pick), role, position (players only), jersey number, license number, birth year, contact info. Birth year displayed as age category auto-computed (e.g., "2012 → U14")
+102. Season concept — a team belongs to a season (e.g., "2025-2026"), coaches can archive past seasons and start new ones with roster carry-over (select which players return)
+103. Player availability — per-session presence tracking: present / absent / excused / injured — simple toggle per player before or during a session
+104. Jersey duty roster — assign "jersey wash" duty to a player per match/week, rotating schedule with history ("last washed by: Lucas, 2026-03-12")
+105. Team export — export roster as PDF (list format: headshots + numbers + names + license numbers + birth years) for federation paperwork or parent communication
+106. Trombinoscope export — generate a printable PDF photo board: grid of player photos (4×3 per page) with jersey number, first name, and position under each photo. Staff section on first page. Suitable for posting in the gym or sending to parents. Option to include or exclude contact info
+
+Deliverable: coaches have a digital roster with contact info, availability tracking, and jersey duty management.
+
+## Phase 20 — Match Mode ⚡ P1
+
+Goal: live game management with substitution tracking and playing time — an e-Marque-like experience focused on the coach's needs.
+
+106. Match model — `Match` entity: date, opponent, location, competition, home/away, roster (subset of team), quarters/periods config (4×8min, 4×10min, 2×20min — configurable), score, result — stored in `~/.courtdraw/matches/`
+107. Match creation — select team, pick opponent (free text or from past opponents), set date/time/location, select available players from roster, configure period format
+108. Live match view — full-screen interface optimized for quick taps during a game:
+    - **Scoreboard header**: Home score | Period clock | Away score — large font, always visible
+    - **On-court lineup**: 5 player slots showing jersey number + first name, large tap targets (64dp+)
+    - **Bench**: horizontal scrollable row of bench players with jersey numbers
+    - **Sub button**: tap bench player → tap on-court player to swap — records timestamp, highlights 5-foul players in red
+109. Playing time tracking — automatic timer per player: starts when subbed in, pauses when subbed out. Real-time display of each player's cumulative time in the current game. Visual indicator when a player hasn't played yet or has significantly less time than others
+110. Period management — start/stop period clock, advance to next period, handle overtime. Period transitions auto-pause all player timers. Halftime summary popup showing playing time per player
+111. Quick score — +2 / +3 / +1 buttons for each team (no need to track who scored — keep it simple, this isn't e-Marque). Running score displayed prominently
+112. Foul tracking — tap player circle to increment foul count (displayed as dots on player card), visual warning at 4 fouls, auto-highlight at 5 fouls with "fouled out" status
+113. Match summary — end-of-game screen: final score, playing time per player (bar chart), fouls per player, substitution timeline (horizontal swim-lane chart showing when each player was on/off court)
+
+Deliverable: coaches manage substitutions and playing time live during games, with automatic time tracking.
+
+## Phase 21 — Season Stats & Dashboard ⚡ P2
+
+Goal: aggregate data across the season — playing time fairness, attendance, and team management insights.
+
+114. Season dashboard — new view accessible from Team tab: summary cards showing season overview at a glance
+115. Playing time stats — per player across all matches: total minutes, average minutes/game, percentage of total available time, games played/missed. Bar chart comparison across the roster. Fairness indicator (standard deviation of playing time — helps coaches ensure equitable distribution for youth categories)
+116. Attendance tracking — per player across all training sessions: present/absent/excused/injured count, attendance rate percentage, streak tracking (consecutive presences/absences). Calendar heatmap view showing team attendance over the season
+117. Match history — chronological list of all matches: date, opponent, score, result (W/L). Win/loss record, points scored/conceded trend chart
+118. Jersey duty history — log of who washed jerseys and when, auto-suggest next player in rotation based on fairness (longest since last wash)
+119. Player season card — individual player view aggregating: games played, total playing time, attendance rate, jersey washes done, fouls total. Exportable as PDF for parent/player meetings
+120. Data export — export full season stats as CSV (for spreadsheet analysis) or PDF report (for club AGM or federation reporting)
+
+Deliverable: coaches have a clear picture of their season — who plays how much, who shows up, and whose turn it is to wash the jerseys.
+
+## Phase 22 — Federation Integration (FFBB) ⚡ P2
+
+Goal: import match schedules and results from the French Basketball Federation (FFBB/FBI) to avoid double data entry.
+
+121. FFBB connector — `internal/federation/ffbb/` package: authenticate with club federal number, fetch team calendar and results from `competitions.ffbb.com` (HTML scraping as no public REST API exists — parse match tables, dates, opponents, scores)
+122. Match import — sync FFBB calendar into CourtDraw match list: create match stubs with date, opponent, location pre-filled. Coach only needs to add lineup and track subs/time live
+123. Result sync — after a match, fetch the official score from FFBB and reconcile with locally tracked score (flag discrepancies)
+124. Competition context — display league/cup name, current standings, and upcoming matches in a "Competition" section of the Team tab
+125. Multi-federation architecture — `internal/federation/` interface with `Connector` abstraction (methods: `FetchCalendar`, `FetchResults`, `FetchStandings`), FFBB as first implementation. Future connectors: FIBA Europe, NBA-style recreational leagues, Spanish FEB, etc.
+126. Offline resilience — cache all fetched data locally, sync only when network available, never block the app on network failure
+127. Settings — federation config in Preferences: federation type (FFBB/none), club number, team identifier, sync frequency (manual/daily/weekly)
+
+Deliverable: match schedules appear automatically from the federation — coaches just show up and track the game.
+
+## Phase 23 — Smart Action Creation ⚡ P2
+
+Goal: streamline action creation from click-click-click to drag-and-drop.
+
+128. Drag-to-create actions — drag FROM a player to initiate action creation: a ghost arrow follows the finger/cursor, drop ON another player or court position to complete. Action type inferred from context:
+    - Player → Player: defaults to Pass
+    - Player → Basket area: defaults to Shot (layup/jumpshot submenu)
+    - Player → Empty court: defaults to Sprint/Dribble (toggle based on ball carrier)
+129. Action type picker — after drop, show a compact radial/popup menu near the endpoint to override the default type (pass/dribble/cut/screen…) — disappears after selection or 3 seconds
+130. Quick-delete gesture — swipe action arrow sideways (mobile) or press Delete key (desktop) to remove
+131. Multi-action chains — tap a player, then tap multiple destinations to chain actions in sequence (sprint → screen → roll) without reselecting the tool each time
+
+Deliverable: creating a 5-action exercise takes 30 seconds instead of 2 minutes.
+
+## Phase 24 — Playbook & Exercise Organization ⚡ P2
+
+Goal: coaches organize exercises beyond sessions, with thematic grouping.
+
+132. Playbook model — new entity: `Playbook` with name, description, category (offense/defense/transition/specials), and ordered list of exercise references — stored as YAML in `~/.courtdraw/playbooks/`
+133. Playbook tab — add a "Playbooks" section in the library/My Files area, list playbooks with exercise count and preview thumbnails
+134. Drag exercises into playbooks — from library or session, drag an exercise into a playbook group
+135. Playbook PDF export — generate a multi-page PDF with all exercises in the playbook, table of contents, one exercise per page with diagram + instructions
+
+Deliverable: coaches maintain a permanent "offensive playbook" or "defensive sets" collection independent of sessions.
+
+## Phase 25 — Web Sharing & Links ⚡ P3
+
+Goal: share animated exercises via a simple URL, viewable in any browser.
+
+136. Static web viewer — generate a self-contained HTML page with embedded court SVG + CSS keyframe animation (no JS dependency), exercise name, instructions, and metadata
+137. Share to GitHub Pages — upload generated HTML to a `gh-pages` branch in the user's fork or a shared hosting space, return a stable URL
+138. Share via link — generate a temporary link (like current QR sharing) that serves the HTML viewer with the animated exercise, auto-expires after 7 days
+139. Embed code — provide an `<iframe>` snippet for coaches who want to embed exercises on their club website or blog
+
+Deliverable: coaches share an exercise as a clickable link that plays in any browser.
+
+## Phase 26 — Import & Interoperability ⚡ P3
+
+Goal: coaches can migrate from other tools without recreating everything.
+
+140. FastDraw import — parse `.fdb` files (XML-based) and convert to CourtDraw YAML: map player positions, action types, court dimensions
+141. Basketball Playbook import — parse common `.bpz` format used by Basketball Playbook app
+142. Image-to-exercise (AI-assisted) — given a screenshot of a play diagram, use vision model to identify player positions, actions, and generate a CourtDraw YAML (experimental, requires API key)
+
+Deliverable: coaches migrating from FastDraw or other tools can import their existing library.
+
+## Phase 27 — Advanced Animation ⚡ P3
+
+Goal: richer, more realistic animations that match HoopsGeek quality.
+
+143. Timing-based actions — allow actions within a sequence to have relative start times (e.g., "B cuts 0.5s after A passes"), enabling overlapping movements without extra sequences
+144. Optional/conditional actions — mark actions as "option A" / "option B" with visual toggle, allowing a single exercise to show multiple reads
+145. Ball physics — ball follows realistic arc on passes (parabolic), bounces on dribble, spin on shots — visual only, no simulation
+146. Trail effect — fading trail behind moving players during animation (last 0.5s of path visible)
+
+Deliverable: animations are fluid, realistic, and can express complex plays with timing and options.
