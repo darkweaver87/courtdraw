@@ -125,7 +125,6 @@ type SessionTab struct {
 	refreshBtn    *TipButton
 	addBtn        *TipButton
 	openExBtn     *TipButton
-	deleteExBtn   *TipButton
 	contributeBtn *TipButton
 	trainingBtn   *TipButton
 	shareBtn      *TipButton
@@ -312,14 +311,6 @@ func (st *SessionTab) buildLayout() {
 			st.emitAction(SessionTabActionOpenExercise, filtered[st.selectedIdx].Name)
 		}
 	})
-	st.deleteExBtn = NewTipButton(icon.Delete(), i18n.T("session.delete_exercise"), func() {
-		filtered := st.filteredExercises()
-		if st.selectedIdx >= 0 && st.selectedIdx < len(filtered) {
-			st.emitAction(SessionTabActionDeleteExercise, filtered[st.selectedIdx].Name)
-		}
-	})
-	st.deleteExBtn.SetImportance(widget.DangerImportance)
-
 	st.contributeBtn = NewTipButton(icon.Upload(), i18n.T("mgr.contribute"), func() {
 		filtered := st.filteredExercises()
 		if st.selectedIdx >= 0 && st.selectedIdx < len(filtered) {
@@ -330,7 +321,6 @@ func (st *SessionTab) buildLayout() {
 	// Tooltips above for buttons at bottom of preview column.
 	st.addBtn.TooltipAbove = true
 	st.openExBtn.TooltipAbove = true
-	st.deleteExBtn.TooltipAbove = true
 	st.contributeBtn.TooltipAbove = true
 
 	// Library column.
@@ -363,7 +353,7 @@ func (st *SessionTab) buildDesktopLayout() fyne.CanvasObject {
 	courtAndDetail.SetOffset(0.6)
 	previewCol := container.NewBorder(
 		st.previewLabel,
-		container.NewVBox(st.addBtn, container.NewGridWithColumns(3, st.openExBtn, st.contributeBtn, st.deleteExBtn)),
+		container.NewVBox(st.addBtn, container.NewGridWithColumns(2, st.openExBtn, st.contributeBtn)),
 		nil, nil,
 		courtAndDetail,
 	)
@@ -405,7 +395,7 @@ func (st *SessionTab) buildMobileLayout() fyne.CanvasObject {
 	mobileCourtAndDetail.SetOffset(0.6)
 	previewTab := container.NewBorder(
 		st.previewLabel,
-		container.NewVBox(st.addBtn, container.NewGridWithColumns(3, st.openExBtn, st.contributeBtn, st.deleteExBtn)),
+		container.NewVBox(st.addBtn, container.NewGridWithColumns(2, st.openExBtn, st.contributeBtn)),
 		nil, nil,
 		mobileCourtAndDetail,
 	)
@@ -628,11 +618,6 @@ func (st *SessionTab) updatePreview() {
 	st.addBtn.Show()
 	st.openExBtn.Show()
 	st.contributeBtn.Show()
-	if mgd.Status == StatusRemoteOnly {
-		st.deleteExBtn.Hide()
-	} else {
-		st.deleteExBtn.Show()
-	}
 
 	// Load the exercise for the preview court.
 	// When filtering community or all, prefer remote exercise for accurate i18n.
@@ -700,7 +685,6 @@ func (st *SessionTab) previewSessionExercise(idx int) {
 	st.previewLabel.Refresh()
 
 	// Hide action buttons that don't apply to session exercises.
-	st.deleteExBtn.Hide()
 	st.contributeBtn.Hide()
 	st.addBtn.Hide()
 	st.openExBtn.Show()
@@ -991,7 +975,6 @@ func (st *SessionTab) RefreshLanguage() {
 	st.refreshBtn.SetTooltip(i18n.T("mgr.refresh"))
 	st.addBtn.SetTooltip(i18n.T("session.add_to_session"))
 	st.openExBtn.SetTooltip(i18n.T("session.open_exercise"))
-	st.deleteExBtn.SetTooltip(i18n.T("session.delete_exercise"))
 	st.contributeBtn.SetTooltip(i18n.T("mgr.contribute"))
 	st.trainingBtn.SetTooltip(i18n.T("tooltip.training"))
 	st.shareBtn.SetTooltip(i18n.T("share.button"))

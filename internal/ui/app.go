@@ -27,6 +27,7 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/model"
 	"github.com/darkweaver87/courtdraw/internal/pdf"
+	"github.com/darkweaver87/courtdraw/internal/share"
 	"github.com/darkweaver87/courtdraw/internal/store"
 	"github.com/darkweaver87/courtdraw/internal/ui/editor"
 	"github.com/darkweaver87/courtdraw/internal/ui/fynecourt"
@@ -57,10 +58,12 @@ type App struct {
 	statusBar    *StatusBar
 	tooltipLayer *TooltipLayer
 	sessionTab   *SessionTab
+	myFilesTab   *MyFilesTab
 
 	// Tab management.
 	tabs                *container.AppTabs
 	sessionNeedsRefresh bool
+	myFilesNeedsRefresh bool
 
 	// Edit language buttons.
 	editLangBtns  [2]*widget.Button
@@ -161,16 +164,26 @@ func (a *App) BuildUI() fyne.CanvasObject {
 		return a.loadExerciseAny(name)
 	}
 
+	a.myFilesTab = NewMyFilesTab()
+	a.myFilesTab.OnAction = func(ev MyFilesEvent) {
+		a.handleMyFilesAction(ev)
+	}
+
 	// Build editor tab content.
 	editorContent := a.buildEditorTab()
 
 	// Build tabs.
 	a.tabs = container.NewAppTabs(
 		container.NewTabItem(i18n.T("tab.exercise_editor"), editorContent),
+		container.NewTabItem(i18n.T("tab.my_files"), a.myFilesTab.Widget()),
 		container.NewTabItem(i18n.T("tab.session"), a.sessionTab.Widget()),
 	)
 	a.tabs.OnChanged = func(tab *container.TabItem) {
-		if a.tabs.SelectedIndex() == 1 {
+		switch a.tabs.SelectedIndex() {
+		case 1: // My Files
+			a.myFilesNeedsRefresh = true
+			a.refreshMyFilesTab()
+		case 2: // Session
 			a.sessionNeedsRefresh = true
 			a.refreshSessionTab()
 		}
@@ -297,15 +310,17 @@ func (a *App) switchLang(lang string) {
 	a.animControls.RefreshLanguage()
 	a.instrPanel.RefreshLanguage()
 	a.sessionTab.RefreshLanguage()
+	a.myFilesTab.RefreshLanguage()
 	// Now refresh editor (calls propsPanel.Update which uses new options).
 	a.propsPanel.SyncFromExercise()
 	a.instrPanel.ForceResync()
 	a.refreshEditor()
 	a.updateLangBtnStyles()
 	// Update tab labels to reflect new UI language.
-	if a.tabs != nil && len(a.tabs.Items) >= 2 {
+	if a.tabs != nil && len(a.tabs.Items) >= 3 {
 		a.tabs.Items[0].Text = i18n.T("tab.exercise_editor")
-		a.tabs.Items[1].Text = i18n.T("tab.session")
+		a.tabs.Items[1].Text = i18n.T("tab.my_files")
+		a.tabs.Items[2].Text = i18n.T("tab.session")
 		a.tabs.Refresh()
 	}
 	a.editLangLabel.Text = i18n.T("edit_lang.label") + ":"
@@ -947,6 +962,116 @@ func (a *App) deleteSession(name string) {
 		a.NewSession()
 	}
 	log.Printf("deleted session: %s", name)
+}
+
+// --- My Files tab ---
+
+func (a *App) refreshMyFilesTab() {
+	if !a.myFilesNeedsRefresh {
+		return
+	}
+	sessions, exercises := a.buildMyFilesData()
+	a.myFilesTab.SetSessions(sessions)
+	a.myFilesTab.SetExercises(exercises)
+	a.myFilesNeedsRefresh = false
+}
+
+func (a *App) buildMyFilesData() ([]SessionFileItem, []ExerciseFileItem) {
+	// Collect all exercises referenced by any session.
+	referenced := make(map[string]bool)
+	var sessionItems []SessionFileItem
+
+	sessionNames, _ := a.store.ListSessions()
+	for _, name := range sessionNames {
+		s, err := a.store.LoadSession(name)
+		if err != nil {
+			continue
+		}
+		exNames := share.CollectExerciseNames(s)
+		for _, en := range exNames {
+			referenced[en] = true
+		}
+		sessionItems = append(sessionItems, SessionFileItem{
+			Name:          name,
+			Title:         s.Title,
+			Date:          s.Date,
+			ExerciseCount: len(s.Exercises),
+		})
+	}
+
+	// Build exercise list (local only) with orphan flag.
+	var exerciseItems []ExerciseFileItem
+	lang := string(i18n.CurrentLang())
+	localNames, _ := a.store.ListExercises()
+	for _, name := range localNames {
+		ex, err := a.store.LoadExercise(name)
+		if err != nil {
+			continue
+		}
+		loc := ex.Localized(lang)
+		cat := string(ex.Category)
+		if cat != "" {
+			cat = i18n.T("category." + cat)
+		}
+		exerciseItems = append(exerciseItems, ExerciseFileItem{
+			Name:        name,
+			DisplayName: loc.Name,
+			Category:    cat,
+			Duration:    ex.Duration,
+			IsOrphan:    !referenced[name],
+		})
+	}
+
+	return sessionItems, exerciseItems
+}
+
+func (a *App) handleMyFilesAction(ev MyFilesEvent) {
+	switch ev.Action {
+	case MyFilesActionOpenSession:
+		a.openSession(ev.Name)
+		a.tabs.SelectIndex(2)
+	case MyFilesActionDeleteSession:
+		a.deleteSessionWithOrphanCleanup(ev.Name)
+	case MyFilesActionOpenExercise:
+		a.openExercise(ev.Name)
+		a.tabs.SelectIndex(0)
+	case MyFilesActionDeleteExercise:
+		dialog.ShowConfirm(
+			i18n.T("myfiles.delete_exercise"),
+			fmt.Sprintf(i18n.T("myfiles.confirm_delete_exercise"), ev.Name),
+			func(ok bool) {
+				if ok {
+					a.deleteExercise(ev.Name)
+					a.myFilesNeedsRefresh = true
+					a.sessionNeedsRefresh = true
+					a.refreshMyFilesTab()
+				}
+			}, a.window)
+	}
+}
+
+func (a *App) deleteSessionWithOrphanCleanup(name string) {
+	s, err := a.store.LoadSession(name)
+	if err != nil {
+		a.deleteSession(name)
+		a.myFilesNeedsRefresh = true
+		a.refreshMyFilesTab()
+		return
+	}
+
+	dialog.ShowConfirm(
+		i18n.T("myfiles.delete_session"),
+		fmt.Sprintf(i18n.T("myfiles.confirm_delete_session"), s.Title),
+		func(ok bool) {
+			if !ok {
+				return
+			}
+			a.deleteSession(name)
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T("status.session_deleted"), s.Title), 0)
+			a.myFilesNeedsRefresh = true
+			a.sessionNeedsRefresh = true
+			a.refreshMyFilesTab()
+		}, a.window)
 }
 
 func (a *App) showPdfExportDialog() {
