@@ -6,8 +6,10 @@ require gopkg.in/yaml.v3 v3.0.1
 
 require (
 	fyne.io/fyne/v2 v2.7.3
+	github.com/ebitengine/oto/v3 v3.4.0
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/google/go-github/v74 v74.0.0
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	golang.org/x/image v0.36.0
 	golang.org/x/text v0.34.0
 )
@@ -16,7 +18,6 @@ require (
 	fyne.io/systray v1.12.0 // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/ebitengine/oto/v3 v3.4.0 // indirect
 	github.com/ebitengine/purego v0.9.0 // indirect
 	github.com/fredbi/uri v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -35,6 +36,7 @@ require (
 	github.com/jeandeaual/go-locale v0.0.0-20250612000132-0ef82f21eade // indirect
 	github.com/jsummers/gobmp v0.0.0-20230614200233-a9de23ed2e25 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/makiuchi-d/gozxing v0.1.1 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.5.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -45,4 +47,5 @@ require (
 	github.com/yuin/goldmark v1.7.8 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
