@@ -383,3 +383,27 @@ pdf_export_dir: /home/user/Documents
 | `github_token` | string | GitHub PAT, base64-encoded in YAML, decoded at load |
 | `exercise_dir` | string | Exercises storage directory (defaults to `~/.courtdraw/exercises/`) |
 | `recent_files` | []string | Recently opened exercise names (deprecated — migrated to index `last_opened`) |
+
+## Share Bundle
+
+A `.courtdraw` file is a gzip-compressed tar archive used for session sharing between devices.
+
+```
+session.courtdraw (tar.gz)
+├── session.yaml          # Session YAML (same format as ~/.courtdraw/sessions/)
+└── exercises/
+    ├── drill-a.yaml      # Each referenced exercise (same format as ~/.courtdraw/exercises/)
+    └── drill-b.yaml
+```
+
+Exercise names are collected from `session.Exercises` including nested `Variants`. All exercises are resolved and bundled.
+
+### Encrypted Bundle
+
+For cloud sharing, the bundle is encrypted before upload:
+
+1. A random 32-byte AES-256 key is generated
+2. The bundle is encrypted with AES-256-GCM (12-byte nonce prepended)
+3. The encrypted blob is uploaded to tmpfiles.org (fallback: file.io)
+4. The share URL includes the key in the fragment: `https://tmpfiles.org/dl/<id>/session.courtdraw.enc#k=<hex-key>`
+5. The URL fragment (containing the key) is never sent to the server

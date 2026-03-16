@@ -331,9 +331,42 @@ Tools run independently from the exercise timer.
 ### Audio Alert
 
 - On desktop (Linux, Windows, macOS): a 200ms sine tone at 880 Hz is generated via the `oto` library and played through the system audio output (ALSA on Linux)
-- On mobile (Android, iOS): audio alert is a no-op (silent); native audio is not yet implemented
+- On Android: a 200ms sine tone at 880 Hz via AAudio (CGO + dlopen, no link-time dependency)
+- On iOS: audio alert is a no-op (silent); native audio is not yet implemented
 
 ### Responsive Layout
 
 - Desktop: court left (60%), instructions + tools right
 - Mobile: 3 bottom tabs — Court, Instructions, Tools
+
+## Session Sharing
+
+Transfer sessions between devices (PC → mobile or between coaches).
+
+### Bundle Format
+
+A `.courtdraw` file is a gzip-compressed tar archive:
+
+```
+session.courtdraw
+├── session.yaml
+└── exercises/
+    ├── drill-a.yaml
+    └── drill-b.yaml
+```
+
+### Export Options
+
+1. **Share via QR** — bundle is encrypted (AES-256-GCM), uploaded to tmpfiles.org (60 min auto-delete, fallback: file.io). A QR code is displayed containing the download URL with the decryption key in the URL fragment (never sent to the server). The recipient scans the QR code or copies the link.
+2. **Save File** — bundle saved locally as `.courtdraw` file for manual transfer (email, USB, messaging apps).
+
+### Import Options
+
+1. **From File** — file picker for `.courtdraw` files, extracts session + exercises into local store.
+2. **From Link** — paste a share link, app downloads the encrypted bundle, decrypts with the key from the URL fragment, and imports.
+
+### Security
+
+- AES-256-GCM encryption with a random 32-byte key
+- Key is transmitted only via URL fragment (client-side, never sent to the server)
+- Uploaded files auto-expire (60 minutes on tmpfiles.org)

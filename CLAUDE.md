@@ -60,6 +60,7 @@ internal/ui/icon/        Embedded PNG icons as fyne.Resource
 internal/court/          Court rendering into image.RGBA (FIBA, NBA)
 internal/anim/           Animation engine (interpolation, playback)
 internal/pdf/            PDF session sheet generation
+internal/share/          Session sharing (bundle, crypto, upload)
 internal/i18n/           Localization (EN/FR)
 library/                 Community exercise collection (YAML)
 assets/icons/            Accessory and action icons (PNG)

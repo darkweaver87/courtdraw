@@ -347,3 +347,28 @@ View for running a session during practice. The training view replaces the app c
   - **Stopwatch**: displays mm:ss.SSS; Start/Pause/Reset buttons
   - **Luc Léger**: shows current stage, shuttle count, and speed; beeps on each shuttle interval
 - **Quit**: returns to normal session tab
+
+## Session Sharing
+
+### Share Dialog
+
+Triggered by the Share button in the session toolbar (visible when session has exercises).
+
+Two options via `ShowCustomConfirm`:
+1. **Share via QR** (confirm button): creates bundle → encrypts (AES-256-GCM) → uploads to tmpfiles.org (fallback: file.io) → shows QR code dialog with copyable URL
+2. **Save File** (dismiss button): file save dialog for `.courtdraw` bundle
+
+### QR Code Dialog
+
+- QR code image (256×256) rendered via `canvas.NewImageFromImage`
+- Instructional text
+- Read-only entry with the full share URL
+- "Copy Link" button → copies to clipboard
+
+### Import Dialog
+
+Triggered by the Import button in the session toolbar.
+
+- **From File** button: opens file picker filtered to `.courtdraw` extension
+- **From Link** section: text entry for pasting share URL + "Download" button
+- On import: saves all exercises + session to local store, loads the session

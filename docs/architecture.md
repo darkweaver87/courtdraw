@@ -11,6 +11,9 @@
 | Animation | goroutine + `time.Ticker` (30fps) | Interpolation between sequence keyframes |
 | PDF Generation | **go-pdf/fpdf** v0.9.0 | PDF generation, Helvetica font |
 | Storage | **YAML files** in `~/.courtdraw/` | Human-readable, git-friendly, no database |
+| Audio (Desktop) | **ebitengine/oto** v3 | Cross-platform audio output (ALSA/CoreAudio/DirectSound) |
+| Audio (Android) | **AAudio** via CGO + dlopen | Runtime-loaded, no link-time NDK dependency |
+| QR Codes | **skip2/go-qrcode** | Pure Go QR code generation for session sharing |
 | Android Build | `fyne-cross` (Docker) | Cross-compilation for Android |
 
 ## Hard Rules
@@ -108,11 +111,15 @@ courtdraw/
 │   ├── anim/                        # Animation engine
 │   │   ├── interpolate.go           # Position/rotation interpolation
 │   │   └── playback.go              # Play/pause/seek/speed controller
-│   └── pdf/                         # PDF generation
-│       ├── generator.go             # Session → PDF orchestrator
-│       ├── court_render.go          # Render court diagram to PDF
-│       ├── layout.go                # Page layout (header, columns, overflow)
-│       └── styles.go                # PDF colors, fonts, spacing
+│   ├── pdf/                         # PDF generation
+│   │   ├── generator.go             # Session → PDF orchestrator
+│   │   ├── court_render.go          # Render court diagram to PDF
+│   │   ├── layout.go                # Page layout (header, columns, overflow)
+│   │   └── styles.go                # PDF colors, fonts, spacing
+│   └── share/                       # Session sharing (bundle, crypto, upload)
+│       ├── bundle.go                # tar.gz bundle creation/extraction
+│       ├── crypto.go                # AES-256-GCM encrypt/decrypt
+│       └── upload.go                # HTTP upload to tmpfiles.org/file.io
 ├── library/                         # Community exercise YAML collection
 ├── assets/
 │   ├── icons/                       # Player/action/accessory icons (PNG)
@@ -132,14 +139,16 @@ cmd/courtdraw  →  internal/ui  →  internal/model
                        ├──→ internal/store (reads/writes YAML for model types)
                        ├──→ internal/court (renders model into image.RGBA)
                        ├──→ internal/anim  (animates model sequences)
-                       └──→ internal/pdf   (renders model to PDF)
+                       ├──→ internal/pdf   (renders model to PDF)
+                       └──→ internal/share (bundle, encrypt, upload for session sharing)
 ```
 
 - `model` has **zero** external dependencies — pure data structures and enums
 - `store` depends on `model` and a YAML library
 - `court`, `anim`, `pdf` depend on `model` only
+- `share` depends on `model` only (stdlib crypto + archive + net/http)
 - `store` also uses `go-github` for community library sync (incremental fetch from GitHub)
-- `ui` orchestrates everything and uses `go-github` for contribution PRs
+- `ui` orchestrates everything and uses `go-github` for contribution PRs, `go-qrcode` for QR display
 
 ## CI/CD
 
