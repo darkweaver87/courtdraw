@@ -72,6 +72,9 @@ type App struct {
 	// Training mode.
 	trainingMode  *TrainingMode
 	normalContent fyne.CanvasObject
+
+	// QR scan import.
+	scanPending bool
 }
 
 // NewApp creates a new App instance.
@@ -810,6 +813,10 @@ func (a *App) handleSessionAction(ev SessionTabEvent) {
 		a.showRecentSessions()
 	case SessionTabActionTraining:
 		a.enterTrainingMode()
+	case SessionTabActionShare:
+		a.shareSession()
+	case SessionTabActionImportBundle:
+		a.showImportBundleDialog()
 	}
 }
 

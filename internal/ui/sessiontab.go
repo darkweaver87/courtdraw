@@ -84,6 +84,8 @@ const (
 	SessionTabActionDeleteSession
 	SessionTabActionRecent
 	SessionTabActionTraining
+	SessionTabActionShare
+	SessionTabActionImportBundle
 )
 
 // SessionTabEvent is returned when the user performs an action.
@@ -126,6 +128,8 @@ type SessionTab struct {
 	deleteExBtn   *TipButton
 	contributeBtn *TipButton
 	trainingBtn   *TipButton
+	shareBtn      *TipButton
+	importBtn     *TipButton
 
 	// Session column.
 	session            *model.Session
@@ -289,6 +293,8 @@ func (st *SessionTab) buildLayout() {
 	st.refreshBtn = NewTipButton(icon.Refresh(), i18n.T("mgr.refresh"), func() { st.emitAction(SessionTabActionRefresh, "") })
 	st.trainingBtn = NewTipButton(icon.Training(), i18n.T("tooltip.training"), func() { st.emitAction(SessionTabActionTraining, "") })
 	st.trainingBtn.SetImportance(widget.HighImportance)
+	st.shareBtn = NewTipButton(icon.Share(), i18n.T("share.button"), func() { st.emitAction(SessionTabActionShare, "") })
+	st.importBtn = NewTipButton(icon.Import(), i18n.T("import.bundle"), func() { st.emitAction(SessionTabActionImportBundle, "") })
 
 	// Add to session button.
 	st.addBtn = NewTipButton(fynetheme.NavigateNextIcon(), i18n.T("session.add_to_session"), func() {
@@ -365,7 +371,7 @@ func (st *SessionTab) buildDesktopLayout() fyne.CanvasObject {
 	metadataForm := container.NewVBox(
 		st.titleEntry, st.dateEntry, st.subtitleEntry, st.ageGroupEntry,
 	)
-	sessionToolbar := container.NewHBox(st.newBtn, st.openBtn, st.recentBtn, st.saveBtn, st.genBtn, st.trainingBtn, layout.NewSpacer())
+	sessionToolbar := container.NewHBox(st.newBtn, st.openBtn, st.recentBtn, st.saveBtn, st.genBtn, st.shareBtn, st.importBtn, st.trainingBtn, layout.NewSpacer())
 	sessionCol := container.NewBorder(
 		container.NewVBox(sessionToolbar, metadataForm),
 		container.NewVBox(container.NewPadded(st.totalLabel), st.philosophyEntry),
@@ -408,7 +414,7 @@ func (st *SessionTab) buildMobileLayout() fyne.CanvasObject {
 	metadataForm := container.NewVBox(
 		st.titleEntry, st.dateEntry, st.subtitleEntry, st.ageGroupEntry,
 	)
-	sessionToolbar := container.NewHBox(st.newBtn, st.openBtn, st.recentBtn, st.saveBtn, st.genBtn, st.trainingBtn, layout.NewSpacer())
+	sessionToolbar := container.NewHBox(st.newBtn, st.openBtn, st.recentBtn, st.saveBtn, st.genBtn, st.shareBtn, st.importBtn, st.trainingBtn, layout.NewSpacer())
 	sessionTab := container.NewBorder(
 		container.NewVBox(sessionToolbar, metadataForm),
 		container.NewVBox(container.NewPadded(st.totalLabel), st.philosophyEntry),
@@ -866,12 +872,20 @@ func (st *SessionTab) refreshTotal() {
 	st.totalLabel.Text = fmt.Sprintf(i18n.T("session.total_format"), st.computeTotalDuration())
 	st.totalLabel.Refresh()
 
-	// Show/hide training button based on session exercises.
+	// Show/hide training and share buttons based on session exercises.
+	hasExercises := st.session != nil && len(st.session.Exercises) > 0
 	if st.trainingBtn != nil {
-		if st.session != nil && len(st.session.Exercises) > 0 {
+		if hasExercises {
 			st.trainingBtn.Show()
 		} else {
 			st.trainingBtn.Hide()
+		}
+	}
+	if st.shareBtn != nil {
+		if hasExercises {
+			st.shareBtn.Show()
+		} else {
+			st.shareBtn.Hide()
 		}
 	}
 }
@@ -980,6 +994,8 @@ func (st *SessionTab) RefreshLanguage() {
 	st.deleteExBtn.SetTooltip(i18n.T("session.delete_exercise"))
 	st.contributeBtn.SetTooltip(i18n.T("mgr.contribute"))
 	st.trainingBtn.SetTooltip(i18n.T("tooltip.training"))
+	st.shareBtn.SetTooltip(i18n.T("share.button"))
+	st.importBtn.SetTooltip(i18n.T("import.bundle"))
 
 	// Rebuild responsive layout (mobile tab labels).
 	if st.responsive != nil {

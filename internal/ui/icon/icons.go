@@ -33,6 +33,7 @@ func Preview() fyne.Resource    { return theme.VisibilityIcon() }
 func Training() fyne.Resource   { return theme.MediaPlayIcon() }
 func Back() fyne.Resource       { return theme.NavigateBackIcon() }
 func Timer() fyne.Resource      { return theme.HistoryIcon() }
+func Share() fyne.Resource      { return theme.MailSendIcon() }
 
 // LoadPngResource loads a PNG icon from assets/icons/ as a Fyne static resource.
 func LoadPngResource(name string) fyne.Resource {
