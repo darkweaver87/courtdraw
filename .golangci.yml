@@ -2,46 +2,85 @@ run:
   timeout: 5m
 
 linters:
-  enable:
-    # Bugs & correctness
-    - errcheck        # unchecked errors
-    - govet           # go vet checks
-    - staticcheck     # advanced static analysis
-    - typecheck       # type-checking errors
-    - bodyclose       # unclosed HTTP response bodies
-    - nilerr          # returning nil after checking err != nil
-    - nilnil          # returning nil, nil
-    - rowserrcheck    # unchecked sql.Rows.Err()
-    - sqlclosecheck   # unclosed sql.Rows/Stmt
-    - durationcheck   # multiplication of time.Duration
+  enable-all: true
+  disable:
+    # Redundant with gocyclo
+    - cyclop
+    - gocognit
+    - maintidx
 
-    # Unused code
-    - unused          # unused variables, functions, types
-    - ineffassign     # ineffectual assignments
-    - wastedassign    # wasted assignments
-    - unparam         # unused function parameters
-
-    # Style & simplification
-    - gosimple        # simplification suggestions
-    - goconst         # repeated strings that could be constants
-    - unconvert       # unnecessary type conversions
-    - dupword         # duplicated words in comments
-    - errname         # error type naming conventions
-    - copyloopvar     # loop variable copy issues
-    - intrange        # integer range simplification
-    - usestdlibvars   # stdlib constants instead of magic values
-    - whitespace      # unnecessary blank lines
-
-    # Code quality
-    - gocyclo         # cyclomatic complexity
-    - nestif          # deeply nested ifs
-    - prealloc        # slice preallocation hints
-    - misspell        # common misspellings
-    - perfsprint      # fmt.Sprintf optimization
-    - reassign        # parameter reassignment
-
-    # Security
-    - gosec           # security issues
+    # Too opinionated / noisy for this project
+    - funlen           # long functions are fine in UI code
+    - lll              # long lines are fine
+    - wsl              # whitespace style too strict
+    - godot            # comment periods not enforced
+    - godox            # TODO/FIXME comments are useful
+    - gochecknoglobals # globals are standard in Fyne UI code
+    - gochecknoinits   # init() is standard in Go
+    - exhaustruct      # requiring all struct fields is too verbose
+    - ireturn          # returning interfaces is fine
+    - varnamelen       # short var names are idiomatic Go
+    - nonamedreturns   # named returns are fine
+    - nlreturn         # blank line before return is noise
+    - wrapcheck        # wrapping every error is overkill for an app
+    - err113           # sentinel errors everywhere is overkill
+    - forcetypeassert  # Fyne widget casts are safe in practice
+    - tagliatelle      # YAML tag style is project-specific
+    - tagalign         # tag alignment is cosmetic
+    - testpackage      # _test package separation not needed
+    - paralleltest     # not all tests benefit from t.Parallel()
+    - tparallel        # same
+    - testableexamples # no example tests
+    - thelper          # test helper annotation not critical
+    - containedctx     # context in struct is fine for UI state
+    - contextcheck     # too many false positives with Fyne
+    - depguard         # no import restrictions needed
+    - gomoddirectives  # no module directive restrictions
+    - gomodguard       # no module guard restrictions
+    - gci              # import order handled by goimports
+    - gofumpt          # gofmt is enough
+    - goheader         # no file headers required
+    - interfacebloat   # large interfaces are fine for UI contracts
+    - inamedparam      # unnamed params are fine
+    - makezero         # not relevant
+    - musttag          # struct tag validation not needed
+    - promlinter       # no Prometheus metrics
+    - spancheck        # no OpenTelemetry spans
+    - zerologlint      # no zerolog
+    - loggercheck      # no structured logger
+    - gosmopolitan     # i18n handled by internal/i18n package
+    - dupword          # too many false positives in comments
+    - exhaustive       # enum exhaustiveness too strict for Fyne
+    - gocheckcompilerdirectives # not needed
+    - gochecksumtype   # no sum types
+    - grouper          # declaration grouping is project preference
+    - importas         # import aliases are fine as-is
+    - decorder         # declaration order is cosmetic
+    - dogsled          # multiple blanks are fine
+    - goprintffuncname # printf func naming not critical
+    - canonicalheader  # no HTTP headers in this app
+    - ginkgolinter     # no Ginkgo tests
+    - asasalint        # variadic any check not relevant
+    - noctx            # no HTTP client context enforcement needed
+    - nakedret         # naked returns are fine in short functions
+    - mnd              # magic numbers are pervasive in UI layout code
+    - dupl             # duplicate code detection too strict for similar UI builders
+    - gocritic         # too opinionated (ifElseChain, hugeParam, etc.)
+    - errorlint        # error wrapping checks too strict for app-level code
+    - predeclared      # shadowing predeclared identifiers is fine (e.g. copy, len)
+    - bidichk          # no bidirectional text concerns
+    - tenv             # deprecated
+    - revive           # too many opinionated rules
+    - gofmt            # goimports handles formatting
+    - goimports        # import order is cosmetic
+    - forbidigo        # no forbidden identifiers
+    - fatcontext       # no context in loops concern
+    - exptostd         # no x/exp usage to migrate
+    - errchkjson       # JSON encoding errors not critical
+    - asciicheck       # non-ASCII identifiers are fine (French comments)
+    - usetesting       # t.Setenv etc. not critical
+    - recvcheck        # mixed receivers on slice types is idiomatic Go
+    - stylecheck       # too strict on naming (underscores in layout constants)
 
 linters-settings:
   gocyclo:
@@ -78,19 +117,26 @@ linters-settings:
       - all
       - -SA1019  # deprecated usage (handle separately)
 
+  revive:
+    rules:
+      - name: exported
+        disabled: true  # too noisy for internal packages
+
 issues:
   exclude-dirs:
     - vendor
     - fyne-cross
 
   exclude-rules:
-    # Test files can have unused params, magic numbers, etc.
+    # Test files: relax some linters
     - path: _test\.go
       linters:
         - goconst
         - gosec
         - unparam
         - errcheck
+        - gocritic
+        - dupl
 
     # Main entry point
     - path: cmd/
