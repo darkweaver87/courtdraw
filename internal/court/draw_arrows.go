@@ -153,6 +153,36 @@ func DrawActionHighlight(img *image.RGBA, vp *Viewport, action *model.Action, pl
 	DrawLine(img, from, to, vp.S(ArrowLineWidth+6), col)
 }
 
+// DrawActionPreview draws a semi-transparent ghost arrow from a source point to a cursor position.
+func DrawActionPreview(img *image.RGBA, vp *Viewport, from, to Point, actionType model.ActionType, alpha float64) {
+	if alpha <= 0 {
+		return
+	}
+	a := uint8(alpha * 255)
+	col := ActionColor(actionType)
+	col.A = a
+
+	lw := vp.S(ArrowLineWidth)
+	ah := vp.S(ArrowHeadSize)
+	za := vp.S(ZigzagAmplitude)
+	dl := vp.S(DashLen)
+	gl := vp.S(GapLen)
+
+	switch actionType {
+	case model.ActionPass, model.ActionContest:
+		DrawDashedLine(img, from, to, lw, dl, gl, col)
+		DrawArrowhead(img, from, to, ah, col)
+	case model.ActionDribble:
+		DrawZigzag(img, from, to, lw, za, ZigzagSegments, col)
+		DrawArrowhead(img, from, to, ah, col)
+	case model.ActionScreen:
+		DrawLine(img, from, to, lw*3, col)
+	default:
+		DrawLine(img, from, to, lw, col)
+		DrawArrowhead(img, from, to, ah, col)
+	}
+}
+
 // ResolveRef resolves an ActionRef to a pixel position.
 func ResolveRef(vp *Viewport, ref model.ActionRef, players []model.Player) Point {
 	if ref.IsPlayer {

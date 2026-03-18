@@ -108,6 +108,10 @@ type CourtWidget struct {
 	animStop chan struct{}
 	animMu   sync.Mutex
 
+	// Selection pulse ticker — runs at ~15fps when an element is selected.
+	pulseStop chan struct{}
+	pulseMu   sync.Mutex
+
 	OnChanged func()
 }
 
@@ -116,6 +120,7 @@ var _ fyne.Tappable = (*CourtWidget)(nil)
 var _ fyne.Draggable = (*CourtWidget)(nil)
 var _ fyne.Scrollable = (*CourtWidget)(nil)
 var _ desktop.Mouseable = (*CourtWidget)(nil)
+var _ desktop.Hoverable = (*CourtWidget)(nil)
 var _ fyne.Focusable = (*CourtWidget)(nil)
 
 // NewCourtWidget creates a new court widget.
@@ -203,6 +208,40 @@ func (w *CourtWidget) animLoop(stop chan struct{}) {
 				w.Refresh()
 			})
 		}
+	}
+}
+
+// startPulseTicker starts a ~15fps refresh ticker for the selection pulse animation.
+func (w *CourtWidget) startPulseTicker() {
+	w.pulseMu.Lock()
+	defer w.pulseMu.Unlock()
+	if w.pulseStop != nil {
+		return // already running
+	}
+	w.pulseStop = make(chan struct{})
+	go func(stop chan struct{}) {
+		ticker := time.NewTicker(time.Second / 15)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				fyne.Do(func() {
+					w.Refresh()
+				})
+			}
+		}
+	}(w.pulseStop)
+}
+
+// stopPulseTicker stops the selection pulse ticker.
+func (w *CourtWidget) stopPulseTicker() {
+	w.pulseMu.Lock()
+	defer w.pulseMu.Unlock()
+	if w.pulseStop != nil {
+		close(w.pulseStop)
+		w.pulseStop = nil
 	}
 }
 
@@ -300,8 +339,17 @@ func (w *CourtWidget) ensureCourtBg(pixW, pixH int, vp *court.Viewport) {
 func (w *CourtWidget) drawSequence(img *image.RGBA, face font.Face, seq *model.Sequence) {
 	sel := w.editorState
 	var selElem *editor.Selection
+	var hovElem *editor.Selection
 	if sel != nil {
 		selElem = sel.SelectedElement
+		hovElem = sel.HoveredElement
+	}
+
+	// Manage pulse ticker based on selection state.
+	if selElem != nil {
+		w.startPulseTicker()
+	} else {
+		w.stopPulseTicker()
 	}
 
 	// Accessories.
@@ -334,32 +382,117 @@ func (w *CourtWidget) drawSequence(img *image.RGBA, face font.Face, seq *model.S
 		}
 	}
 
-	// Action-from indicator.
-	if sel != nil && sel.ActionFrom != nil {
-		for i := range seq.Players {
-			if seq.Players[i].ID == *sel.ActionFrom {
-				center := w.viewport.RelToPixel(seq.Players[i].Position)
-				court.DrawCircleOutline(img, center, court.PlayerRadius+6, 2, court.ColorPass)
-				break
+	// Interactive overlays: hover, ghost arrow, action-from indicator, rotation handle.
+	w.drawHoverHighlights(img, seq, sel, selElem, hovElem)
+	w.drawActionPreview(img, seq, sel)
+	w.drawSelectionOverlays(img, seq, selElem)
+}
+
+// drawHoverHighlights renders hover feedback for the element under the cursor.
+func (w *CourtWidget) drawHoverHighlights(img *image.RGBA, seq *model.Sequence, sel *editor.EditorState, selElem, hovElem *editor.Selection) {
+	if hovElem == nil || hovElem.SeqIndex != w.seqIndex {
+		return
+	}
+	if selElem != nil && *hovElem == *selElem {
+		return
+	}
+
+	switch hovElem.Kind {
+	case editor.SelectAccessory:
+		if hovElem.Index < len(seq.Accessories) {
+			center := w.viewport.RelToPixel(seq.Accessories[hovElem.Index].Position)
+			court.DrawAccessoryHoverHighlight(img, &w.viewport, center)
+		}
+	case editor.SelectPlayer:
+		if hovElem.Index < len(seq.Players) {
+			center := w.viewport.RelToPixel(seq.Players[hovElem.Index].Position)
+			if sel != nil && sel.ActiveTool == editor.ToolAction && sel.ActionFrom != nil {
+				court.DrawActionTargetHighlight(img, &w.viewport, center)
+			} else {
+				court.DrawHoverHighlight(img, &w.viewport, center)
 			}
 		}
 	}
+}
 
-	// Rotation handle for selected element.
-	if selElem != nil && selElem.SeqIndex == w.seqIndex {
-		switch selElem.Kind {
-		case editor.SelectPlayer:
-			if selElem.Index < len(seq.Players) {
-				p := &seq.Players[selElem.Index]
-				center := w.viewport.RelToPixel(p.Position)
-				court.DrawRotationHandle(img, &w.viewport, center, p.Rotation)
-			}
-		case editor.SelectAccessory:
-			if selElem.Index < len(seq.Accessories) {
-				a := &seq.Accessories[selElem.Index]
-				center := w.viewport.RelToPixel(a.Position)
-				court.DrawRotationHandle(img, &w.viewport, center, a.Rotation)
-			}
+// drawActionPreview renders the action-from indicator and ghost arrow with magnetic snap.
+func (w *CourtWidget) drawActionPreview(img *image.RGBA, seq *model.Sequence, sel *editor.EditorState) {
+	if sel == nil || sel.ActionFrom == nil {
+		return
+	}
+
+	// Action-from indicator ring.
+	for i := range seq.Players {
+		if seq.Players[i].ID == *sel.ActionFrom {
+			center := w.viewport.RelToPixel(seq.Players[i].Position)
+			court.DrawCircleOutline(img, center, court.PlayerRadius+6, 2, court.ColorPass)
+			break
+		}
+	}
+
+	if sel.PreviewMousePos == nil {
+		return
+	}
+
+	// Resolve source player position.
+	var fromPos court.Point
+	for i := range seq.Players {
+		if seq.Players[i].ID == *sel.ActionFrom {
+			fromPos = w.viewport.RelToPixel(seq.Players[i].Position)
+			break
+		}
+	}
+	toPos := *sel.PreviewMousePos
+
+	// Magnetic snap: find nearest player within 30dp.
+	toPos = w.magneticSnap(img, seq, sel, toPos)
+
+	court.DrawActionPreview(img, &w.viewport, fromPos, toPos, sel.ToolActionType, 0.5)
+}
+
+// magneticSnap finds the nearest player within 30dp and snaps the arrow endpoint to it.
+func (w *CourtWidget) magneticSnap(img *image.RGBA, seq *model.Sequence, sel *editor.EditorState, pos court.Point) court.Point {
+	snapDist := w.viewport.Sd(30)
+	snapIdx := -1
+	bestDist := snapDist
+	for i := range seq.Players {
+		if seq.Players[i].ID == *sel.ActionFrom {
+			continue
+		}
+		center := w.viewport.RelToPixel(seq.Players[i].Position)
+		dx := float64(pos.X - center.X)
+		dy := float64(pos.Y - center.Y)
+		d := math.Sqrt(dx*dx + dy*dy)
+		if d < bestDist {
+			bestDist = d
+			snapIdx = i
+		}
+	}
+	if snapIdx >= 0 {
+		snapped := w.viewport.RelToPixel(seq.Players[snapIdx].Position)
+		court.DrawActionTargetHighlight(img, &w.viewport, snapped)
+		return snapped
+	}
+	return pos
+}
+
+// drawSelectionOverlays renders the rotation handle for the selected element.
+func (w *CourtWidget) drawSelectionOverlays(img *image.RGBA, seq *model.Sequence, selElem *editor.Selection) {
+	if selElem == nil || selElem.SeqIndex != w.seqIndex {
+		return
+	}
+	switch selElem.Kind {
+	case editor.SelectPlayer:
+		if selElem.Index < len(seq.Players) {
+			p := &seq.Players[selElem.Index]
+			center := w.viewport.RelToPixel(p.Position)
+			court.DrawRotationHandle(img, &w.viewport, center, p.Rotation)
+		}
+	case editor.SelectAccessory:
+		if selElem.Index < len(seq.Accessories) {
+			a := &seq.Accessories[selElem.Index]
+			center := w.viewport.RelToPixel(a.Position)
+			court.DrawRotationHandle(img, &w.viewport, center, a.Rotation)
 		}
 	}
 }
@@ -388,8 +521,8 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 
 	// Callouts.
 	for i := range frame.Players {
-		if frame.Players[i].Player.Callout != "" {
-			calloutText := i18n.T("callout." + string(frame.Players[i].Player.Callout))
+		if frame.Players[i].Callout != "" {
+			calloutText := i18n.T("callout." + string(frame.Players[i].Callout))
 			alpha := uint8(frame.Players[i].Opacity * 255)
 			court.DrawCallout(img, vp, &frame.Players[i].Player, calloutText, face, alpha)
 		}
@@ -398,7 +531,7 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 	// Balls — position at carrier's hand, not center.
 	playerByID := make(map[string]*model.Player, len(frame.Players))
 	for i := range frame.Players {
-		playerByID[frame.Players[i].Player.ID] = &frame.Players[i].Player
+		playerByID[frame.Players[i].ID] = &frame.Players[i].Player
 	}
 	for _, b := range frame.Balls {
 		if b.Opacity > 0 {
@@ -448,7 +581,7 @@ func (w *CourtWidget) MinSize() fyne.Size {
 	return fyne.NewSize(200, 200)
 }
 
-// Tappable — used for mobile and simple clicks.
+// Tapped handles mobile taps and simple clicks.
 func (w *CourtWidget) Tapped(e *fyne.PointEvent) {
 	if w.pressHandled {
 		w.pressHandled = false // consumed, reset for next gesture
@@ -458,7 +591,7 @@ func (w *CourtWidget) Tapped(e *fyne.PointEvent) {
 	w.handlePress(pos)
 }
 
-// Draggable.
+// Dragged handles drag gestures for element movement and panning.
 func (w *CourtWidget) Dragged(e *fyne.DragEvent) {
 	pos := w.dpToPixel(e.Position)
 	// On mobile, Tapped may not fire if the finger moves slightly.
@@ -479,12 +612,12 @@ func (w *CourtWidget) DragEnd() {
 	w.handleRelease()
 }
 
-// desktop.Mouseable — for desktop press/release (more precise than Tapped).
+// MouseDown handles desktop press events (more precise than Tapped).
 func (w *CourtWidget) MouseDown(e *desktop.MouseEvent) {
 	if e.Button != desktop.MouseButtonPrimary {
 		return
 	}
-	pos := w.dpToPixel(e.PointEvent.Position)
+	pos := w.dpToPixel(e.Position)
 	w.pressed = true
 	w.pressHandled = true // prevent Tapped from firing after MouseUp
 	w.handlePress(pos)
@@ -499,13 +632,71 @@ func (w *CourtWidget) MouseUp(e *desktop.MouseEvent) {
 	}
 }
 
-// Focusable — for keyboard events.
+// FocusGained implements fyne.Focusable for keyboard event support.
 func (w *CourtWidget) FocusGained()   {}
 func (w *CourtWidget) FocusLost()     {}
 func (w *CourtWidget) TypedRune(r rune) {}
 func (w *CourtWidget) TypedKey(e *fyne.KeyEvent) {
 	if e.Name == fyne.KeyDelete || e.Name == fyne.KeyBackspace {
 		w.DeleteSelected()
+	}
+}
+
+// --- Hover (desktop only) ---
+
+// MouseIn implements desktop.Hoverable.
+func (w *CourtWidget) MouseIn(_ *desktop.MouseEvent) {}
+
+// MouseMoved implements desktop.Hoverable.
+func (w *CourtWidget) MouseMoved(e *desktop.MouseEvent) {
+	state := w.editorState
+	if state == nil {
+		return
+	}
+	seq := w.currentSequence()
+	if seq == nil {
+		return
+	}
+
+	pos := w.dpToPixel(e.Position)
+	mousePoint := court.Pt(pos.X, pos.Y)
+
+	// Update hover state.
+	var hovered *editor.Selection
+	if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
+		hovered = &editor.Selection{Kind: editor.SelectPlayer, Index: pi, SeqIndex: w.seqIndex}
+	} else if ai := court.HitTestAccessory(&w.viewport, seq, pos); ai >= 0 {
+		hovered = &editor.Selection{Kind: editor.SelectAccessory, Index: ai, SeqIndex: w.seqIndex}
+	}
+
+	changed := false
+	if (hovered == nil) != (state.HoveredElement == nil) {
+		changed = true
+	} else if hovered != nil && state.HoveredElement != nil && *hovered != *state.HoveredElement {
+		changed = true
+	}
+	state.HoveredElement = hovered
+
+	// Track mouse position for ghost arrow preview.
+	if state.ActiveTool == editor.ToolAction && state.ActionFrom != nil {
+		state.PreviewMousePos = &mousePoint
+		changed = true
+	} else if state.PreviewMousePos != nil {
+		state.PreviewMousePos = nil
+		changed = true
+	}
+
+	if changed {
+		w.Refresh()
+	}
+}
+
+// MouseOut implements desktop.Hoverable.
+func (w *CourtWidget) MouseOut() {
+	if w.editorState != nil {
+		w.editorState.HoveredElement = nil
+		w.editorState.PreviewMousePos = nil
+		w.Refresh()
 	}
 }
 
@@ -1029,10 +1220,11 @@ func (r *courtRenderer) Objects() []fyne.CanvasObject {
 func (r *courtRenderer) Destroy() {
 	w := r.widget
 	w.animMu.Lock()
-	defer w.animMu.Unlock()
 	if w.animMode {
 		w.animMode = false
 		close(w.animStop)
 	}
+	w.animMu.Unlock()
+	w.stopPulseTicker()
 }
 

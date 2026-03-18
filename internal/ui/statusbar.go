@@ -2,6 +2,8 @@ package ui
 
 import (
 	"image/color"
+	"sync"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -15,8 +17,11 @@ type StatusBar struct {
 	label     *canvas.Text
 	bg        *canvas.Rectangle
 	box       *fyne.Container
-	updateBtn *TipButton    // update available button (right side)
+	updateBtn *TipButton     // update available button (right side)
 	rightBox  *fyne.Container // right-aligned area
+
+	dismissMu    sync.Mutex
+	dismissTimer *time.Timer
 }
 
 var statusBarHeight float32 = 22
@@ -62,16 +67,44 @@ func (sb *StatusBar) ShowUpdateAvailable(tooltip string, onTap func()) {
 	sb.rightBox.Refresh()
 }
 
-// SetStatus shows a status message. level 0 = info, 1 = error.
+// Status levels.
+const (
+	StatusInfo    = 0
+	StatusError   = 1
+	StatusSuccess = 2
+	StatusWarning = 3
+)
+
+// SetStatus shows a status message.
+// level: 0=info (gray), 1=error (red), 2=success (green), 3=warning (orange).
 func (sb *StatusBar) SetStatus(msg string, level int) {
 	if msg == "" {
 		msg = "CourtDraw"
 	}
 	sb.label.Text = msg
-	if level == 1 {
+	switch level {
+	case StatusError:
 		sb.label.Color = color.NRGBA{R: 0xff, G: 0x66, B: 0x66, A: 0xff}
-	} else {
+	case StatusSuccess:
+		sb.label.Color = color.NRGBA{R: 0x66, G: 0xff, B: 0x66, A: 0xff}
+	case StatusWarning:
+		sb.label.Color = color.NRGBA{R: 0xff, G: 0xaa, B: 0x33, A: 0xff}
+	default:
 		sb.label.Color = color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff}
 	}
 	sb.label.Refresh()
+
+	// Auto-dismiss after 3 seconds (reset timer if already running).
+	sb.dismissMu.Lock()
+	if sb.dismissTimer != nil {
+		sb.dismissTimer.Stop()
+	}
+	sb.dismissTimer = time.AfterFunc(3*time.Second, func() {
+		fyne.Do(func() {
+			sb.label.Text = "CourtDraw"
+			sb.label.Color = color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff}
+			sb.label.Refresh()
+		})
+	})
+	sb.dismissMu.Unlock()
 }

@@ -86,6 +86,9 @@ type App struct {
 
 	// QR scan import.
 	scanPending bool
+
+	// Empty state overlay.
+	emptyState *fyne.Container
 }
 
 // NewApp creates a new App instance.
@@ -291,8 +294,17 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	// Sequence bar (shown only in Edition/Animation modes).
 	seqBar := a.seqTimeline.Widget()
 
+	// Empty state overlay (shown when no exercise is loaded).
+	emptyLine1 := canvas.NewText(i18n.T(i18n.KeyEmptyStateTitle), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
+	emptyLine1.TextSize = 18
+	emptyLine1.Alignment = fyne.TextAlignCenter
+	emptyLine2 := canvas.NewText(i18n.T(i18n.KeyEmptyStateSubtitle), color.NRGBA{R: 0x88, G: 0x88, B: 0x88, A: 0xff})
+	emptyLine2.TextSize = 14
+	emptyLine2.Alignment = fyne.TextAlignCenter
+	a.emptyState = container.NewCenter(container.NewVBox(emptyLine1, emptyLine2))
+
 	// Court area with seq bar above.
-	courtWithSeq := container.NewBorder(seqBar, nil, nil, nil, a.court)
+	courtWithSeq := container.NewBorder(seqBar, nil, nil, nil, container.NewStack(a.court, a.emptyState))
 
 	// Bottom area: swapped between edition shelf and animation controls.
 	bottomStack := container.NewStack(editionBottom)
@@ -695,6 +707,13 @@ func (a *App) SetExercise(ex *model.Exercise) {
 	a.court.SetExercise(ex)
 	a.editorState.Deselect()
 	a.propsPanel.SyncFromExercise()
+	if a.emptyState != nil {
+		if ex != nil {
+			a.emptyState.Hide()
+		} else {
+			a.emptyState.Show()
+		}
+	}
 	if ex != nil {
 		a.playback = anim.NewPlayback(ex)
 	} else {

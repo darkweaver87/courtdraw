@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"time"
 
 	"golang.org/x/image/font"
 
@@ -34,6 +35,12 @@ var (
 	HighlightColor = color.NRGBA{R: 0xff, G: 0xff, B: 0x00, A: 0xcc}
 	BallColor      = color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff}
 )
+
+// pulseAlpha returns a pulsing alpha value (0.3–1.0) based on wall clock time.
+func pulseAlpha() float64 {
+	t := float64(time.Now().UnixMilli()%1000) / 1000.0
+	return 0.3 + 0.7*(0.5+0.5*math.Sin(t*2*math.Pi))
+}
 
 // DrawPlayerWithLabel draws a player in B2 style: head circle above shoulder ellipse,
 // with role-specific extras (defender arms, coach clipboard, direction arrow).
@@ -313,9 +320,7 @@ func HitTestRotationHandleScaled(vp *Viewport, center Point, rotation float64, p
 
 func drawQueue(img *image.RGBA, vp *Viewport, center Point, player *model.Player, col color.NRGBA) {
 	count := player.Count
-	if count > 4 {
-		count = 4
-	}
+	count = min(count, 4)
 	qCol := col
 	qCol.A = 0xaa
 	qr := vp.S(QueueRadius)
@@ -331,6 +336,24 @@ func drawQueue(img *image.RGBA, vp *Viewport, center Point, player *model.Player
 		DrawCircleOutline(img, qCenter, qr, 1,
 			color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xaa})
 	}
+}
+
+// DrawHoverHighlight draws a semi-transparent blue circle outline around a hovered element.
+func DrawHoverHighlight(img *image.RGBA, vp *Viewport, center Point) {
+	col := color.NRGBA{R: 0x44, G: 0x88, B: 0xff, A: 0x88}
+	DrawCircleOutline(img, center, vp.S(PlayerRadius+6), vp.S(2.0), col)
+}
+
+// DrawActionTargetHighlight draws a green glow ring around a potential action target.
+func DrawActionTargetHighlight(img *image.RGBA, vp *Viewport, center Point) {
+	col := color.NRGBA{R: 0x44, G: 0xff, B: 0x44, A: 0xaa}
+	DrawCircleOutline(img, center, vp.S(PlayerRadius+6), vp.S(2.5), col)
+}
+
+// DrawAccessoryHoverHighlight draws a semi-transparent blue circle outline around a hovered accessory.
+func DrawAccessoryHoverHighlight(img *image.RGBA, vp *Viewport, center Point) {
+	col := color.NRGBA{R: 0x44, G: 0x88, B: 0xff, A: 0x88}
+	DrawCircleOutline(img, center, vp.S(AccessoryConeSize+8), vp.S(2.0), col)
 }
 
 // HitTestPlayer returns the index of the player under pos, or -1.

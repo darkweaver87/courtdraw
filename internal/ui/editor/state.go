@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/darkweaver87/courtdraw/internal/court"
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
@@ -50,6 +51,12 @@ type EditorState struct {
 
 	// SelectedElement is the currently selected element (nil if nothing selected).
 	SelectedElement *Selection
+
+	// HoveredElement is the element under the cursor on desktop (nil if nothing hovered).
+	HoveredElement *Selection
+
+	// PreviewMousePos is the current mouse position in pixel space during action creation.
+	PreviewMousePos *court.Point
 
 	// ActionFrom holds the player ID for the first click of action creation.
 	ActionFrom *string

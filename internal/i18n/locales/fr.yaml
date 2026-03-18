@@ -342,3 +342,8 @@ myfiles.filter_orphan: "Orphelins"
 myfiles.session_exercises: "%d exercices"
 myfiles.session_date: "Date : %s"
 status.session_deleted: "Séance supprimée : %s"
+
+# État vide
+empty.title: "Créez votre premier exercice"
+empty.subtitle: "Appuyez sur Nouveau pour commencer"
+empty.session: "Ajoutez des exercices depuis la bibliothèque"

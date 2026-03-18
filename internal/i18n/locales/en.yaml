@@ -342,3 +342,8 @@ myfiles.filter_orphan: "Orphans"
 myfiles.session_exercises: "%d exercises"
 myfiles.session_date: "Date: %s"
 status.session_deleted: "Session deleted: %s"
+
+# Empty state
+empty.title: "Create your first exercise"
+empty.subtitle: "Tap New to start"
+empty.session: "Add exercises from the library"
