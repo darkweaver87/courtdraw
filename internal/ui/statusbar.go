@@ -7,14 +7,17 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	fynetheme "fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 )
 
 // StatusBar displays status messages at the bottom of the editor.
-// On desktop it is always visible; on mobile it auto-hides.
 type StatusBar struct {
-	label *canvas.Text
-	bg    *canvas.Rectangle
-	box   *fyne.Container
+	label     *canvas.Text
+	bg        *canvas.Rectangle
+	box       *fyne.Container
+	updateBtn *TipButton    // update available button (right side)
+	rightBox  *fyne.Container // right-aligned area
 }
 
 var statusBarHeight float32 = 22
@@ -36,14 +39,28 @@ func NewStatusBar() *StatusBar {
 	}
 	sb.bg = canvas.NewRectangle(color.NRGBA{R: 0x22, G: 0x22, B: 0x22, A: 0xff})
 	sb.bg.SetMinSize(fyne.NewSize(0, statusBarHeight))
-	padded := container.NewPadded(sb.label)
-	sb.box = container.NewStack(sb.bg, padded)
+	sb.rightBox = container.NewHBox()
+	bar := container.NewBorder(nil, nil, container.NewPadded(sb.label), sb.rightBox)
+	sb.box = container.NewStack(sb.bg, bar)
 	return sb
 }
 
 // Widget returns the status bar widget.
 func (sb *StatusBar) Widget() fyne.CanvasObject {
 	return sb.box
+}
+
+// ShowUpdateAvailable adds an update warning icon to the right side of the status bar.
+func (sb *StatusBar) ShowUpdateAvailable(tooltip string, onTap func()) {
+	if sb.updateBtn != nil {
+		sb.updateBtn.SetTooltip(tooltip)
+		sb.updateBtn.Show()
+		return
+	}
+	sb.updateBtn = NewTipButton(fynetheme.WarningIcon(), tooltip, onTap)
+	sb.updateBtn.SetImportance(widget.WarningImportance)
+	sb.rightBox.Add(sb.updateBtn)
+	sb.rightBox.Refresh()
 }
 
 // SetStatus shows a status message. level 0 = info, 1 = error.

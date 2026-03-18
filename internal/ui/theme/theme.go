@@ -2,12 +2,15 @@ package theme
 
 import (
 	"image/color"
+	"runtime"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
+
+var isMobile = runtime.GOOS == "android" || runtime.GOOS == "ios"
 
 // Colors from the specification.
 var (
@@ -97,11 +100,22 @@ func (t *CourtDrawTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 }
 
 func (t *CourtDrawTheme) Size(name fyne.ThemeSizeName) float32 {
-	switch name {
-	case theme.SizeNameText:
-		return 13
-	case theme.SizeNamePadding:
-		return 4
+	if isMobile {
+		switch name {
+		case theme.SizeNameText:
+			return 18
+		case theme.SizeNamePadding:
+			return 6
+		case theme.SizeNameInlineIcon:
+			return 28
+		}
+	} else {
+		switch name {
+		case theme.SizeNameText:
+			return 13
+		case theme.SizeNamePadding:
+			return 4
+		}
 	}
 	return theme.DefaultTheme().Size(name)
 }

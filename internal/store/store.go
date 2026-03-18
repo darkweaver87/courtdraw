@@ -7,6 +7,7 @@ type Store interface {
 	ListExercises() ([]string, error)
 	LoadExercise(name string) (*model.Exercise, error)
 	SaveExercise(exercise *model.Exercise) error
+	SaveExerciseAs(name string, exercise *model.Exercise) error
 	DeleteExercise(name string) error
 
 	ListSessions() ([]string, error)

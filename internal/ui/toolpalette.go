@@ -15,10 +15,14 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/ui/icon"
 )
 
+// isMobile reports whether the app is running on a mobile platform.
+var isMobile bool
+
 // toolEntry pairs a TipButton with its i18n key for language refresh.
 type toolEntry struct {
-	btn *TipButton
-	key string
+	btn   *TipButton
+	key   string
+	label *canvas.Text // mobile label below icon (nil on desktop)
 }
 
 // headerEntry pairs a header text with its i18n key.
@@ -45,8 +49,9 @@ type ToolPalette struct {
 var toolGridCell fyne.Size
 
 func init() {
-	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
-		toolGridCell = fyne.NewSize(54, 54)
+	isMobile = runtime.GOOS == "android" || runtime.GOOS == "ios"
+	if isMobile {
+		toolGridCell = fyne.NewSize(64, 80) // taller to accommodate label below icon
 	} else {
 		toolGridCell = fyne.NewSize(40, 40)
 	}
@@ -60,13 +65,25 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 
 	vbox := container.NewVBox()
 
+	// newToolGrid creates a grid container: 2-column on mobile, GridWrap on desktop.
+	newToolGrid := func() *fyne.Container {
+		if isMobile {
+			return container.NewGridWithColumns(2)
+		}
+		return container.NewGridWrap(toolGridCell)
+	}
+	// addToolToGrid adds a tool to the grid, using the labeled widget on mobile.
+	addToolToGrid := func(grid *fyne.Container, key string, res fyne.Resource, onTap func()) {
+		_, obj := tp.makeToolWidget(key, res, onTap)
+		grid.Add(obj)
+	}
+
 	// Select tool.
-	selectGrid := container.NewGridWrap(toolGridCell,
-		tp.makeTool("tool.select", icon.ToolSelect, func() {
-			state.SetTool(editor.ToolSelect)
-			tp.updateActive()
-		}),
-	)
+	selectGrid := newToolGrid()
+	addToolToGrid(selectGrid, "tool.select", icon.ToolSelect, func() {
+		state.SetTool(editor.ToolSelect)
+		tp.updateActive()
+	})
 	vbox.Add(selectGrid)
 
 	// --- Players ---
@@ -87,19 +104,19 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 		icon.PlayerPG, icon.PlayerSG, icon.PlayerSF,
 		icon.PlayerPF, icon.PlayerCenter,
 	}
-	playerGrid := container.NewGridWrap(toolGridCell)
+	playerGrid := newToolGrid()
 	for i, role := range playerRoles {
 		r := role
-		playerGrid.Add(tp.makeTool(playerKeys[i], playerIcons[i], func() {
+		addToolToGrid(playerGrid, playerKeys[i], playerIcons[i], func() {
 			state.SetPlayerTool(r)
 			tp.updateActive()
-		}))
+		})
 	}
 	// Queue tool in the same grid.
-	playerGrid.Add(tp.makeTool("tool.player.queue", icon.PlayerQueue, func() {
+	addToolToGrid(playerGrid, "tool.player.queue", icon.PlayerQueue, func() {
 		state.SetQueueTool()
 		tp.updateActive()
-	}))
+	})
 	vbox.Add(playerGrid)
 
 	// --- Actions ---
@@ -120,13 +137,13 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 		icon.ActionShot, icon.ActionScreen, icon.ActionCut,
 		icon.ActionCloseOut, icon.ActionContest, icon.ActionReverse,
 	}
-	actionGrid := container.NewGridWrap(toolGridCell)
+	actionGrid := newToolGrid()
 	for i, at := range actionTypes {
 		actionType := at
-		actionGrid.Add(tp.makeTool(actionKeys[i], actionIcons[i], func() {
+		addToolToGrid(actionGrid, actionKeys[i], actionIcons[i], func() {
 			state.SetActionTool(actionType)
 			tp.updateActive()
-		}))
+		})
 	}
 	vbox.Add(actionGrid)
 
@@ -138,28 +155,27 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 	}
 	accKeys := []string{"tool.accessory.cone", "tool.accessory.ladder", "tool.accessory.chair"}
 	accIcons := []fyne.Resource{icon.AccCone, icon.AccLadder, icon.AccChair}
-	accGrid := container.NewGridWrap(toolGridCell)
+	accGrid := newToolGrid()
 	for i, at := range accTypes {
 		accType := at
-		accGrid.Add(tp.makeTool(accKeys[i], accIcons[i], func() {
+		addToolToGrid(accGrid, accKeys[i], accIcons[i], func() {
 			state.SetAccessoryTool(accType)
 			tp.updateActive()
-		}))
+		})
 	}
 	vbox.Add(accGrid)
 
 	// --- Delete ---
 	vbox.Add(widget.NewSeparator())
-	deleteGrid := container.NewGridWrap(toolGridCell,
-		tp.makeTool("tool.delete", icon.Delete(), func() {
-			if state.SelectedElement != nil {
-				state.DeleteRequested = true
-			} else {
-				state.SetTool(editor.ToolDelete)
-			}
-			tp.updateActive()
-		}),
-	)
+	deleteGrid := newToolGrid()
+	addToolToGrid(deleteGrid, "tool.delete", icon.Delete(), func() {
+		if state.SelectedElement != nil {
+			state.DeleteRequested = true
+		} else {
+			state.SetTool(editor.ToolDelete)
+		}
+		tp.updateActive()
+	})
 	vbox.Add(deleteGrid)
 
 	bg := canvas.NewRectangle(color.NRGBA{R: 0x30, G: 0x30, B: 0x30, A: 0xff})
@@ -177,6 +193,10 @@ func (tp *ToolPalette) Widget() fyne.CanvasObject {
 func (tp *ToolPalette) RefreshLanguage() {
 	for _, t := range tp.tools {
 		t.btn.SetTooltip(i18n.T(t.key))
+		if t.label != nil {
+			t.label.Text = i18n.T(t.key)
+			t.label.Refresh()
+		}
 	}
 	for _, h := range tp.headers {
 		h.text.Text = i18n.T(h.key)
@@ -184,22 +204,43 @@ func (tp *ToolPalette) RefreshLanguage() {
 	}
 }
 
-func (tp *ToolPalette) makeTool(key string, res fyne.Resource, onTap func()) *TipButton {
+// makeToolWidget creates a TipButton and, on mobile, wraps it with a small label below.
+// It returns the button (for highlight tracking) and the canvas object to add to the grid.
+func (tp *ToolPalette) makeToolWidget(key string, res fyne.Resource, onTap func()) (*TipButton, fyne.CanvasObject) {
 	btn := NewTipButton(res, i18n.T(key), onTap)
-	tp.tools = append(tp.tools, toolEntry{btn: btn, key: key})
+	var lbl *canvas.Text
+	var obj fyne.CanvasObject = btn
+	if isMobile {
+		lbl = canvas.NewText(i18n.T(key), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
+		lbl.TextSize = 9
+		lbl.Alignment = fyne.TextAlignCenter
+		obj = container.NewVBox(btn, lbl)
+	}
+	tp.tools = append(tp.tools, toolEntry{btn: btn, key: key, label: lbl})
 	tp.allBtns = append(tp.allBtns, btn)
+	return btn, obj
+}
+
+// makeTool creates a TipButton registered for highlight management (backward compat helper).
+func (tp *ToolPalette) makeTool(key string, res fyne.Resource, onTap func()) *TipButton {
+	btn, _ := tp.makeToolWidget(key, res, onTap)
 	return btn
 }
 
 func (tp *ToolPalette) makeHeader(key string) fyne.CanvasObject {
 	lbl := canvas.NewText(i18n.T(key), color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
-	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+	if isMobile {
 		lbl.TextSize = 16
 	} else {
 		lbl.TextSize = 11
 	}
 	tp.headers = append(tp.headers, headerEntry{text: lbl, key: key})
 	return container.NewPadded(lbl)
+}
+
+// ForceUpdateActive triggers an active tool highlight refresh (used by FAB).
+func (tp *ToolPalette) ForceUpdateActive() {
+	tp.updateActive()
 }
 
 func (tp *ToolPalette) updateActive() {

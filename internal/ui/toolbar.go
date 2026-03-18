@@ -100,6 +100,29 @@ func (ft *FileToolbar) Widget() fyne.CanvasObject {
 	return ft.box
 }
 
+// Btn returns an individual toolbar button by action (for use in custom layouts).
+func (ft *FileToolbar) Btn(action FileAction) *TipButton {
+	switch action {
+	case FileActionNew:
+		return ft.btns[0]
+	case FileActionOpen:
+		return ft.btns[1]
+	case FileActionRecent:
+		return ft.btns[2]
+	case FileActionSave:
+		return ft.btns[3]
+	case FileActionSaveAs:
+		return ft.btns[4]
+	case FileActionImport:
+		return ft.btns[5]
+	case FileActionAbout:
+		return ft.btns[6]
+	case FileActionPreferences:
+		return ft.btns[7]
+	}
+	return nil
+}
+
 // SetModified updates save button appearance when exercise has unsaved changes.
 func (ft *FileToolbar) SetModified(modified bool) {
 	if modified {

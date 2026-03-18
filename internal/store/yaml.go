@@ -88,6 +88,11 @@ func (s *YAMLStore) LoadExercise(name string) (*model.Exercise, error) {
 
 func (s *YAMLStore) SaveExercise(exercise *model.Exercise) error {
 	name := ToKebab(exercise.Name)
+	return s.SaveExerciseAs(name, exercise)
+}
+
+// SaveExerciseAs saves an exercise with an explicit file name (without extension).
+func (s *YAMLStore) SaveExerciseAs(name string, exercise *model.Exercise) error {
 	if name == "" {
 		return fmt.Errorf("exercise name is empty")
 	}
@@ -335,7 +340,20 @@ func (s *YAMLStore) ensureExerciseIndex() {
 	// Rebuild if the number of index entries doesn't match the YAML files on disk
 	// (handles externally added or removed files).
 	if countYAMLFiles(s.exercisesDir) != len(s.exerciseIndex.Entries) {
+		oldIndex := s.exerciseIndex
 		idx, _ := rebuildExerciseIndex(s.exercisesDir)
+		// Preserve LastOpened from the old index.
+		oldMap := make(map[string]time.Time, len(oldIndex.Entries))
+		for _, e := range oldIndex.Entries {
+			if !e.LastOpened.IsZero() {
+				oldMap[e.File] = e.LastOpened
+			}
+		}
+		for i := range idx.Entries {
+			if t, ok := oldMap[idx.Entries[i].File]; ok {
+				idx.Entries[i].LastOpened = t
+			}
+		}
 		s.exerciseIndex = idx
 		saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 	}
@@ -352,7 +370,20 @@ func (s *YAMLStore) ensureSessionIndex() {
 	s.sessionIndex = loadSessionIndex(s.sessionsDir)
 	// Rebuild if the number of index entries doesn't match the YAML files on disk.
 	if countYAMLFiles(s.sessionsDir) != len(s.sessionIndex.Entries) {
+		oldIndex := s.sessionIndex
 		s.sessionIndex = rebuildSessionIndex(s.sessionsDir)
+		// Preserve LastOpened from the old index.
+		oldMap := make(map[string]time.Time, len(oldIndex.Entries))
+		for _, e := range oldIndex.Entries {
+			if !e.LastOpened.IsZero() {
+				oldMap[e.File] = e.LastOpened
+			}
+		}
+		for i := range s.sessionIndex.Entries {
+			if t, ok := oldMap[s.sessionIndex.Entries[i].File]; ok {
+				s.sessionIndex.Entries[i].LastOpened = t
+			}
+		}
 		saveSessionIndex(s.sessionsDir, s.sessionIndex)
 	}
 }

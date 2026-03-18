@@ -21,8 +21,11 @@ type MyFilesAction int
 const (
 	MyFilesActionOpenSession MyFilesAction = iota
 	MyFilesActionDeleteSession
+	MyFilesActionShareSession
+	MyFilesActionImportBundle
 	MyFilesActionOpenExercise
 	MyFilesActionDeleteExercise
+	MyFilesActionContributeExercise
 )
 
 // MyFilesEvent is returned when the user performs an action.
@@ -48,17 +51,17 @@ type ExerciseFileItem struct {
 	IsOrphan    bool
 }
 
-// MyFilesTab provides a file management view with two columns: sessions and exercises.
+// MyFilesTab provides a single-column file management view with toggle buttons.
 type MyFilesTab struct {
 	box *fyne.Container
 
-	// Session column.
+	// Session list.
 	sessionItems       []SessionFileItem
 	sessionSearchEntry *widget.Entry
 	sessionBox         *fyne.Container
 	sessionScroll      *container.Scroll
 
-	// Exercise column.
+	// Exercise list.
 	exerciseItems       []ExerciseFileItem
 	exerciseSearchEntry *widget.Entry
 	exerciseBox         *fyne.Container
@@ -67,8 +70,12 @@ type MyFilesTab struct {
 	filterAllBtn        *widget.Button
 	filterOrphanBtn     *widget.Button
 
-	// Responsive.
-	responsive *ResponsiveContainer
+	// View switching.
+	contentStack *fyne.Container
+	sessionView  fyne.CanvasObject
+	exerciseView fyne.CanvasObject
+	sesToggle    *widget.Button
+	exToggle     *widget.Button
 
 	// Callbacks.
 	OnAction func(MyFilesEvent)
@@ -79,41 +86,92 @@ type MyFilesTab struct {
 func NewMyFilesTab() *MyFilesTab {
 	mf := &MyFilesTab{}
 
-	// Session column.
+	// Session search.
 	mf.sessionSearchEntry = widget.NewEntry()
 	mf.sessionSearchEntry.PlaceHolder = i18n.T("myfiles.search_sessions")
 	mf.sessionSearchEntry.OnChanged = func(_ string) { mf.refreshSessionList() }
 	mf.sessionBox = container.NewVBox()
 	mf.sessionScroll = container.NewVScroll(mf.sessionBox)
 
-	// Exercise column.
+	// Exercise search.
 	mf.exerciseSearchEntry = widget.NewEntry()
 	mf.exerciseSearchEntry.PlaceHolder = i18n.T("myfiles.search_exercises")
 	mf.exerciseSearchEntry.OnChanged = func(_ string) { mf.refreshExerciseList() }
 	mf.exerciseBox = container.NewVBox()
 	mf.exerciseScroll = container.NewVScroll(mf.exerciseBox)
 
+	// Exercise filter buttons (same style as session tab).
 	mf.filterAllBtn = widget.NewButton(i18n.T("myfiles.filter_all"), func() {
 		mf.filterOrphan = false
 		mf.updateFilterStyles()
 		mf.refreshExerciseList()
 	})
+	mf.filterAllBtn.Importance = widget.HighImportance
 	mf.filterOrphanBtn = widget.NewButton(i18n.T("myfiles.filter_orphan"), func() {
 		mf.filterOrphan = true
 		mf.updateFilterStyles()
 		mf.refreshExerciseList()
 	})
-	mf.updateFilterStyles()
+	mf.filterOrphanBtn.Importance = widget.LowImportance
+
+	// Import button.
+	importBtn := widget.NewButtonWithIcon(i18n.T("import.bundle"), icon.Import(), func() {
+		mf.emitAction(MyFilesActionImportBundle, "")
+	})
+	importBtn.Importance = widget.LowImportance
+
+	// --- Session view ---
+	mf.sessionView = container.NewBorder(
+		mf.sessionSearchEntry,
+		container.NewPadded(importBtn),
+		nil, nil,
+		mf.sessionScroll,
+	)
+
+	// --- Exercise view ---
+	filterRow := container.NewGridWithColumns(2, mf.filterAllBtn, mf.filterOrphanBtn)
+	mf.exerciseView = container.NewBorder(
+		container.NewVBox(mf.exerciseSearchEntry, filterRow),
+		nil, nil, nil,
+		mf.exerciseScroll,
+	)
+
+	// --- Toggle buttons ---
+	mf.sesToggle = widget.NewButton(i18n.T("myfiles.sessions"), func() { mf.showSessions() })
+	mf.sesToggle.Importance = widget.HighImportance
+	mf.exToggle = widget.NewButton(i18n.T("myfiles.exercises"), func() { mf.showExercises() })
+	mf.exToggle.Importance = widget.LowImportance
+	toggleBar := container.NewGridWithColumns(2, mf.sesToggle, mf.exToggle)
+
+	// --- Content stack ---
+	mf.contentStack = container.NewStack(mf.sessionView)
 
 	bg := canvas.NewRectangle(theme.ColorDarkBg)
-	mf.responsive = NewResponsiveContainer(mf.buildDesktopLayout, mf.buildMobileLayout)
-	mf.box = container.NewStack(bg, mf.responsive)
+	mf.box = container.NewStack(bg, container.NewBorder(toggleBar, nil, nil, nil, mf.contentStack))
 	return mf
 }
 
 // Widget returns the root canvas object.
 func (mf *MyFilesTab) Widget() fyne.CanvasObject {
 	return mf.box
+}
+
+func (mf *MyFilesTab) showSessions() {
+	mf.contentStack.Objects = []fyne.CanvasObject{mf.sessionView}
+	mf.contentStack.Refresh()
+	mf.sesToggle.Importance = widget.HighImportance
+	mf.exToggle.Importance = widget.LowImportance
+	mf.sesToggle.Refresh()
+	mf.exToggle.Refresh()
+}
+
+func (mf *MyFilesTab) showExercises() {
+	mf.contentStack.Objects = []fyne.CanvasObject{mf.exerciseView}
+	mf.contentStack.Refresh()
+	mf.sesToggle.Importance = widget.LowImportance
+	mf.exToggle.Importance = widget.HighImportance
+	mf.sesToggle.Refresh()
+	mf.exToggle.Refresh()
 }
 
 // SetSessions updates the session list data.
@@ -131,62 +189,13 @@ func (mf *MyFilesTab) SetExercises(items []ExerciseFileItem) {
 func (mf *MyFilesTab) updateFilterStyles() {
 	if mf.filterOrphan {
 		mf.filterAllBtn.Importance = widget.LowImportance
-		mf.filterOrphanBtn.Importance = widget.MediumImportance
+		mf.filterOrphanBtn.Importance = widget.HighImportance
 	} else {
-		mf.filterAllBtn.Importance = widget.MediumImportance
+		mf.filterAllBtn.Importance = widget.HighImportance
 		mf.filterOrphanBtn.Importance = widget.LowImportance
 	}
 	mf.filterAllBtn.Refresh()
 	mf.filterOrphanBtn.Refresh()
-}
-
-func (mf *MyFilesTab) buildDesktopLayout() fyne.CanvasObject {
-	sessHeader := canvas.NewText(i18n.T("myfiles.sessions"), color.White)
-	sessHeader.TextSize = 14
-	sessHeader.TextStyle = fyne.TextStyle{Bold: true}
-
-	sessCol := container.NewBorder(
-		container.NewVBox(sessHeader, mf.sessionSearchEntry),
-		nil, nil, nil,
-		mf.sessionScroll,
-	)
-
-	exHeader := canvas.NewText(i18n.T("myfiles.exercises"), color.White)
-	exHeader.TextSize = 14
-	exHeader.TextStyle = fyne.TextStyle{Bold: true}
-	filterRow := container.NewGridWithColumns(2, mf.filterAllBtn, mf.filterOrphanBtn)
-
-	exCol := container.NewBorder(
-		container.NewVBox(exHeader, mf.exerciseSearchEntry, filterRow),
-		nil, nil, nil,
-		mf.exerciseScroll,
-	)
-
-	split := container.NewHSplit(sessCol, exCol)
-	split.SetOffset(0.5)
-	return split
-}
-
-func (mf *MyFilesTab) buildMobileLayout() fyne.CanvasObject {
-	sessTab := container.NewBorder(
-		mf.sessionSearchEntry,
-		nil, nil, nil,
-		mf.sessionScroll,
-	)
-
-	filterRow := container.NewGridWithColumns(2, mf.filterAllBtn, mf.filterOrphanBtn)
-	exTab := container.NewBorder(
-		container.NewVBox(mf.exerciseSearchEntry, filterRow),
-		nil, nil, nil,
-		mf.exerciseScroll,
-	)
-
-	tabs := container.NewAppTabs(
-		container.NewTabItem(i18n.T("mobile.myfiles.sessions"), sessTab),
-		container.NewTabItem(i18n.T("mobile.myfiles.exercises"), exTab),
-	)
-	tabs.SetTabLocation(container.TabLocationBottom)
-	return tabs
 }
 
 func (mf *MyFilesTab) refreshSessionList() {
@@ -217,6 +226,11 @@ func (mf *MyFilesTab) refreshSessionList() {
 		})
 		openBtn.Importance = widget.LowImportance
 
+		shareBtn := widget.NewButtonWithIcon("", icon.Share(), func() {
+			mf.emitAction(MyFilesActionShareSession, item.Name)
+		})
+		shareBtn.Importance = widget.LowImportance
+
 		deleteBtn := widget.NewButtonWithIcon("", icon.Delete(), func() {
 			mf.emitAction(MyFilesActionDeleteSession, item.Name)
 		})
@@ -225,7 +239,7 @@ func (mf *MyFilesTab) refreshSessionList() {
 		info := container.NewHBox(dateText, countText)
 		row := container.NewBorder(
 			nil, info, nil,
-			container.NewHBox(openBtn, deleteBtn),
+			container.NewHBox(openBtn, shareBtn, deleteBtn),
 			titleLabel,
 		)
 		mf.sessionBox.Add(row)
@@ -278,6 +292,11 @@ func (mf *MyFilesTab) refreshExerciseList() {
 		})
 		openBtn.Importance = widget.LowImportance
 
+		contributeBtn := widget.NewButtonWithIcon("", icon.Upload(), func() {
+			mf.emitAction(MyFilesActionContributeExercise, item.Name)
+		})
+		contributeBtn.Importance = widget.LowImportance
+
 		deleteBtn := widget.NewButtonWithIcon("", icon.Delete(), func() {
 			mf.emitAction(MyFilesActionDeleteExercise, item.Name)
 		})
@@ -285,7 +304,7 @@ func (mf *MyFilesTab) refreshExerciseList() {
 
 		row := container.NewBorder(
 			nil, metaText, nil,
-			container.NewHBox(openBtn, deleteBtn),
+			container.NewHBox(openBtn, contributeBtn, deleteBtn),
 			nameLabel,
 		)
 		mf.exerciseBox.Add(row)
@@ -311,7 +330,12 @@ func (mf *MyFilesTab) RefreshLanguage() {
 	mf.exerciseSearchEntry.Refresh()
 	mf.filterAllBtn.SetText(i18n.T("myfiles.filter_all"))
 	mf.filterOrphanBtn.SetText(i18n.T("myfiles.filter_orphan"))
-	mf.responsive.ForceRebuild()
+	if mf.sesToggle != nil {
+		mf.sesToggle.SetText(i18n.T("myfiles.sessions"))
+	}
+	if mf.exToggle != nil {
+		mf.exToggle.SetText(i18n.T("myfiles.exercises"))
+	}
 	mf.refreshSessionList()
 	mf.refreshExerciseList()
 }

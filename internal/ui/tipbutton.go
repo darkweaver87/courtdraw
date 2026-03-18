@@ -21,8 +21,9 @@ type TipButton struct {
 	importance    widget.ButtonImportance
 	text          string
 	hovered       bool
-	OverrideColor color.Color // if non-nil, used instead of importance-based color
-	TooltipAbove  bool        // show tooltip above the button instead of below
+	OverrideColor color.Color  // if non-nil, used instead of importance-based color
+	TooltipAbove  bool         // show tooltip above the button instead of below
+	MaxSize       *fyne.Size   // if set, caps MinSize to this value (for compact layouts)
 }
 
 var (
@@ -32,8 +33,8 @@ var (
 
 func init() {
 	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
-		tipIconSize = 32
-		tipPadding = 6
+		tipIconSize = 36
+		tipPadding = 8
 	}
 }
 
@@ -169,6 +170,14 @@ func (r *tipBtnRenderer) MinSize() fyne.Size {
 	h := is + p*2
 	if r.tb.text != "" {
 		w += r.txt.MinSize().Width + p/2
+	}
+	if r.tb.MaxSize != nil {
+		if w > r.tb.MaxSize.Width {
+			w = r.tb.MaxSize.Width
+		}
+		if h > r.tb.MaxSize.Height {
+			h = r.tb.MaxSize.Height
+		}
 	}
 	return fyne.NewSize(w, h)
 }

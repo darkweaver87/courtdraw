@@ -1,12 +1,12 @@
 package ui
 
 import (
-	"fmt"
 	"image/color"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -16,25 +16,54 @@ import (
 	cdtheme "github.com/darkweaver87/courtdraw/internal/ui/theme"
 )
 
-// SeqTimeline is a horizontal row of sequence tabs with an [+] add button.
+// SeqTimeline is a horizontal bar with prev/next arrows, sequence label, add and delete buttons.
 type SeqTimeline struct {
 	box       *fyne.Container
-	tabBox    *fyne.Container
+	prevBtn   *widget.Button
+	nextBtn   *widget.Button
+	seqBtn    *widget.Button // current sequence label (tap to rename)
 	addBtn    *widget.Button
 	deleteBtn *widget.Button
-	buttons   []*widget.Button
+	settingsBtn *widget.Button
 	activeIdx int
 	numSeqs   int
+
+	// Current state (updated on each Update call).
+	exercise *model.Exercise
+	editLang string
 
 	OnSeqChanged func(int)
 	OnAddSeq     func()
 	OnDeleteSeq  func(int)
+	OnSeqRenamed func(idx int, newLabel string)
+	OnSettings   func() // opens exercise settings dialog
+	window       fyne.Window
 }
 
 // NewSeqTimeline creates a new sequence timeline.
 func NewSeqTimeline() *SeqTimeline {
 	st := &SeqTimeline{}
-	st.tabBox = container.NewHBox()
+
+	st.prevBtn = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), func() {
+		if st.activeIdx > 0 && st.OnSeqChanged != nil {
+			st.OnSeqChanged(st.activeIdx - 1)
+		}
+	})
+	st.prevBtn.Importance = widget.LowImportance
+
+	st.nextBtn = widget.NewButtonWithIcon("", theme.NavigateNextIcon(), func() {
+		if st.activeIdx < st.numSeqs-1 && st.OnSeqChanged != nil {
+			st.OnSeqChanged(st.activeIdx + 1)
+		}
+	})
+	st.nextBtn.Importance = widget.LowImportance
+
+	st.seqBtn = widget.NewButton("", func() {
+		// Tap on label → rename.
+		st.showRenameDialog(st.activeIdx, st.exercise, st.editLang)
+	})
+	st.seqBtn.Importance = widget.HighImportance
+
 	st.addBtn = widget.NewButtonWithIcon("", theme.ContentAddIcon(), func() {
 		if st.OnAddSeq != nil {
 			st.OnAddSeq()
@@ -48,11 +77,17 @@ func NewSeqTimeline() *SeqTimeline {
 		}
 	})
 	st.deleteBtn.Importance = widget.DangerImportance
-	st.deleteBtn.Hide()
+
+	st.settingsBtn = widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
+		if st.OnSettings != nil {
+			st.OnSettings()
+		}
+	})
+	st.settingsBtn.Importance = widget.LowImportance
 
 	bg := canvas.NewRectangle(color.NRGBA{R: 0x2a, G: 0x2a, B: 0x2a, A: 0xff})
-	scroll := container.NewHScroll(container.NewHBox(st.tabBox, st.addBtn, st.deleteBtn, layout.NewSpacer()))
-	st.box = container.NewStack(bg, scroll)
+	bar := container.NewHBox(st.prevBtn, st.seqBtn, st.nextBtn, st.addBtn, st.deleteBtn, layout.NewSpacer(), st.settingsBtn)
+	st.box = container.NewStack(bg, bar)
 	return st
 }
 
@@ -61,70 +96,93 @@ func (st *SeqTimeline) Widget() fyne.CanvasObject {
 	return st.box
 }
 
-// Update rebuilds the timeline tabs for the given exercise and active index.
-// editLang selects translated sequence labels when available.
+// SetWindow sets the window reference for dialogs.
+func (st *SeqTimeline) SetWindow(w fyne.Window) {
+	st.window = w
+}
+
+// Update refreshes the timeline for the given exercise and active index.
 func (st *SeqTimeline) Update(exercise *model.Exercise, activeIdx int, editLang string) {
 	if exercise == nil {
-		st.tabBox.RemoveAll()
-		st.buttons = nil
+		st.seqBtn.SetText("")
+		st.prevBtn.Disable()
+		st.nextBtn.Disable()
+		st.deleteBtn.Hide()
 		return
 	}
 
+	st.exercise = exercise
+	st.editLang = editLang
 	st.activeIdx = activeIdx
 	st.numSeqs = len(exercise.Sequences)
 
-	// Show delete button only when there are 2+ sequences.
+	// Update prev/next arrow state.
+	if activeIdx <= 0 {
+		st.prevBtn.Disable()
+	} else {
+		st.prevBtn.Enable()
+	}
+	if activeIdx >= st.numSeqs-1 {
+		st.nextBtn.Disable()
+	} else {
+		st.nextBtn.Enable()
+	}
+
+	// Show delete only when 2+ sequences.
 	if st.numSeqs > 1 {
 		st.deleteBtn.Show()
 	} else {
 		st.deleteBtn.Hide()
 	}
 
-	// Rebuild buttons if count changed.
-	if len(st.buttons) != len(exercise.Sequences) {
-		st.tabBox.RemoveAll()
-		st.buttons = make([]*widget.Button, len(exercise.Sequences))
-		for i := range exercise.Sequences {
-			idx := i
-			btn := widget.NewButton("", func() {
-				if st.OnSeqChanged != nil {
-					st.OnSeqChanged(idx)
-				}
-			})
-			btn.Importance = widget.LowImportance
-			st.buttons[i] = btn
-			st.tabBox.Add(btn)
+	// Resolve label (without number prefix).
+	label := st.resolveLabel(activeIdx)
+	st.seqBtn.SetText(label)
+}
+
+// resolveLabel returns the display label for the sequence at idx.
+func (st *SeqTimeline) resolveLabel(idx int) string {
+	if st.exercise == nil || idx >= len(st.exercise.Sequences) {
+		return ""
+	}
+	label := st.exercise.Sequences[idx].Label
+
+	// Use translated label if available.
+	if st.editLang != "" && st.editLang != "en" && st.exercise.I18n != nil {
+		if tr, ok := st.exercise.I18n[st.editLang]; ok && idx < len(tr.Sequences) && tr.Sequences[idx].Label != "" {
+			label = tr.Sequences[idx].Label
 		}
 	}
 
-	// Resolve i18n sequence labels.
-	var trSeqs []model.SequenceI18n
-	if editLang != "" && editLang != "en" && exercise.I18n != nil {
-		if tr, ok := exercise.I18n[editLang]; ok {
-			trSeqs = tr.Sequences
-		}
+	if label == "" {
+		label = i18n.Tf("seq.format", idx+1)
+	}
+	return label
+}
+
+// showRenameDialog opens an entry dialog to rename a sequence.
+func (st *SeqTimeline) showRenameDialog(idx int, exercise *model.Exercise, editLang string) {
+	if st.window == nil || exercise == nil || idx >= len(exercise.Sequences) {
+		return
 	}
 
-	// Update labels and colors.
-	for i, seq := range exercise.Sequences {
-		label := seq.Label
-		// Use translated label if available.
-		if i < len(trSeqs) && trSeqs[i].Label != "" {
-			label = trSeqs[i].Label
-		}
-		if label == "" {
-			label = i18n.Tf("seq.format", i+1)
-		} else {
-			label = fmt.Sprintf("%d. %s", i+1, label)
-		}
-		st.buttons[i].SetText(label)
-		if i == activeIdx {
-			st.buttons[i].Importance = widget.HighImportance
-		} else {
-			st.buttons[i].Importance = widget.LowImportance
-		}
-		st.buttons[i].Refresh()
-	}
+	currentLabel := st.resolveLabel(idx)
+
+	entry := widget.NewEntry()
+	entry.SetText(currentLabel)
+
+	dlg := dialog.NewForm(i18n.T("seq.rename_title"), i18n.T("seq.rename_ok"), i18n.T("seq.rename_cancel"),
+		[]*widget.FormItem{
+			widget.NewFormItem(i18n.T("seq.rename_label"), entry),
+		},
+		func(ok bool) {
+			if ok && st.OnSeqRenamed != nil {
+				st.OnSeqRenamed(idx, entry.Text)
+			}
+		},
+		st.window,
+	)
+	dlg.Show()
 }
 
 // unused but needed for theme import

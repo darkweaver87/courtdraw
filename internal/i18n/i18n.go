@@ -126,3 +126,25 @@ func T(key string) string {
 func Tf(key string, args ...any) string {
 	return fmt.Sprintf(T(key), args...)
 }
+
+// TLang returns the translation for the given key in a specific language.
+// Falls back to English, then to the key itself.
+func TLang(lang string, key string) string {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	l := Lang(lang)
+	if m, ok := translations[l]; ok {
+		if v, ok := m[key]; ok {
+			return v
+		}
+	}
+	if l != EN {
+		if m, ok := translations[EN]; ok {
+			if v, ok := m[key]; ok {
+				return v
+			}
+		}
+	}
+	return key
+}

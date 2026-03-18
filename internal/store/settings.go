@@ -12,11 +12,12 @@ import (
 
 // Settings holds application-level preferences.
 type Settings struct {
-	Language     string   `yaml:"language"`
-	PdfExportDir string   `yaml:"pdf_export_dir,omitempty"`
-	GithubToken  string   `yaml:"github_token,omitempty"`
-	ExerciseDir  string   `yaml:"exercise_dir,omitempty"`
-	RecentFiles  []string `yaml:"recent_files,omitempty"`
+	Language         string   `yaml:"language"`
+	PdfExportDir     string   `yaml:"pdf_export_dir,omitempty"`
+	GithubToken      string   `yaml:"github_token,omitempty"`
+	ExerciseDir      string   `yaml:"exercise_dir,omitempty"`
+	RecentFiles      []string `yaml:"recent_files,omitempty"`
+	DismissedVersion string   `yaml:"dismissed_version,omitempty"` // version update already seen/dismissed by the user
 }
 
 // LoadSettings reads settings from baseDir/settings.yaml.

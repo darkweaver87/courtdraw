@@ -174,35 +174,80 @@ Goal: transfer sessions from desktop to mobile without technical knowledge.
 
 Deliverable: coaches share sessions from PC to phone by scanning a QR code or sending a file.
 
-## Phase 15 — Mobile UX Overhaul ⚡ P0
+## Phase 15 — Mobile & Desktop UX Overhaul ⚡ P0
 
-Goal: make the mobile experience feel native, with large touch targets and visual clarity — coaches use the app on the court with sweaty hands, not at a desk.
+Goal: make the mobile experience feel native and the desktop editor cleaner. Court always visible, tools accessible without switching tabs.
 
-77. Enlarge touch targets — increase TipButton mobile size from 44dp to 56dp (icon 36dp + padding 10dp), tool palette grid cells from 54dp to 64dp
-78. Icon-first buttons — replace all text-only mobile buttons with icon + optional small label below:
-    - Speed control: replace "1.0x" text with gauge icon + value label
-    - Timer adjustments: replace "-1m"/"+10s" text with `−`/`+` icons sized 48dp minimum, reduce grid from 4 to 2 columns (coarse +/− only)
-    - Filter chips: replace "All"/"Orphan" text with icon chips (grid icon / unlinked icon)
-    - Sequence label: replace "Seq 2/4" text with dots/pills progress indicator
-79. Tool palette labels — add a small label (9pt) below each tool icon on mobile so users don't have to guess (Player / Pass / Cone…), use 2-column grid instead of wrapped grid for readability
-80. Bottom tab bar — increase tab height from 40dp to 52dp with larger icons (28dp) and label (10pt), use `container.NewCustom` if Fyne's default is too constrained
-81. Floating action button (FAB) — add a primary action FAB on mobile court view (56dp circle, bottom-right): tap to expand radial menu with most-used tools (Add Player, Add Action, Delete), avoids switching to Tools tab for common operations
-82. Properties panel mobile — replace cramped form layout with bottom-sheet style: large tappable rows (56dp height each) instead of small form fields, role/category as icon grid instead of dropdown
+### Touch targets & widget sizing (done)
+77. Enlarge touch targets — TipButton mobile: 56dp (icon 36dp + padding 10dp), tool palette grid cells: 64×80dp
+78. Icon-first buttons — timer adjustments use −/+ icons (2 columns) on mobile, sequence indicator uses dot pills on mobile
+79. Custom bottom tab bar — `MobileTabBar` widget: 52dp height, 24dp icons, 10pt labels (replaces Fyne's `AppTabs` in all mobile layouts)
+80. Properties panel mobile — `makeField` returns 56dp-height rows with 13pt labels on mobile
 
-Deliverable: coaches can comfortably create and edit exercises on a phone held in one hand.
+### Mobile layout: shelf architecture (in progress)
+81. Court always visible — the court is never hidden behind a tab. Tools, properties, and file operations live in a collapsible shelf below the court
+82. Tool shelf with category tabs — bottom tab bar with 4 categories: Outils (select+delete) | Joueurs | Actions | Accessoires. Each category shows a horizontally-scrollable single row of icon buttons
+83. Collapsible shelf — a chevron (▼/▲) collapses/expands the shelf. Shelf auto-collapses after selecting a tool to maximize court space
+84. Top bar — compact row above the court: [mode toggle Draw/Animate] [file icons: new/open/save/recent] [language flag] [settings gear]
+85. Sequence bar — below top bar, above court: [← prev] [Phase 1/3] [next →] [+ add] [📋 instructions button → opens instructions editor for current sequence]
+
+### Library & file management
+86. Sort by date — library sort selector (A→Z / Recent first) using file ModTime from exercise index
+87. Date of creation — store a `created` timestamp in exercise index entries for proper "date added" sorting (currently uses file ModTime which changes on every save)
+
+### Desktop improvements
+88. Tool palette icon-only with tooltip — keep icons without text labels (tooltip on hover suffices), palette stays as left sidebar
+89. Sequence dots on desktop — replace "2 / 4" text with dot pills indicator (same as mobile) for visual consistency
+
+Deliverable: court-centric layout on mobile with instant tool access, cleaner desktop editor.
+
+## Phase 15b — Draw/Animate Mode Switch ⚡ P1
+
+Goal: separate editing and playback into distinct modes to declutter the UI.
+
+88. Mode toggle — a single button in the top bar (mobile) or toolbar (desktop) switches between Draw and Animate modes:
+    - **Draw mode** (default): tool shelf visible, court is editable (drag, place, delete), animation controls hidden
+    - **Animate mode**: tool shelf replaced by playback controls (play/pause/stop, speed, sequence dots/navigation), court is read-only (no drag/placement), mode icon changes to indicate active mode
+89. Mode persistence — switching mode does not lose editor state (selected element, active tool). Returning to Draw restores the previous tool
+90. Desktop integration — on desktop, Draw/Animate could remain side-by-side (animation controls below court) since screen space allows it, or adopt the same mode switch for consistency. Start with mode switch everywhere, iterate based on feedback
+
+Deliverable: the editor UI shows only what's relevant — editing tools OR playback controls, never both at once.
+
+## Phase 15c — Action Timeline ⚡ P1
+
+Goal: define the order of actions within a single sequence, enabling complex plays without creating many sequences.
+
+91. `step` field on Action — new optional `int` field (default 1, backward-compatible). Actions with the same step play simultaneously, different steps play sequentially within the sequence
+92. Data model update — `internal/model/action.go`: add `Step int` field, YAML tag `step,omitempty`. Validation: step >= 1. Existing exercises without step default to step=1 (all simultaneous, current behavior)
+93. Animation engine update — `internal/anim/`: within a sequence, group actions by step. Interpolate step 1 actions first, then step 2, etc. Each step gets an equal share of the sequence's animation duration
+94. UI: step indicator — in Draw mode, each action arrow displays a small circled number (①②③) at its midpoint showing its step. Default new actions get step = max_existing_step + 1 (sequential by default)
+95. UI: step editing — select an action, change its step in the properties panel (number input or +/− buttons). Or drag actions in a timeline strip to reorder steps
+96. UI: timeline strip (optional, v2) — a horizontal strip below the court showing steps as columns, with action icons in each column. Drag actions between columns to change step order
+
+Deliverable: coaches express "A passes to B, then B drives to the basket" within a single sequence instead of creating two.
 
 ## Phase 16 — Visual Polish & Feedback ⚡ P1
 
 Goal: match modern app standards with smooth interactions and clear visual feedback.
 
-83. Hover/tap feedback — highlight player circle (glow outline) when pointer/finger is over a valid drop target during action creation, pulsing ring on selected element
-84. Action snap preview — when creating an action (e.g., pass), show a ghost arrow following the cursor/finger from source player to current position, snap to nearest player with magnetic effect (within 30dp)
-85. Transition animations — smooth fade when switching sequences (cross-dissolve on court canvas), slide-up for properties panel on mobile
-86. Court theme refinement — subtle wood grain texture on court background (embedded PNG tile), anti-aliased court lines, shadow under players for depth
-87. Empty state illustrations — when no exercise is loaded or session is empty, show a helpful illustration with "Create your first exercise" / "Add exercises to your session" call-to-action
-88. Status bar improvements — animated slide-in/out for notifications, color-coded by type (success=green, warning=orange, error=red)
+97. Hover/tap feedback — highlight player circle (glow outline) when pointer/finger is over a valid drop target during action creation, pulsing ring on selected element
+98. Action snap preview — when creating an action (e.g., pass), show a ghost arrow following the cursor/finger from source player to current position, snap to nearest player with magnetic effect (within 30dp)
+99. Transition animations — smooth fade when switching sequences (cross-dissolve on court canvas), slide-up for properties panel on mobile
+100. Court theme refinement — subtle wood grain texture on court background (embedded PNG tile), anti-aliased court lines, shadow under players for depth
+101. Empty state illustrations — when no exercise is loaded or session is empty, show a helpful illustration with "Create your first exercise" / "Add exercises to your session" call-to-action
+102. Status bar improvements — animated slide-in/out for notifications, color-coded by type (success=green, warning=orange, error=red)
 
 Deliverable: the app feels responsive and polished, with clear visual cues at every interaction.
+
+## Phase 16b — Undo/Redo ⚡ P1
+
+Goal: coaches can undo mistakes without losing work.
+
+103. Undo/redo engine — command pattern in `internal/ui/editor/`: each mutation (move player, add action, change property, add/remove element) is wrapped in a `Command` with `Do()` and `Undo()` methods, stored in a history stack (max 50 entries)
+104. Keyboard shortcuts — Ctrl+Z / Ctrl+Shift+Z (desktop), undo/redo icons in top bar (mobile) and toolbar (desktop)
+105. Scope — undo/redo operates per exercise, history cleared on exercise load/new
+
+Deliverable: Ctrl+Z works, coaches can experiment freely.
 
 ## Phase 17 — Export GIF/MP4 ⚡ P1
 
@@ -340,9 +385,9 @@ Deliverable: coaches migrating from FastDraw or other tools can import their exi
 
 Goal: richer, more realistic animations that match HoopsGeek quality.
 
-143. Timing-based actions — allow actions within a sequence to have relative start times (e.g., "B cuts 0.5s after A passes"), enabling overlapping movements without extra sequences
-144. Optional/conditional actions — mark actions as "option A" / "option B" with visual toggle, allowing a single exercise to show multiple reads
-145. Ball physics — ball follows realistic arc on passes (parabolic), bounces on dribble, spin on shots — visual only, no simulation
-146. Trail effect — fading trail behind moving players during animation (last 0.5s of path visible)
+143. Optional/conditional actions — mark actions as "option A" / "option B" with visual toggle, allowing a single exercise to show multiple reads (e.g., pick-and-roll: option A = pop, option B = roll)
+144. Ball physics — ball follows realistic arc on passes (parabolic), bounces on dribble, spin on shots — visual only, no simulation
+145. Trail effect — fading trail behind moving players during animation (last 0.5s of path visible)
+146. Fine-grained timing — extend Phase 15c step system with relative delay values (e.g., "step 2 starts 0.5s after step 1 ends") for precise choreography
 
 Deliverable: animations are fluid, realistic, and can express complex plays with timing and options.

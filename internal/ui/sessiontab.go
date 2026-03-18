@@ -5,11 +5,11 @@ import (
 	"image/color"
 	"sort"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/layout"
 	fynetheme "fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -25,7 +25,7 @@ import (
 type ExerciseSyncStatus int
 
 const (
-	StatusLocalOnly  ExerciseSyncStatus = iota
+	StatusLocalOnly ExerciseSyncStatus = iota
 	StatusRemoteOnly
 	StatusSynced
 	StatusModified
@@ -45,6 +45,7 @@ type ManagedExercise struct {
 	Duration          string
 	Tags              []string
 	RemoteTags        []string
+	ModTime           time.Time
 }
 
 // EffectiveDisplayName returns the display name based on the filter index.
@@ -71,7 +72,7 @@ const maxSessionItems = 50
 type SessionTabAction int
 
 const (
-	SessionTabActionNone           SessionTabAction = iota
+	SessionTabActionNone SessionTabAction = iota
 	SessionTabActionNew
 	SessionTabActionOpen
 	SessionTabActionSave
@@ -110,36 +111,33 @@ type SessionTab struct {
 	selectedIdx     int
 	categorySelect  *widget.Select
 	courtTypeSelect *widget.Select
-	tagChecks       *widget.CheckGroup
-	tagScroll       *container.Scroll
+	tagChecks      *widget.CheckGroup // data store (Options, Selected)
+	tagGrid        *fyne.Container   // grid of Check widgets
+	tagScroll      *container.Scroll
+	tagToggleBtn   *widget.Button  // "Tags >" / "Tags v" toggle
+	tagSection     *fyne.Container // wrapper shown/hidden
+	tagsExpanded   bool
 
 	// Filter buttons for language refresh.
 	filterBtns [3]*widget.Button
+	sortSelect *widget.Select
+	sortByDate bool // true = sort by ModTime desc, false = alphabetical
 
-	// Toolbar buttons (stored as fields for reuse across layouts).
-	newBtn        *TipButton
-	openBtn       *TipButton
-	recentBtn     *TipButton
-	saveBtn       *TipButton
-	genBtn        *TipButton
-	refreshBtn    *TipButton
-	addBtn        *TipButton
-	openExBtn     *TipButton
-	contributeBtn *TipButton
-	trainingBtn   *TipButton
-	shareBtn      *TipButton
-	importBtn     *TipButton
+	// Toolbar buttons.
+	refreshBtn *TipButton
+	addBtn     *TipButton
+	openExBtn  *TipButton
 
 	// Session column.
-	session            *model.Session
-	resolvedExercises  map[string]*model.Exercise
-	modified           bool
-	sessionList        *DragList
-	titleEntry     *widget.Entry
-	dateEntry      *widget.Entry
-	subtitleEntry  *widget.Entry
-	ageGroupEntry  *widget.Entry
-	philosophyEntry *widget.Entry
+	session           *model.Session
+	resolvedExercises map[string]*model.Exercise
+	modified          bool
+	sessionList       *DragList
+	titleEntry        *widget.Entry
+	dateEntry         *widget.Entry
+	subtitleEntry     *widget.Entry
+	ageGroupEntry     *widget.Entry
+	philosophyEntry   *widget.Entry
 
 	// Total duration.
 	totalLabel *canvas.Text
@@ -148,7 +146,7 @@ type SessionTab struct {
 	previewCourt  *fynecourt.CourtWidget
 	previewPB     *anim.Playback
 	previewLabel  *canvas.Text
-	previewName   string // name of currently previewed exercise (avoid restart)
+	previewName   string          // name of currently previewed exercise (avoid restart)
 	previewDetail *fyne.Container // exercise details (duration, intensity, instructions)
 
 	// Event channel — consumed by App each frame.
@@ -156,7 +154,15 @@ type SessionTab struct {
 
 	// Session overlay.
 	sessionOverlay *SessionListOverlay
-	responsive     *ResponsiveContainer
+
+	// View switching.
+	contentStack  *fyne.Container
+	libraryView   fyne.CanvasObject
+	previewView   fyne.CanvasObject
+	sessionView   fyne.CanvasObject
+	libToggle     *widget.Button
+	sesToggle     *widget.Button
+	previewOrigin string // "library" or "session" — where to return from preview
 
 	OnAction         func(SessionTabEvent)
 	OnSessionChanged func() // called when exercises are added/removed/reordered
@@ -255,14 +261,41 @@ func NewSessionTab() *SessionTab {
 	})
 	st.courtTypeSelect.SetSelected(st.buildCourtTypeOptions()[0])
 
-	// Tag filter (multi-select with CheckGroup).
-	st.tagChecks = widget.NewCheckGroup(nil, func(selected []string) {
-		st.filterTags = selected
-		st.refreshLibraryList()
+	// Tag filter (grid of checkboxes, collapsible).
+	st.tagChecks = widget.NewCheckGroup(nil, nil) // data-only
+	tagCellW := float32(150)
+	if isMobile {
+		tagCellW = 120
+	}
+	st.tagGrid = container.NewGridWrap(fyne.NewSize(tagCellW, 30))
+	st.tagScroll = container.NewVScroll(st.tagGrid)
+	viewH := float32(80)
+	if isMobile {
+		viewH = 120
+	}
+	st.tagScroll.SetMinSize(fyne.NewSize(0, viewH))
+	st.tagSection = container.NewStack(st.tagScroll)
+	st.tagSection.Hide()
+	st.tagToggleBtn = widget.NewButtonWithIcon(i18n.T("filter.tags"), icon.ChevronRight, func() {
+		st.tagsExpanded = !st.tagsExpanded
+		if st.tagsExpanded {
+			st.tagSection.Show()
+		} else {
+			st.tagSection.Hide()
+		}
+		st.updateTagToggleLabel()
 	})
-	st.tagChecks.Horizontal = true
-	st.tagScroll = container.NewHScroll(st.tagChecks)
-	st.tagScroll.SetMinSize(fyne.NewSize(0, 36))
+	st.tagToggleBtn.Importance = widget.LowImportance
+
+	// Sort selector.
+	st.sortSelect = widget.NewSelect(
+		[]string{i18n.T("sort.alpha"), i18n.T("sort.recent")},
+		func(s string) {
+			st.sortByDate = (s == i18n.T("sort.recent"))
+			st.refreshLibraryList()
+		},
+	)
+	st.sortSelect.SetSelected(i18n.T("sort.alpha"))
 
 	// Total duration label.
 	st.totalLabel = canvas.NewText("", color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff})
@@ -283,19 +316,10 @@ func NewSessionTab() *SessionTab {
 }
 
 func (st *SessionTab) buildLayout() {
-	// Toolbar buttons — icon + tooltip.
-	st.newBtn = NewTipButton(icon.New(), i18n.T("session.new"), func() { st.emitAction(SessionTabActionNew, "") })
-	st.openBtn = NewTipButton(icon.Open(), i18n.T("session.open"), func() { st.emitAction(SessionTabActionOpen, "") })
-	st.recentBtn = NewTipButton(icon.Refresh(), i18n.T("session.recent"), func() { st.emitAction(SessionTabActionRecent, "") })
-	st.saveBtn = NewTipButton(icon.Save(), i18n.T("session.save"), func() { st.emitAction(SessionTabActionSave, "") })
-	st.genBtn = NewTipButton(fynetheme.DocumentPrintIcon(), i18n.T("session.generate_pdf"), func() { st.emitAction(SessionTabActionGenerate, "") })
+	// Refresh button for library sync.
 	st.refreshBtn = NewTipButton(icon.Refresh(), i18n.T("mgr.refresh"), func() { st.emitAction(SessionTabActionRefresh, "") })
-	st.trainingBtn = NewTipButton(icon.Training(), i18n.T("tooltip.training"), func() { st.emitAction(SessionTabActionTraining, "") })
-	st.trainingBtn.SetImportance(widget.HighImportance)
-	st.shareBtn = NewTipButton(icon.Share(), i18n.T("share.button"), func() { st.emitAction(SessionTabActionShare, "") })
-	st.importBtn = NewTipButton(icon.Import(), i18n.T("import.bundle"), func() { st.emitAction(SessionTabActionImportBundle, "") })
 
-	// Add to session button.
+	// Add to session button (used in preview).
 	st.addBtn = NewTipButton(fynetheme.NavigateNextIcon(), i18n.T("session.add_to_session"), func() {
 		filtered := st.filteredExercises()
 		if st.selectedIdx >= 0 && st.selectedIdx < len(filtered) {
@@ -304,121 +328,137 @@ func (st *SessionTab) buildLayout() {
 	})
 	st.addBtn.SetImportance(widget.MediumImportance)
 
-	// Action buttons for selected exercise.
-	st.openExBtn = NewTipButton(icon.Open(), i18n.T("session.open_exercise"), func() {
+	// Library filter buttons.
+	st.filterBtns[0] = widget.NewButton(i18n.T("filter.all"), func() { st.filterIndex = 0; st.updateFilterStyles(); st.refreshLibraryList() })
+	st.filterBtns[1] = widget.NewButton(i18n.T("filter.local"), func() { st.filterIndex = 1; st.updateFilterStyles(); st.refreshLibraryList() })
+	st.filterBtns[2] = widget.NewButton(i18n.T("filter.community"), func() { st.filterIndex = 2; st.updateFilterStyles(); st.refreshLibraryList() })
+	st.filterBtns[0].Importance = widget.HighImportance
+	st.filterBtns[1].Importance = widget.LowImportance
+	st.filterBtns[2].Importance = widget.LowImportance
+
+	// Back button (returns from preview to the originating view).
+	backBtn := NewTipButton(icon.Back(), i18n.T("session.back_to_library"), func() {
+		if st.previewOrigin == "session" {
+			st.showSession()
+		} else {
+			st.showLibrary()
+		}
+	})
+
+	// --- Library view ---
+	statusRow := container.NewGridWithColumns(3, st.filterBtns[0], st.filterBtns[1], st.filterBtns[2])
+	filterGrid := container.NewGridWithColumns(3, st.categorySelect, st.courtTypeSelect, st.sortSelect)
+	searchRow := container.NewBorder(nil, nil, nil, st.refreshBtn, st.searchEntry)
+	st.libraryView = container.NewBorder(
+		container.NewVBox(searchRow, statusRow, filterGrid, st.tagToggleBtn, st.tagSection),
+		nil, nil, nil,
+		st.libraryScroll,
+	)
+
+	// Open in editor button.
+	st.openExBtn = NewTipButton(fynetheme.DocumentCreateIcon(), i18n.T("session.open_exercise"), func() {
 		filtered := st.filteredExercises()
 		if st.selectedIdx >= 0 && st.selectedIdx < len(filtered) {
 			st.emitAction(SessionTabActionOpenExercise, filtered[st.selectedIdx].Name)
 		}
 	})
-	st.contributeBtn = NewTipButton(icon.Upload(), i18n.T("mgr.contribute"), func() {
-		filtered := st.filteredExercises()
-		if st.selectedIdx >= 0 && st.selectedIdx < len(filtered) {
-			st.emitAction(SessionTabActionContribute, filtered[st.selectedIdx].Name)
-		}
-	})
 
-	// Tooltips above for buttons at bottom of preview column.
-	st.addBtn.TooltipAbove = true
-	st.openExBtn.TooltipAbove = true
-	st.contributeBtn.TooltipAbove = true
-
-	// Library column.
-	st.filterBtns[0] = widget.NewButton(i18n.T("filter.all"), func() { st.filterIndex = 0; st.refreshLibraryList() })
-	st.filterBtns[1] = widget.NewButton(i18n.T("filter.local"), func() { st.filterIndex = 1; st.refreshLibraryList() })
-	st.filterBtns[2] = widget.NewButton(i18n.T("filter.community"), func() { st.filterIndex = 2; st.refreshLibraryList() })
-	for _, btn := range st.filterBtns {
-		btn.Importance = widget.LowImportance
-	}
-
-	bg := canvas.NewRectangle(theme.ColorDarkBg)
-	st.responsive = NewResponsiveContainer(st.buildDesktopLayout, st.buildMobileLayout)
-	st.box = container.NewStack(bg, st.responsive)
-}
-
-func (st *SessionTab) buildDesktopLayout() fyne.CanvasObject {
-	statusRow := container.NewGridWithColumns(3, st.filterBtns[0], st.filterBtns[1], st.filterBtns[2])
-	filterGrid := container.NewGridWithColumns(2, st.categorySelect, st.courtTypeSelect)
-	searchRow := container.NewBorder(nil, nil, nil, st.refreshBtn, st.searchEntry)
-
-	libraryCol := container.NewBorder(
-		container.NewVBox(searchRow, statusRow, filterGrid, st.tagScroll),
-		nil, nil, nil,
-		st.libraryScroll,
-	)
-
+	// --- Preview view ---
 	detailScroll := container.NewVScroll(st.previewDetail)
 	detailScroll.SetMinSize(fyne.NewSize(0, 80))
 	courtAndDetail := container.NewVSplit(st.previewCourt, detailScroll)
 	courtAndDetail.SetOffset(0.6)
-	previewCol := container.NewBorder(
-		st.previewLabel,
-		container.NewVBox(st.addBtn, container.NewGridWithColumns(2, st.openExBtn, st.contributeBtn)),
+	st.previewView = container.NewBorder(
+		container.NewHBox(backBtn, st.previewLabel),
+		container.NewHBox(st.addBtn, st.openExBtn),
 		nil, nil,
 		courtAndDetail,
 	)
 
+	// --- Session view ---
 	metadataForm := container.NewVBox(
 		st.titleEntry, st.dateEntry, st.subtitleEntry, st.ageGroupEntry,
 	)
-	sessionToolbar := container.NewHBox(st.newBtn, st.openBtn, st.recentBtn, st.saveBtn, st.genBtn, st.shareBtn, st.importBtn, st.trainingBtn, layout.NewSpacer())
-	sessionCol := container.NewBorder(
-		container.NewVBox(sessionToolbar, metadataForm),
-		container.NewVBox(container.NewPadded(st.totalLabel), st.philosophyEntry),
+	st.sessionView = container.NewBorder(
+		metadataForm,
+		st.philosophyEntry,
 		nil, nil,
 		st.sessionList,
 	)
 
-	rightSplit := container.NewHSplit(previewCol, sessionCol)
-	rightSplit.SetOffset(0.5)
-	mainSplit := container.NewHSplit(libraryCol, rightSplit)
-	mainSplit.SetOffset(0.3)
+	// --- Toggle buttons (Library / Ma séance) ---
+	st.libToggle = widget.NewButton(i18n.T("session.tab_library"), func() { st.showLibrary() })
+	st.libToggle.Importance = widget.HighImportance
+	st.sesToggle = widget.NewButton(i18n.T("session.tab_session"), func() { st.showSession() })
+	st.sesToggle.Importance = widget.LowImportance
+	toggleBar := container.NewGridWithColumns(2, st.libToggle, st.sesToggle)
 
-	return mainSplit
+	// --- Duration bar (always visible) ---
+	durationBar := container.NewPadded(st.totalLabel)
+
+	// --- Content stack: switches between library, preview, session ---
+	st.contentStack = container.NewStack(st.libraryView)
+
+	bg := canvas.NewRectangle(theme.ColorDarkBg)
+	st.box = container.NewStack(bg, container.NewBorder(toggleBar, durationBar, nil, nil, st.contentStack))
 }
 
-func (st *SessionTab) buildMobileLayout() fyne.CanvasObject {
-	// Library tab.
-	statusRow := container.NewGridWithColumns(3, st.filterBtns[0], st.filterBtns[1], st.filterBtns[2])
-	filterGrid := container.NewGridWithColumns(2, st.categorySelect, st.courtTypeSelect)
-	searchRow := container.NewBorder(nil, nil, nil, st.refreshBtn, st.searchEntry)
-	libraryTab := container.NewBorder(
-		container.NewVBox(searchRow, statusRow, filterGrid, st.tagScroll),
-		nil, nil, nil,
-		st.libraryScroll,
-	)
+// showLibrary switches to the library list.
+func (st *SessionTab) showLibrary() {
+	st.contentStack.Objects = []fyne.CanvasObject{st.libraryView}
+	st.contentStack.Refresh()
+	st.libToggle.Importance = widget.HighImportance
+	st.sesToggle.Importance = widget.LowImportance
+	st.libToggle.Refresh()
+	st.sesToggle.Refresh()
+}
 
-	// Preview tab.
-	mobileDetailScroll := container.NewVScroll(st.previewDetail)
-	mobileDetailScroll.SetMinSize(fyne.NewSize(0, 80))
-	mobileCourtAndDetail := container.NewVSplit(st.previewCourt, mobileDetailScroll)
-	mobileCourtAndDetail.SetOffset(0.6)
-	previewTab := container.NewBorder(
-		st.previewLabel,
-		container.NewVBox(st.addBtn, container.NewGridWithColumns(2, st.openExBtn, st.contributeBtn)),
-		nil, nil,
-		mobileCourtAndDetail,
-	)
+// showPreview switches to the exercise preview.
+// The toggle highlight stays on the originating view.
+func (st *SessionTab) showPreview() {
+	st.contentStack.Objects = []fyne.CanvasObject{st.previewView}
+	st.contentStack.Refresh()
+	// Don't change toggle state — keep the highlight on the view we came from.
+}
 
-	// Session tab.
-	metadataForm := container.NewVBox(
-		st.titleEntry, st.dateEntry, st.subtitleEntry, st.ageGroupEntry,
-	)
-	sessionToolbar := container.NewHBox(st.newBtn, st.openBtn, st.recentBtn, st.saveBtn, st.genBtn, st.shareBtn, st.importBtn, st.trainingBtn, layout.NewSpacer())
-	sessionTab := container.NewBorder(
-		container.NewVBox(sessionToolbar, metadataForm),
-		container.NewVBox(container.NewPadded(st.totalLabel), st.philosophyEntry),
-		nil, nil,
-		st.sessionList,
-	)
+// updateFilterStyles highlights the active filter button.
+func (st *SessionTab) updateFilterStyles() {
+	for i, btn := range st.filterBtns {
+		if i == st.filterIndex {
+			btn.Importance = widget.HighImportance
+		} else {
+			btn.Importance = widget.LowImportance
+		}
+		btn.Refresh()
+	}
+}
 
-	tabs := container.NewAppTabs(
-		container.NewTabItem(i18n.T("mobile.session.library"), libraryTab),
-		container.NewTabItem(i18n.T("mobile.session.preview"), previewTab),
-		container.NewTabItem(i18n.T("mobile.session.session"), sessionTab),
-	)
-	tabs.SetTabLocation(container.TabLocationBottom)
-	return tabs
+// IsModified returns whether the session has unsaved changes.
+func (st *SessionTab) IsModified() bool {
+	return st.modified
+}
+
+// Rebuild recreates the entire layout with fresh widgets.
+// This is needed because Fyne doesn't repaint widgets in hidden Stack containers.
+func (st *SessionTab) Rebuild() {
+	st.buildLayout()
+	st.refreshLibraryList()
+	st.refreshTotal()
+}
+
+// ShowSession switches to the session composition view (public, called by App).
+func (st *SessionTab) ShowSession() {
+	st.showSession()
+}
+
+// showSession switches to the session composition view.
+func (st *SessionTab) showSession() {
+	st.contentStack.Objects = []fyne.CanvasObject{st.sessionView}
+	st.contentStack.Refresh()
+	st.libToggle.Importance = widget.LowImportance
+	st.sesToggle.Importance = widget.HighImportance
+	st.libToggle.Refresh()
+	st.sesToggle.Refresh()
 }
 
 // Widget returns the session tab widget.
@@ -446,16 +486,57 @@ func (st *SessionTab) rebuildTagOptions() {
 	}
 	sort.Strings(sorted)
 	st.tagChecks.Options = sorted
+
 	// Preserve selected tags that still exist.
-	var valid []string
+	selectedSet := make(map[string]bool)
 	for _, ft := range st.filterTags {
 		if tagSet[ft] {
-			valid = append(valid, ft)
+			selectedSet[ft] = true
 		}
 	}
-	st.tagChecks.Selected = valid
+	var valid []string
+	for t := range selectedSet {
+		valid = append(valid, t)
+	}
 	st.filterTags = valid
-	st.tagChecks.Refresh()
+	st.tagChecks.Selected = valid
+
+	// Rebuild tag grid with checkboxes.
+	st.tagGrid.RemoveAll()
+	for _, tag := range sorted {
+		t := tag
+		chk := widget.NewCheck(t, func(checked bool) {
+			if checked {
+				selectedSet[t] = true
+			} else {
+				delete(selectedSet, t)
+			}
+			st.filterTags = nil
+			for k := range selectedSet {
+				st.filterTags = append(st.filterTags, k)
+			}
+			st.updateTagToggleLabel()
+			st.refreshLibraryList()
+		})
+		chk.Checked = selectedSet[t]
+		st.tagGrid.Add(chk)
+	}
+	st.tagGrid.Refresh()
+	st.updateTagToggleLabel()
+}
+
+func (st *SessionTab) updateTagToggleLabel() {
+	n := len(st.filterTags)
+	label := i18n.T("filter.tags")
+	if n > 0 {
+		label = fmt.Sprintf("%s (%d)", label, n)
+	}
+	if st.tagsExpanded {
+		st.tagToggleBtn.SetIcon(icon.ChevronDown)
+	} else {
+		st.tagToggleBtn.SetIcon(icon.ChevronRight)
+	}
+	st.tagToggleBtn.SetText(label)
 }
 
 // SetSession sets the current session.
@@ -549,6 +630,12 @@ func (st *SessionTab) filteredExercises() []ManagedExercise {
 		}
 		result = append(result, item)
 	}
+	// Sort.
+	if st.sortByDate {
+		sort.Slice(result, func(i, j int) bool {
+			return result[i].ModTime.After(result[j].ModTime)
+		})
+	}
 	return result
 }
 
@@ -569,9 +656,18 @@ func (st *SessionTab) refreshLibraryList() {
 		catText := canvas.NewText(mgd.Category, color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
 		catText.TextSize = 11
 
+		// Quick add button.
+		addBtn := widget.NewButtonWithIcon("", fynetheme.ContentAddIcon(), func() {
+			st.addExerciseByRef(mgd.Name)
+		})
+		addBtn.Importance = widget.LowImportance
+
+		// Preview button.
 		eyeBtn := widget.NewButtonWithIcon("", icon.Preview(), func() {
 			st.selectedIdx = idx
 			st.updatePreview()
+			st.previewOrigin = "library"
+			st.showPreview()
 		})
 		eyeBtn.Importance = widget.LowImportance
 
@@ -579,15 +675,18 @@ func (st *SessionTab) refreshLibraryList() {
 		tap := newTappableArea(func() {
 			st.selectedIdx = idx
 			st.updatePreview()
+			st.previewOrigin = "library"
+			st.showPreview()
 		})
 
-		row := container.NewBorder(nil, nil, nil, container.NewHBox(catText, eyeBtn), nameLabel)
+		row := container.NewBorder(nil, nil, nil, container.NewHBox(catText, addBtn, eyeBtn), nameLabel)
 		st.libraryBox.Add(container.NewStack(bg, tap, row))
 	}
 	if len(filtered) == 0 {
 		st.libraryBox.Add(widget.NewLabel(i18n.T("session.no_exercises")))
 	}
 	st.libraryBox.Refresh()
+	st.libraryScroll.Refresh()
 }
 
 func (st *SessionTab) updatePreview() {
@@ -614,10 +713,7 @@ func (st *SessionTab) updatePreview() {
 	st.previewLabel.Refresh()
 	st.previewName = mgd.Name
 
-	// Restore library action buttons.
 	st.addBtn.Show()
-	st.openExBtn.Show()
-	st.contributeBtn.Show()
 
 	// Load the exercise for the preview court.
 	// When filtering community or all, prefer remote exercise for accurate i18n.
@@ -684,10 +780,7 @@ func (st *SessionTab) previewSessionExercise(idx int) {
 	st.previewLabel.Text = ex.Name
 	st.previewLabel.Refresh()
 
-	// Hide action buttons that don't apply to session exercises.
-	st.contributeBtn.Hide()
 	st.addBtn.Hide()
-	st.openExBtn.Show()
 
 	// Load court preview.
 	st.previewCourt.SetExercise(ex)
@@ -702,6 +795,8 @@ func (st *SessionTab) previewSessionExercise(idx int) {
 	}
 
 	st.populatePreviewDetail(ex)
+	st.previewOrigin = "session"
+	st.showPreview()
 }
 
 func (st *SessionTab) populatePreviewDetail(ex *model.Exercise) {
@@ -856,22 +951,7 @@ func (st *SessionTab) refreshTotal() {
 	st.totalLabel.Text = fmt.Sprintf(i18n.T("session.total_format"), st.computeTotalDuration())
 	st.totalLabel.Refresh()
 
-	// Show/hide training and share buttons based on session exercises.
-	hasExercises := st.session != nil && len(st.session.Exercises) > 0
-	if st.trainingBtn != nil {
-		if hasExercises {
-			st.trainingBtn.Show()
-		} else {
-			st.trainingBtn.Hide()
-		}
-	}
-	if st.shareBtn != nil {
-		if hasExercises {
-			st.shareBtn.Show()
-		} else {
-			st.shareBtn.Hide()
-		}
-	}
+	// Training and share are now in other modes — no buttons to show/hide here.
 }
 
 func (st *SessionTab) emitAction(action SessionTabAction, name string) {
@@ -967,23 +1047,27 @@ func (st *SessionTab) RefreshLanguage() {
 	}
 
 	// Toolbar button tooltips.
-	st.newBtn.SetTooltip(i18n.T("session.new"))
-	st.openBtn.SetTooltip(i18n.T("session.open"))
-	st.recentBtn.SetTooltip(i18n.T("session.recent"))
-	st.saveBtn.SetTooltip(i18n.T("session.save"))
-	st.genBtn.SetTooltip(i18n.T("session.generate_pdf"))
 	st.refreshBtn.SetTooltip(i18n.T("mgr.refresh"))
 	st.addBtn.SetTooltip(i18n.T("session.add_to_session"))
-	st.openExBtn.SetTooltip(i18n.T("session.open_exercise"))
-	st.contributeBtn.SetTooltip(i18n.T("mgr.contribute"))
-	st.trainingBtn.SetTooltip(i18n.T("tooltip.training"))
-	st.shareBtn.SetTooltip(i18n.T("share.button"))
-	st.importBtn.SetTooltip(i18n.T("import.bundle"))
 
-	// Rebuild responsive layout (mobile tab labels).
-	if st.responsive != nil {
-		st.responsive.ForceRebuild()
+	// Toggle buttons.
+	if st.libToggle != nil {
+		st.libToggle.SetText(i18n.T("session.tab_library"))
 	}
+	if st.sesToggle != nil {
+		st.sesToggle.SetText(i18n.T("session.tab_session"))
+	}
+	if st.sortSelect != nil {
+		st.sortSelect.Options = []string{i18n.T("sort.alpha"), i18n.T("sort.recent")}
+		if st.sortByDate {
+			st.sortSelect.SetSelected(i18n.T("sort.recent"))
+		} else {
+			st.sortSelect.SetSelected(i18n.T("sort.alpha"))
+		}
+	}
+
+	// Rebuild library list with translated exercise names.
+	st.refreshLibraryList()
 
 	st.refreshTotal()
 }
@@ -1038,9 +1122,9 @@ func parseDurationMinutes(s string) int {
 // intensityColorDots returns colored dot characters as canvas.Text objects.
 func intensityColorDots(level int) []fyne.CanvasObject {
 	colors := [3]color.NRGBA{
-		{R: 76, G: 175, B: 80, A: 255},  // green
-		{R: 255, G: 193, B: 7, A: 255},  // yellow
-		{R: 244, G: 67, B: 54, A: 255},  // red
+		{R: 76, G: 175, B: 80, A: 255}, // green
+		{R: 255, G: 193, B: 7, A: 255}, // yellow
+		{R: 244, G: 67, B: 54, A: 255}, // red
 	}
 	off := color.NRGBA{R: 120, G: 120, B: 120, A: 255}
 	dots := make([]fyne.CanvasObject, 3)
@@ -1096,4 +1180,3 @@ func (slo *SessionListOverlay) Hide() {
 }
 
 // --- Helpers for building managed exercises (moved from app.go) ---
-

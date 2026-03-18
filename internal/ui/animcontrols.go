@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"runtime"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -13,7 +14,6 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/anim"
 	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/ui/icon"
-
 )
 
 // AnimControls provides playback control buttons.
@@ -24,7 +24,8 @@ type AnimControls struct {
 	prevBtn  *TipButton
 	nextBtn  *TipButton
 	speedBtn *widget.Button
-	seqLabel *canvas.Text
+	seqLabel *canvas.Text     // desktop: "2 / 4"
+	seqDots  *fyne.Container  // mobile: dot pills indicator (nil on desktop)
 	box      *fyne.Container
 
 	playback *anim.Playback
@@ -93,7 +94,14 @@ func NewAnimControls() *AnimControls {
 	ac.pauseBtn.Hide()
 
 	bg := canvas.NewRectangle(color.NRGBA{R: 0x28, G: 0x28, B: 0x28, A: 0xff})
-	buttons := container.NewHBox(ac.prevBtn, ac.playBtn, ac.pauseBtn, ac.stopBtn, ac.nextBtn, ac.speedBtn, ac.seqLabel, layout.NewSpacer())
+	var seqIndicator fyne.CanvasObject
+	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+		ac.seqDots = container.NewHBox()
+		seqIndicator = ac.seqDots
+	} else {
+		seqIndicator = ac.seqLabel
+	}
+	buttons := container.NewHBox(ac.prevBtn, ac.playBtn, ac.pauseBtn, ac.stopBtn, ac.nextBtn, ac.speedBtn, seqIndicator, layout.NewSpacer())
 	ac.box = container.NewStack(bg, buttons)
 	ac.box.Hide()
 	return ac
@@ -130,8 +138,30 @@ func (ac *AnimControls) Refresh() {
 		ac.playBtn.Show()
 	}
 	ac.speedBtn.SetText(fmt.Sprintf("%.1fx", ac.playback.Speed()))
-	ac.seqLabel.Text = fmt.Sprintf("%d / %d", ac.playback.SeqIndex()+1, ac.numSeqs)
-	ac.seqLabel.Refresh()
+	if ac.seqDots != nil {
+		ac.refreshSeqDots(ac.playback.SeqIndex(), ac.numSeqs)
+	} else {
+		ac.seqLabel.Text = fmt.Sprintf("%d / %d", ac.playback.SeqIndex()+1, ac.numSeqs)
+		ac.seqLabel.Refresh()
+	}
+}
+
+// refreshSeqDots rebuilds the sequence dot pills indicator.
+func (ac *AnimControls) refreshSeqDots(current, total int) {
+	ac.seqDots.RemoveAll()
+	dotActive := color.NRGBA{R: 0x29, G: 0x6d, B: 0xd4, A: 0xff}
+	dotInactive := color.NRGBA{R: 0x66, G: 0x66, B: 0x66, A: 0xff}
+	for i := 0; i < total; i++ {
+		c := dotInactive
+		if i == current {
+			c = dotActive
+		}
+		dot := canvas.NewCircle(c)
+		dot.Resize(fyne.NewSize(8, 8))
+		dotWrap := container.NewGridWrap(fyne.NewSize(8, 8), dot)
+		ac.seqDots.Add(dotWrap)
+	}
+	ac.seqDots.Refresh()
 }
 
 // RefreshLanguage updates tooltip text for the current language.

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"image/color"
 	"log"
@@ -21,6 +22,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/storage"
+	fynetheme "fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/anim"
@@ -31,6 +33,7 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/store"
 	"github.com/darkweaver87/courtdraw/internal/ui/editor"
 	"github.com/darkweaver87/courtdraw/internal/ui/fynecourt"
+	"github.com/darkweaver87/courtdraw/internal/ui/icon"
 	"github.com/darkweaver87/courtdraw/internal/ui/theme"
 )
 
@@ -42,10 +45,11 @@ type App struct {
 	library  *store.Library
 	syncing bool
 
-	exercise    *model.Exercise
-	editorState editor.EditorState
-	playback    *anim.Playback
-	editLang    string
+	exercise      *model.Exercise
+	exerciseSHA   string // SHA of exercise at load/save time
+	editorState   editor.EditorState
+	playback      *anim.Playback
+	editLang      string
 
 	// Fyne widgets.
 	court        *fynecourt.CourtWidget
@@ -60,17 +64,20 @@ type App struct {
 	sessionTab   *SessionTab
 	myFilesTab   *MyFilesTab
 
-	// Tab management.
-	tabs                *container.AppTabs
+	// Navigation state.
 	sessionNeedsRefresh bool
 	myFilesNeedsRefresh bool
 
-	// Edit language buttons.
-	editLangBtns  [2]*widget.Button
-	editLangLabel *canvas.Text
+	// Language selector.
+	langBtn       *TipButton    // flag icon button, opens dropdown
+	editLangLabel *canvas.Text  // kept for desktop compat (unused in unified layout)
 
-	// Responsive containers (for language rebuild).
-	editorResponsive *ResponsiveContainer
+	// Unified layout.
+	editorShelf    *EditorShelf
+	editorMode     EditorMode
+	modeSwitchFunc func(EditorMode) // set by buildUnifiedRoot
+	modeLabel      *canvas.Text     // current mode name in top bar
+	moreBtn        *TipButton       // "more" menu button (tooltip needs lang refresh)
 
 	// Training mode.
 	trainingMode  *TrainingMode
@@ -119,7 +126,7 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	a.propsPanel = NewPropertiesPanel()
 	a.propsPanel.OnModified = func() {
 		a.court.Refresh()
-		a.fileToolbar.SetModified(a.editorState.Modified)
+		a.updateWindowTitle()
 	}
 
 	a.seqTimeline = NewSeqTimeline()
@@ -135,10 +142,33 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	a.seqTimeline.OnDeleteSeq = func(idx int) {
 		a.deleteSequence(idx)
 	}
+	a.seqTimeline.SetWindow(a.window)
+	a.seqTimeline.OnSeqRenamed = func(idx int, newLabel string) {
+		if a.exercise == nil || idx >= len(a.exercise.Sequences) {
+			return
+		}
+		if a.editLang != "" && a.editLang != "en" {
+			// Update the translated label.
+			tr := a.exercise.EnsureI18n(a.editLang)
+			for len(tr.Sequences) <= idx {
+				tr.Sequences = append(tr.Sequences, model.SequenceI18n{})
+			}
+			tr.Sequences[idx].Label = newLabel
+			a.exercise.SetI18n(a.editLang, tr)
+		} else {
+			// Update the primary label.
+			a.exercise.Sequences[idx].Label = newLabel
+		}
+		a.editorState.Modified = true
+		a.refreshEditor()
+	}
+	a.seqTimeline.OnSettings = func() {
+		a.showExerciseSettingsDialog()
+	}
 
 	a.instrPanel = NewInstructionsPanel()
 	a.instrPanel.OnModified = func() {
-		a.fileToolbar.SetModified(a.editorState.Modified)
+		a.updateWindowTitle()
 	}
 
 	a.animControls = NewAnimControls()
@@ -156,6 +186,7 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	}
 	a.sessionTab.OnSessionChanged = func() {
 		a.resolveSessionExercises()
+		a.updateWindowTitle()
 	}
 	a.sessionTab.OnStatus = func(msg string, level int) {
 		a.statusBar.SetStatus(msg, level)
@@ -169,135 +200,304 @@ func (a *App) BuildUI() fyne.CanvasObject {
 		a.handleMyFilesAction(ev)
 	}
 
-	// Build editor tab content.
-	editorContent := a.buildEditorTab()
+	// Init language buttons.
+	a.initLangButtons()
 
-	// Build tabs.
-	a.tabs = container.NewAppTabs(
-		container.NewTabItem(i18n.T("tab.exercise_editor"), editorContent),
-		container.NewTabItem(i18n.T("tab.my_files"), a.myFilesTab.Widget()),
-		container.NewTabItem(i18n.T("tab.session"), a.sessionTab.Widget()),
-	)
-	a.tabs.OnChanged = func(tab *container.TabItem) {
-		switch a.tabs.SelectedIndex() {
-		case 1: // My Files
-			a.myFilesNeedsRefresh = true
-			a.refreshMyFilesTab()
-		case 2: // Session
-			a.sessionNeedsRefresh = true
-			a.refreshSessionTab()
-		}
-	}
-
+	// Unified layout: mode selector replaces tabs on all platforms.
+	root := a.buildUnifiedRoot()
 	return container.NewStack(
-		container.NewBorder(nil, a.statusBar.Widget(), nil, nil, a.tabs),
+		container.NewBorder(nil, a.statusBar.Widget(), nil, nil, root),
 		a.tooltipLayer.Widget(),
 	)
 }
 
-func (a *App) buildEditorTab() fyne.CanvasObject {
-	// Edit language bar.
-	a.editLangBtns[0] = widget.NewButton("EN", func() {
-		if a.editLang != "en" {
-			a.editLang = "en"
-			a.switchLang("en")
-		}
-	})
-	a.editLangBtns[1] = widget.NewButton("FR", func() {
-		if a.editLang != "fr" {
-			a.editLang = "fr"
-			a.switchLang("fr")
-		}
-	})
-	a.updateLangBtnStyles()
-
-	a.editLangLabel = canvas.NewText(i18n.T("edit_lang.label")+":", color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
-	a.editLangLabel.TextSize = 11
-
-	a.editorResponsive = NewResponsiveContainer(a.buildEditorDesktop, a.buildEditorMobile)
-	return a.editorResponsive
-}
-
-func (a *App) buildEditorDesktop() fyne.CanvasObject {
-	langBar := container.NewHBox(a.editLangLabel, a.editLangBtns[0], a.editLangBtns[1], layout.NewSpacer())
-
-	// Top section: toolbar + lang bar + timeline.
-	topSection := container.NewVBox(
-		a.fileToolbar.Widget(),
-		langBar,
-		a.seqTimeline.Widget(),
-	)
-
-	// Bottom bar: anim controls.
-	bottomBar := a.animControls.Widget()
-
-	// Middle section: palette | court | properties — resizable splits.
-	leftSplit := container.NewHSplit(a.toolPalette.Widget(), a.court)
-	leftSplit.SetOffset(0.12) // ~12% for palette
-
-	middle := container.NewHSplit(leftSplit, a.propsPanel.Widget())
-	middle.SetOffset(0.78) // ~78% for palette+court, ~22% for properties
-
-	// Vertical split: court area (top) | instructions (bottom) — resizable.
-	mainArea := container.NewBorder(topSection, bottomBar, nil, nil, middle)
-	vSplit := container.NewVSplit(mainArea, a.instrPanel.Widget())
-	vSplit.SetOffset(0.82) // ~82% court, ~18% instructions
-
-	return vSplit
-}
-
-func (a *App) buildEditorMobile() fyne.CanvasObject {
-	langBar := container.NewHBox(a.editLangLabel, a.editLangBtns[0], a.editLangBtns[1], layout.NewSpacer())
-
-	// Court tab: toolbar + lang + court + zoom slider + timeline + anim controls.
-	zoomLabel := canvas.NewText("1.0x", color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
-	zoomLabel.TextSize = 14
-	zoomSlider := widget.NewSlider(1.0, 5.0)
-	zoomSlider.Step = 0.1
-	zoomSlider.Value = 1.0
-	zoomSlider.OnChanged = func(v float64) {
-		a.court.SetZoom(v)
-		zoomLabel.Text = fmt.Sprintf("%.1fx", v)
-		zoomLabel.Refresh()
+// initLangButtons creates the language toggle buttons (shared by desktop and mobile).
+func (a *App) initLangButtons() {
+	if a.langBtn != nil {
+		return // already initialized
 	}
-	zoomReset := widget.NewButton("1:1", func() {
-		a.court.ResetZoom()
-		zoomSlider.SetValue(1.0)
-		zoomLabel.Text = "1.0x"
-		zoomLabel.Refresh()
-	})
-	zoomReset.Importance = widget.LowImportance
-	zoomBar := container.NewBorder(nil, nil,
-		zoomLabel,
-		container.NewGridWrap(fyne.NewSize(48, 36), zoomReset),
-		zoomSlider,
-	)
-	courtTop := container.NewVBox(
-		a.fileToolbar.Widget(),
-		langBar,
-		zoomBar,
-	)
-	courtBottom := container.NewVBox(
-		a.seqTimeline.Widget(),
-		a.animControls.Widget(),
-	)
-	courtTab := container.NewBorder(courtTop, courtBottom, nil, nil, a.court)
+	// Determine initial flag.
+	currentFlag := icon.FlagEN
+	if a.editLang == "fr" {
+		currentFlag = icon.FlagFR
+	}
+	a.langBtn = NewTipButton(currentFlag, i18n.T("lang.tooltip"), nil)
+	a.langBtn.onTapped = func() {
+		enItem := fyne.NewMenuItem("🇬🇧 EN", func() {
+			if a.editLang != "en" {
+				a.editLang = "en"
+				a.langBtn.Icon = icon.FlagEN
+				a.langBtn.Refresh()
+				a.switchLang("en")
+			}
+		})
+		frItem := fyne.NewMenuItem("🇫🇷 FR", func() {
+			if a.editLang != "fr" {
+				a.editLang = "fr"
+				a.langBtn.Icon = icon.FlagFR
+				a.langBtn.Refresh()
+				a.switchLang("fr")
+			}
+		})
+		menu := widget.NewPopUpMenu(fyne.NewMenu("", enItem, frItem), a.window.Canvas())
+		pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(a.langBtn)
+		menu.ShowAtPosition(fyne.NewPos(pos.X, pos.Y+a.langBtn.Size().Height+4))
+	}
 
-	// Tools tab: tool palette (full screen, scrollable).
-	toolsTab := container.NewScroll(a.toolPalette.Widget())
+	a.editLangLabel = canvas.NewText("", color.Transparent)
+	a.editLangLabel.TextSize = 1
+}
 
-	// Props tab: properties + instructions (vertical split 60/40).
-	propsTab := container.NewVSplit(a.propsPanel.Widget(), a.instrPanel.Widget())
-	propsTab.SetOffset(0.6)
 
-	tabs := container.NewAppTabs(
-		container.NewTabItem(i18n.T("mobile.tab.court"), courtTab),
-		container.NewTabItem(i18n.T("mobile.tab.tools"), toolsTab),
-		container.NewTabItem(i18n.T("mobile.tab.props"), propsTab),
+// buildUnifiedRoot creates the complete mobile layout with mode selector
+// replacing the desktop AppTabs. All modes (Edition, Animation, Notes,
+// Session, My Files) are accessible from the dropdown.
+func (a *App) buildUnifiedRoot() fyne.CanvasObject {
+	a.editorMode = ModeEdition
+
+	// ── Mode label (displayed in top bar) ──
+	a.modeLabel = canvas.NewText(i18n.T("mode.edition"), color.White)
+	if isMobile {
+		a.modeLabel.TextSize = 20
+	} else {
+		a.modeLabel.TextSize = 12
+	}
+	a.modeLabel.TextStyle.Bold = true
+
+	// ── Build all mode content panes ──
+
+	// Edition mode: shelf + tab bar (bottom).
+	a.editorShelf = NewEditorShelf(&a.editorState, a.toolPalette)
+	a.editorShelf.OnToolChanged = func() { a.refreshEditor() }
+	editionBottom := a.editorShelf.Widget()
+
+	// Animation mode: playback controls only.
+	animBottom := a.animControls.Widget()
+
+	// Notes mode: full-page scrollable view (built dynamically on mode switch).
+	notesContent := container.NewStack()
+
+	// Training mode: full-page session picker (built dynamically on mode switch).
+	trainingContent := container.NewStack()
+
+	// Session mode: full session tab content (wrapped in Stack for rebuild).
+	sessionContent := container.NewStack(a.sessionTab.Widget())
+
+	// My Files mode: full my files tab content.
+	myFilesContent := a.myFilesTab.Widget()
+
+	// ── Content stack: court area (for editor modes) or full-page content ──
+	// Sequence bar (shown only in Edition/Animation modes).
+	seqBar := a.seqTimeline.Widget()
+
+	// Court area with seq bar above.
+	courtWithSeq := container.NewBorder(seqBar, nil, nil, nil, a.court)
+
+	// Bottom area: swapped between edition shelf and animation controls.
+	bottomStack := container.NewStack(editionBottom)
+	courtSection := container.NewBorder(nil, bottomStack, nil, nil, courtWithSeq)
+
+	// Full-page modes (no court).
+	notesContent.Hide()
+	trainingContent.Hide()
+	sessionContent.Hide()
+	myFilesContent.Hide()
+	mainStack := container.NewStack(courtSection, notesContent, trainingContent, sessionContent, myFilesContent)
+
+	// ── Mode switching logic ──
+	var switchMode func(EditorMode)
+	switchMode = func(mode EditorMode) {
+		a.editorMode = mode
+
+		// Hide everything.
+		courtSection.Hide()
+		notesContent.Hide()
+		trainingContent.Hide()
+		sessionContent.Hide()
+		myFilesContent.Hide()
+
+		switch mode {
+		case ModeEdition:
+			bottomStack.Objects = []fyne.CanvasObject{editionBottom}
+			bottomStack.Refresh()
+			courtSection.Show()
+			seqBar.Show()
+			a.modeLabel.Text = i18n.T("mode.edition")
+		case ModeAnimation:
+			bottomStack.Objects = []fyne.CanvasObject{animBottom}
+			bottomStack.Refresh()
+			courtSection.Show()
+			seqBar.Show()
+			a.modeLabel.Text = i18n.T("mode.animation")
+		case ModeNotes:
+			notesContent.Objects = []fyne.CanvasObject{a.buildNotesView()}
+			notesContent.Show()
+			a.modeLabel.Text = i18n.T("mode.notes")
+		case ModeSession:
+			// Rebuild the entire session tab widget (same pattern as Notes/Training).
+			a.sessionTab.Rebuild()
+			a.sessionTab.SetExercises(a.buildManagedExercises())
+			a.resolveSessionExercises()
+			sessionContent.Objects = []fyne.CanvasObject{a.sessionTab.Widget()}
+			sessionContent.Show()
+			a.modeLabel.Text = i18n.T("mode.session")
+		case ModeMyFiles:
+			myFilesContent.Show()
+			a.myFilesNeedsRefresh = true
+			a.refreshMyFilesTab()
+			a.modeLabel.Text = i18n.T("mode.myfiles")
+		case ModeTraining:
+			trainingContent.Objects = []fyne.CanvasObject{a.buildTrainingPicker()}
+			trainingContent.Show()
+			a.modeLabel.Text = i18n.T("mode.training")
+		}
+		a.modeLabel.Refresh()
+		mainStack.Refresh()
+		bottomStack.Refresh()
+		a.updateWindowTitle()
+	}
+
+	// ── Mode selector dropdown ──
+	// Mode icons mapping.
+	modeIcons := map[EditorMode]fyne.Resource{
+		ModeEdition:   fynetheme.DocumentCreateIcon(),
+		ModeAnimation: fynetheme.MediaPlayIcon(),
+		ModeNotes:     fynetheme.DocumentIcon(),
+		ModeSession:   fynetheme.FolderIcon(),
+		ModeMyFiles:   fynetheme.StorageIcon(),
+		ModeTraining:  fynetheme.MediaPlayIcon(),
+	}
+	modeIcon := canvas.NewImageFromResource(modeIcons[ModeEdition])
+	modeIcon.FillMode = canvas.ImageFillContain
+	modeIconSz := float32(18)
+	if isMobile {
+		modeIconSz = 32
+	}
+	modeIcon.SetMinSize(fyne.NewSize(modeIconSz, modeIconSz))
+	modeChevron := canvas.NewImageFromResource(fynetheme.MoveDownIcon())
+	modeChevron.FillMode = canvas.ImageFillContain
+	modeChevron.SetMinSize(fyne.NewSize(12, 12))
+
+	modeBg := canvas.NewRectangle(color.NRGBA{R: 0x22, G: 0x55, B: 0x44, A: 0xff})
+	modeBg.CornerRadius = 6
+
+	// Mode color mapping: edition domain = green, organization domain = blue.
+	modeColors := map[EditorMode]color.NRGBA{
+		ModeEdition:   {R: 0x22, G: 0x55, B: 0x44, A: 0xff}, // green — creation
+		ModeAnimation: {R: 0x22, G: 0x55, B: 0x44, A: 0xff}, // green — creation
+		ModeNotes:     {R: 0x22, G: 0x55, B: 0x44, A: 0xff}, // green — creation
+		ModeSession:   {R: 0x22, G: 0x44, B: 0x66, A: 0xff}, // blue — organization
+		ModeMyFiles:   {R: 0x22, G: 0x44, B: 0x66, A: 0xff}, // blue — organization
+		ModeTraining:  {R: 0x22, G: 0x44, B: 0x66, A: 0xff}, // blue — organization
+	}
+
+	// Update mode icon + color when switching.
+	origSwitchMode := switchMode
+	switchMode = func(mode EditorMode) {
+		origSwitchMode(mode)
+		if res, ok := modeIcons[mode]; ok {
+			modeIcon.Resource = res
+			modeIcon.Refresh()
+		}
+		if c, ok := modeColors[mode]; ok {
+			modeBg.FillColor = c
+			modeBg.Refresh()
+		}
+	}
+	a.modeSwitchFunc = switchMode
+
+	modeBtn := newTabTappable(
+		container.NewHBox(modeIcon, container.NewPadded(a.modeLabel), modeChevron),
+		func() {
+			editionItem := fyne.NewMenuItem(i18n.T("mode.edition"), func() { switchMode(ModeEdition) })
+			editionItem.Icon = fynetheme.DocumentCreateIcon()
+			animItem := fyne.NewMenuItem(i18n.T("mode.animation"), func() { switchMode(ModeAnimation) })
+			animItem.Icon = fynetheme.MediaPlayIcon()
+			notesItem := fyne.NewMenuItem(i18n.T("mode.notes"), func() { switchMode(ModeNotes) })
+			notesItem.Icon = fynetheme.DocumentIcon()
+			sessionItem := fyne.NewMenuItem(i18n.T("mode.session"), func() { switchMode(ModeSession) })
+			sessionItem.Icon = fynetheme.FolderIcon()
+			myFilesItem := fyne.NewMenuItem(i18n.T("mode.myfiles"), func() { switchMode(ModeMyFiles) })
+			myFilesItem.Icon = fynetheme.StorageIcon()
+			trainingItem := fyne.NewMenuItem(i18n.T("mode.training"), func() { switchMode(ModeTraining) })
+			trainingItem.Icon = fynetheme.MediaPlayIcon()
+
+			menu := widget.NewPopUpMenu(fyne.NewMenu("",
+				editionItem, animItem, notesItem,
+				fyne.NewMenuItemSeparator(),
+				sessionItem, trainingItem, myFilesItem,
+			), a.window.Canvas())
+			pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(a.modeLabel)
+			menu.ShowAtPosition(fyne.NewPos(pos.X, pos.Y+a.modeLabel.Size().Height+4))
+		},
 	)
-	tabs.SetTabLocation(container.TabLocationBottom)
+	modeSelector := container.NewStack(modeBg, container.NewPadded(modeBtn))
 
-	return tabs
+	// ── Menu "more" (⋯): new, open, recent, import, save as, about ──
+	a.moreBtn = NewTipButton(icon.DragHandle(), i18n.T("tooltip.more"), nil)
+	a.moreBtn.onTapped = func() {
+		var items []*fyne.MenuItem
+
+		aboutItem := fyne.NewMenuItem(i18n.T("tooltip.about"), func() { a.handleFileAction(FileActionAbout) })
+		aboutItem.Icon = fynetheme.InfoIcon()
+
+		switch a.editorMode {
+		case ModeEdition, ModeAnimation, ModeNotes:
+			// Exercise file operations.
+			newItem := fyne.NewMenuItem(i18n.T("tooltip.new"), func() { a.handleFileAction(FileActionNew) })
+			newItem.Icon = fynetheme.DocumentCreateIcon()
+			openItem := fyne.NewMenuItem(i18n.T("tooltip.open"), func() { a.handleFileAction(FileActionOpen) })
+			openItem.Icon = fynetheme.FolderOpenIcon()
+			recentItem := fyne.NewMenuItem(i18n.T("tooltip.recent"), func() { a.handleFileAction(FileActionRecent) })
+			recentItem.Icon = fynetheme.HistoryIcon()
+			importItem := fyne.NewMenuItem(i18n.T("tooltip.import"), func() { a.handleFileAction(FileActionImport) })
+			importItem.Icon = fynetheme.DownloadIcon()
+			saveAsItem := fyne.NewMenuItem(i18n.T("tooltip.save_as"), func() { a.handleFileAction(FileActionSaveAs) })
+			saveAsItem.Icon = fynetheme.DocumentSaveIcon()
+			items = append(items, newItem, openItem, recentItem, importItem,
+				fyne.NewMenuItemSeparator(), saveAsItem)
+
+		case ModeSession:
+			// Session file operations (labels are generic — context is given by the mode).
+			newItem := fyne.NewMenuItem(i18n.T("tooltip.new"), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionNew}) })
+			newItem.Icon = fynetheme.DocumentCreateIcon()
+			openItem := fyne.NewMenuItem(i18n.T("tooltip.open"), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionOpen}) })
+			openItem.Icon = fynetheme.FolderOpenIcon()
+			recentItem := fyne.NewMenuItem(i18n.T("tooltip.recent"), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionRecent}) })
+			recentItem.Icon = fynetheme.HistoryIcon()
+			saveItem := fyne.NewMenuItem(i18n.T("tooltip.save"), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionSave}) })
+			saveItem.Icon = fynetheme.DocumentSaveIcon()
+			pdfItem := fyne.NewMenuItem(i18n.T("tooltip.pdf"), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionGenerate}) })
+			pdfItem.Icon = fynetheme.DocumentPrintIcon()
+			items = append(items, newItem, openItem, recentItem,
+				fyne.NewMenuItemSeparator(), saveItem, pdfItem)
+		}
+
+		items = append(items, fyne.NewMenuItemSeparator(), aboutItem)
+
+		menu := widget.NewPopUpMenu(fyne.NewMenu("", items...), a.window.Canvas())
+		pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(a.moreBtn)
+		menu.ShowAtPosition(fyne.NewPos(pos.X, pos.Y+a.moreBtn.Size().Height+4))
+	}
+
+	// ── Top bar ──
+	topBarBg := canvas.NewRectangle(color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff})
+	topBarH := float32(48)
+	if isMobile {
+		topBarH = 72
+	}
+	topBarBg.SetMinSize(fyne.NewSize(0, topBarH))
+	topBarContent := container.NewHBox(
+		modeSelector,
+		layout.NewSpacer(),
+		a.fileToolbar.Btn(FileActionSave),
+		a.moreBtn,
+		a.langBtn,
+		a.fileToolbar.Btn(FileActionPreferences),
+	)
+	topBar := container.NewStack(topBarBg, container.NewPadded(topBarContent))
+
+	return container.NewBorder(topBar, nil, nil, nil, mainStack)
 }
 
 func (a *App) switchLang(lang string) {
@@ -317,19 +517,48 @@ func (a *App) switchLang(lang string) {
 	a.refreshEditor()
 	a.updateLangBtnStyles()
 	// Update tab labels to reflect new UI language.
-	if a.tabs != nil && len(a.tabs.Items) >= 3 {
-		a.tabs.Items[0].Text = i18n.T("tab.exercise_editor")
-		a.tabs.Items[1].Text = i18n.T("tab.my_files")
-		a.tabs.Items[2].Text = i18n.T("tab.session")
-		a.tabs.Refresh()
+	// Tab labels are no longer needed — mode selector handles navigation.
+	if a.editorShelf != nil {
+		a.editorShelf.RefreshLanguage()
 	}
-	a.editLangLabel.Text = i18n.T("edit_lang.label") + ":"
-	a.editLangLabel.Refresh()
+	if a.moreBtn != nil {
+		a.moreBtn.SetTooltip(i18n.T("tooltip.more"))
+	}
+	if a.langBtn != nil {
+		a.langBtn.SetTooltip(i18n.T("lang.tooltip"))
+	}
+	// Refresh mode label text for current mode.
+	if a.modeLabel != nil {
+		modeKeys := map[EditorMode]string{
+			ModeEdition:   "mode.edition",
+			ModeAnimation: "mode.animation",
+			ModeNotes:     "mode.notes",
+			ModeSession:   "mode.session",
+			ModeMyFiles:   "mode.myfiles",
+			ModeTraining:  "mode.training",
+		}
+		if key, ok := modeKeys[a.editorMode]; ok {
+			a.modeLabel.Text = i18n.T(key)
+			a.modeLabel.Refresh()
+		}
+	}
+	// Rebuild notes view if currently in Notes mode (instructions are language-dependent).
+	// Rebuild dynamic mode views if currently active.
+	if a.modeSwitchFunc != nil {
+		switch a.editorMode {
+		case ModeNotes:
+			a.modeSwitchFunc(ModeNotes)
+		case ModeTraining:
+			a.modeSwitchFunc(ModeTraining)
+		case ModeSession:
+			a.modeSwitchFunc(ModeSession)
+		case ModeMyFiles:
+			a.modeSwitchFunc(ModeMyFiles)
+		}
+	}
 	a.statusBar.SetStatus("", 0)
-	if a.editorResponsive != nil {
-		a.editorResponsive.ForceRebuild()
-	}
 	a.sessionNeedsRefresh = true
+	a.refreshSessionTab()
 	// Persist language choice.
 	if ys, ok := a.store.(*store.YAMLStore); ok {
 		settings, _ := ys.LoadSettings()
@@ -339,15 +568,15 @@ func (a *App) switchLang(lang string) {
 }
 
 func (a *App) updateLangBtnStyles() {
-	if a.editLang == "en" {
-		a.editLangBtns[0].Importance = widget.HighImportance
-		a.editLangBtns[1].Importance = widget.LowImportance
-	} else {
-		a.editLangBtns[0].Importance = widget.LowImportance
-		a.editLangBtns[1].Importance = widget.HighImportance
+	if a.langBtn == nil {
+		return
 	}
-	a.editLangBtns[0].Refresh()
-	a.editLangBtns[1].Refresh()
+	if a.editLang == "fr" {
+		a.langBtn.Icon = icon.FlagFR
+	} else {
+		a.langBtn.Icon = icon.FlagEN
+	}
+	a.langBtn.Refresh()
 }
 
 // refreshEditor updates all editor panels to reflect current state.
@@ -359,7 +588,7 @@ func (a *App) refreshEditor() {
 	a.seqTimeline.Update(a.exercise, seqIdx, a.editLang)
 	a.propsPanel.Update(a.exercise, &a.editorState, seqIdx, a.editLang)
 	a.instrPanel.Update(a.exercise, &a.editorState, seqIdx, a.editLang)
-	a.fileToolbar.SetModified(a.editorState.Modified)
+	a.updateWindowTitle()
 
 	if a.playback != nil {
 		a.animControls.SetPlayback(a.playback, len(a.exercise.Sequences))
@@ -404,6 +633,16 @@ func (a *App) showAbout() {
 }
 
 // CheckVersionAtStartup checks GitHub for a newer release in the background.
+// Cleanup stops all background goroutines (timers, animations) before app exit.
+func (a *App) Cleanup() {
+	if a.playback != nil {
+		a.playback.Stop()
+	}
+	if a.trainingMode != nil {
+		a.trainingMode.Stop()
+	}
+}
+
 func (a *App) CheckVersionAtStartup() {
 	version := a.appVersion()
 	if version == "dev" || version == "" {
@@ -418,11 +657,28 @@ func (a *App) CheckVersionAtStartup() {
 		if err != nil || info == nil {
 			return
 		}
-		if info.Tag != "" && info.Tag != "v"+version && info.Tag > "v"+version {
-			fyne.Do(func() {
-				showUpdateDialog(a.window, info.Tag, info.URL)
-			})
+		if info.Tag == "" || info.Tag == "v"+version || info.Tag <= "v"+version {
+			return
 		}
+		fyne.Do(func() {
+			tag := info.Tag
+			url := info.URL
+
+			// Always show update button in status bar.
+			label := fmt.Sprintf("%s %s", i18n.T("update.available"), tag)
+			a.statusBar.ShowUpdateAvailable(label, func() {
+				showUpdateDialog(a.window, tag, url)
+			})
+
+			// Only show the popup dialog if not already dismissed for this version.
+			if a.settings.DismissedVersion != tag {
+				showUpdateDialog(a.window, tag, url)
+				a.settings.DismissedVersion = tag
+				if ys, ok := a.store.(*store.YAMLStore); ok {
+					ys.SaveSettings(a.settings)
+				}
+			}
+		})
 	}()
 }
 
@@ -438,7 +694,6 @@ func (a *App) SetExercise(ex *model.Exercise) {
 	a.exercise = ex
 	a.court.SetExercise(ex)
 	a.editorState.Deselect()
-	a.editorState.ClearModified()
 	a.propsPanel.SyncFromExercise()
 	if ex != nil {
 		a.playback = anim.NewPlayback(ex)
@@ -446,37 +701,105 @@ func (a *App) SetExercise(ex *model.Exercise) {
 		a.playback = nil
 	}
 	a.court.SetPlayback(a.playback)
+	// Snapshot SHA before refreshEditor to avoid false mismatch during Update callbacks.
+	a.snapshotExerciseSHA()
 	a.refreshEditor()
-	a.updateWindowTitle()
+	// Re-snapshot after refreshEditor — Update() callbacks may have normalized fields.
+	a.snapshotExerciseSHA()
+	// Rebuild notes view if currently visible.
+	if a.editorMode == ModeNotes && a.modeSwitchFunc != nil {
+		a.modeSwitchFunc(ModeNotes)
+	}
 }
 
 func (a *App) updateWindowTitle() {
 	title := i18n.T("app.title")
-	if a.exercise != nil && a.exercise.Name != "" {
-		displayName := a.exercise.Localized(a.editLang).Name
-		fileName := store.ToKebab(a.exercise.Name) + ".yaml"
-		if displayName != a.exercise.Name && displayName != "" {
-			title += " — " + displayName + " [" + fileName + "]"
-		} else {
-			title += " — " + fileName
+	switch a.editorMode {
+	case ModeEdition, ModeAnimation, ModeNotes:
+		if a.exercise != nil && a.exercise.Name != "" {
+			displayName := a.exercise.Localized(a.editLang).Name
+			fileName := store.ToKebab(a.exercise.Name) + ".yaml"
+			if displayName != a.exercise.Name && displayName != "" {
+				title += " — " + displayName + " [" + fileName + "]"
+			} else {
+				title += " — " + fileName
+			}
+			if a.editorState.Modified {
+				title += " *"
+			}
+		}
+	case ModeSession:
+		if s := a.sessionTab.Session(); s != nil && s.Title != "" {
+			title += " — " + s.Title
+			if a.sessionTab.IsModified() {
+				title += " *"
+			}
 		}
 	}
 	a.window.SetTitle(title)
+	// Update save button indicator.
+	a.fileToolbar.SetModified(a.isCurrentModeModified())
+}
+
+// isCurrentModeModified returns whether the current mode has unsaved changes.
+func (a *App) isCurrentModeModified() bool {
+	switch a.editorMode {
+	case ModeEdition, ModeAnimation, ModeNotes:
+		return a.isExerciseModified()
+	case ModeSession:
+		return a.sessionTab.IsModified()
+	}
+	return false
+}
+
+// exerciseChecksum computes a short hash of the exercise serialized as YAML.
+func exerciseChecksum(ex *model.Exercise) string {
+	if ex == nil {
+		return ""
+	}
+	data, err := yaml.Marshal(ex)
+	if err != nil {
+		return ""
+	}
+	h := sha256.Sum256(data)
+	return fmt.Sprintf("%x", h[:8])
+}
+
+// snapshotExerciseSHA stores the current exercise checksum (call after load/save/new).
+func (a *App) snapshotExerciseSHA() {
+	a.exerciseSHA = exerciseChecksum(a.exercise)
+	if a.exercise != nil {
+		data, _ := yaml.Marshal(a.exercise)
+		os.WriteFile("/tmp/courtdraw_snapshot.yaml", data, 0644)
+	}
+}
+
+// isExerciseModified returns true if the exercise has changed since last snapshot.
+// TODO: SHA-based detection disabled — needs fix for false positives from programmatic SetText.
+func (a *App) isExerciseModified() bool {
+	return false
 }
 
 // NewExercise creates a blank exercise.
 func (a *App) NewExercise() {
+	// Always store English as the primary language, with translations in i18n.
+	enName := i18n.TLang("en", "default.exercise_name")
+	enSeqLabel := i18n.TLang("en", "default.sequence_label")
 	ex := &model.Exercise{
-		Name:          i18n.T("default.exercise_name"),
+		Name:          enName,
 		CourtType:     model.HalfCourt,
 		CourtStandard: model.FIBA,
 		Sequences: []model.Sequence{
-			{Label: i18n.T("default.sequence_label")},
+			{Label: enSeqLabel},
 		},
 	}
+	// Add translation for non-English languages.
 	if a.editLang != "" && a.editLang != "en" {
 		tr := ex.EnsureI18n(a.editLang)
-		tr.Name = ex.Name
+		tr.Name = i18n.TLang(a.editLang, "default.exercise_name")
+		tr.Sequences = []model.SequenceI18n{
+			{Label: i18n.TLang(a.editLang, "default.sequence_label")},
+		}
 		ex.SetI18n(a.editLang, tr)
 	}
 	a.SetExercise(ex)
@@ -597,9 +920,8 @@ func (a *App) saveExercise() {
 		a.statusBar.SetStatus(i18n.T("status.save_error"), 1)
 		return
 	}
-	a.editorState.ClearModified()
+	a.snapshotExerciseSHA()
 	a.recordRecentFile(store.ToKebab(a.exercise.Name))
-	a.fileToolbar.SetModified(false)
 	a.sessionNeedsRefresh = true
 	a.refreshSessionTab()
 	fileName := store.ToKebab(a.exercise.Name) + ".yaml"
@@ -752,6 +1074,214 @@ func (a *App) recordRecentFile(name string) {
 	}
 }
 
+// buildNotesView creates the full-page notes/instructions view.
+// Each sequence is shown with a small court diagram and a text entry for instructions.
+func (a *App) buildNotesView() fyne.CanvasObject {
+	if a.exercise == nil {
+		placeholder := canvas.NewText(i18n.T("mode.notes.placeholder"), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
+		placeholder.Alignment = fyne.TextAlignCenter
+		return container.NewCenter(placeholder)
+	}
+
+	vbox := container.NewVBox()
+
+	for i, seq := range a.exercise.Sequences {
+		seqIdx := i
+
+		// Sequence label.
+		label := seq.Label
+		if a.editLang != "" && a.editLang != "en" && a.exercise.I18n != nil {
+			if tr, ok := a.exercise.I18n[a.editLang]; ok && i < len(tr.Sequences) && tr.Sequences[i].Label != "" {
+				label = tr.Sequences[i].Label
+			}
+		}
+		if label == "" {
+			label = i18n.Tf("seq.format", i+1)
+		}
+		seqLabel := canvas.NewText(label, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+		seqLabel.TextSize = 16
+		seqLabel.TextStyle.Bold = true
+
+		// Small court diagram (static render of this sequence).
+		courtPreview := fynecourt.NewCourtWidget()
+		courtPreview.SetExercise(a.exercise)
+		courtPreview.SetSequence(seqIdx)
+
+		// Instructions text entry — resolve current instructions for the edit language.
+		instrText := strings.Join(seq.Instructions, "\n")
+		if a.editLang != "" && a.editLang != "en" && a.exercise.I18n != nil {
+			if tr, ok := a.exercise.I18n[a.editLang]; ok && i < len(tr.Sequences) && len(tr.Sequences[i].Instructions) > 0 {
+				instrText = strings.Join(tr.Sequences[i].Instructions, "\n")
+			}
+		}
+
+		instrEntry := widget.NewMultiLineEntry()
+		instrEntry.Wrapping = fyne.TextWrapWord
+		instrEntry.SetPlaceHolder(i18n.T("instr.placeholder"))
+		instrEntry.SetText(instrText)
+		instrEntry.SetMinRowsVisible(3)
+		instrEntry.OnChanged = func(text string) {
+			lines := splitInstructions(text)
+			if a.editLang != "" && a.editLang != "en" {
+				tr := a.exercise.EnsureI18n(a.editLang)
+				for len(tr.Sequences) <= seqIdx {
+					tr.Sequences = append(tr.Sequences, model.SequenceI18n{})
+				}
+				tr.Sequences[seqIdx].Instructions = lines
+				a.exercise.SetI18n(a.editLang, tr)
+			} else {
+				a.exercise.Sequences[seqIdx].Instructions = lines
+			}
+			a.editorState.Modified = true
+		}
+
+		// Layout: label on top, then court + instructions side by side.
+		seqRow := container.NewBorder(nil, nil, courtPreview, nil, instrEntry)
+		sep := widget.NewSeparator()
+		vbox.Add(container.NewVBox(container.NewPadded(seqLabel), container.NewPadded(seqRow), sep))
+	}
+
+	return container.NewVScroll(vbox)
+}
+
+func splitInstructions(text string) []string {
+	if text == "" {
+		return nil
+	}
+	lines := strings.Split(text, "\n")
+	var result []string
+	for _, l := range lines {
+		if l != "" {
+			result = append(result, l)
+		}
+	}
+	return result
+}
+
+func (a *App) showExerciseSettingsDialog() {
+	if a.exercise == nil {
+		return
+	}
+	ex := a.exercise
+
+	// Resolve translated name/description if editing in non-English.
+	name := ex.Name
+	desc := ex.Description
+	if a.editLang != "" && a.editLang != "en" && ex.I18n != nil {
+		if tr, ok := ex.I18n[a.editLang]; ok {
+			if tr.Name != "" {
+				name = tr.Name
+			}
+			if tr.Description != "" {
+				desc = tr.Description
+			}
+		}
+	}
+
+	nameEntry := widget.NewEntry()
+	nameEntry.SetText(name)
+
+	descEntry := widget.NewMultiLineEntry()
+	descEntry.SetText(desc)
+	descEntry.SetMinRowsVisible(2)
+
+	courtStdOptions := []string{"FIBA", "NBA"}
+	courtStdSelect := widget.NewSelect(courtStdOptions, nil)
+	if ex.CourtStandard == model.NBA {
+		courtStdSelect.SetSelected("NBA")
+	} else {
+		courtStdSelect.SetSelected("FIBA")
+	}
+
+	courtTypeOptions := []string{i18n.T("court.half"), i18n.T("court.full")}
+	courtTypeSelect := widget.NewSelect(courtTypeOptions, nil)
+	if ex.CourtType == model.FullCourt {
+		courtTypeSelect.SetSelected(courtTypeOptions[1])
+	} else {
+		courtTypeSelect.SetSelected(courtTypeOptions[0])
+	}
+
+	durationEntry := widget.NewEntry()
+	durationEntry.SetText(ex.Duration)
+
+	tagsEntry := widget.NewEntry()
+	tagsEntry.SetPlaceHolder("tag1, tag2, ...")
+	if len(ex.Tags) > 0 {
+		tagsEntry.SetText(joinTags(ex.Tags))
+	}
+
+	items := []*widget.FormItem{
+		widget.NewFormItem(i18n.T("props.name"), nameEntry),
+		widget.NewFormItem(i18n.T("props.description"), descEntry),
+		widget.NewFormItem(i18n.T("props.court_standard"), courtStdSelect),
+		widget.NewFormItem(i18n.T("props.court_type"), courtTypeSelect),
+		widget.NewFormItem(i18n.T("props.duration"), durationEntry),
+		widget.NewFormItem(i18n.T("props.tags"), tagsEntry),
+	}
+
+	dlg := dialog.NewForm(i18n.T("settings.exercise_title"), i18n.T("seq.rename_ok"), i18n.T("seq.rename_cancel"),
+		items,
+		func(ok bool) {
+			if !ok {
+				return
+			}
+			if a.editLang != "" && a.editLang != "en" {
+				tr := ex.EnsureI18n(a.editLang)
+				tr.Name = nameEntry.Text
+				tr.Description = descEntry.Text
+				ex.SetI18n(a.editLang, tr)
+			} else {
+				ex.Name = nameEntry.Text
+				ex.Description = descEntry.Text
+			}
+			if courtStdSelect.Selected == "NBA" {
+				ex.CourtStandard = model.NBA
+			} else {
+				ex.CourtStandard = model.FIBA
+			}
+			if courtTypeSelect.Selected == courtTypeOptions[1] {
+				ex.CourtType = model.FullCourt
+			} else {
+				ex.CourtType = model.HalfCourt
+			}
+			ex.Duration = strings.TrimSpace(durationEntry.Text)
+			ex.Tags = splitTags(tagsEntry.Text)
+			a.editorState.Modified = true
+			a.refreshEditor()
+			a.court.Refresh()
+		},
+		a.window,
+	)
+	dlg.Resize(fyne.NewSize(400, 400))
+	dlg.Show()
+}
+
+func joinTags(tags []string) string {
+	result := ""
+	for i, t := range tags {
+		if i > 0 {
+			result += ", "
+		}
+		result += t
+	}
+	return result
+}
+
+func splitTags(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	var tags []string
+	for _, p := range parts {
+		t := strings.TrimSpace(p)
+		if t != "" {
+			tags = append(tags, t)
+		}
+	}
+	return tags
+}
+
 func (a *App) showRecentFiles() {
 	ys, ok := a.store.(*store.YAMLStore)
 	if !ok {
@@ -817,7 +1347,9 @@ func (a *App) handleSessionAction(ev SessionTabEvent) {
 		a.syncLibrary()
 	case SessionTabActionOpenExercise:
 		a.openExercise(ev.Name)
-		a.tabs.SelectIndex(0)
+		if a.modeSwitchFunc != nil {
+			a.modeSwitchFunc(ModeEdition)
+		}
 	case SessionTabActionUpdate:
 		a.updateExerciseFromRemote(ev.Name)
 	case SessionTabActionContribute:
@@ -880,6 +1412,7 @@ func (a *App) showOpenSessionDialog() {
 	list.OnSelected = func(id widget.ListItemID) {
 		if id < len(items) {
 			a.openSession(items[id])
+			a.sessionTab.ShowSession()
 			d.Hide()
 		}
 	}
@@ -910,6 +1443,7 @@ func (a *App) showRecentSessions() {
 	list.OnSelected = func(id widget.ListItemID) {
 		if id < len(items) {
 			a.openSession(items[id])
+			a.sessionTab.ShowSession()
 			d.Hide()
 		}
 	}
@@ -1029,12 +1563,24 @@ func (a *App) handleMyFilesAction(ev MyFilesEvent) {
 	switch ev.Action {
 	case MyFilesActionOpenSession:
 		a.openSession(ev.Name)
-		a.tabs.SelectIndex(2)
+		if a.modeSwitchFunc != nil {
+			a.modeSwitchFunc(ModeSession)
+		}
+		a.sessionTab.ShowSession()
 	case MyFilesActionDeleteSession:
 		a.deleteSessionWithOrphanCleanup(ev.Name)
+	case MyFilesActionShareSession:
+		a.openSession(ev.Name)
+		a.shareSession()
+	case MyFilesActionImportBundle:
+		a.showImportBundleDialog()
 	case MyFilesActionOpenExercise:
 		a.openExercise(ev.Name)
-		a.tabs.SelectIndex(0)
+		if a.modeSwitchFunc != nil {
+			a.modeSwitchFunc(ModeEdition)
+		}
+	case MyFilesActionContributeExercise:
+		a.contributeExercise(ev.Name)
 	case MyFilesActionDeleteExercise:
 		dialog.ShowConfirm(
 			i18n.T("myfiles.delete_exercise"),
@@ -1252,6 +1798,99 @@ func (a *App) contributeExercise(name string) {
 
 // --- Training mode ---
 
+// buildTrainingPicker creates a full-page session list for picking a session to train.
+func (a *App) buildTrainingPicker() fyne.CanvasObject {
+	ys, ok := a.store.(*store.YAMLStore)
+	if ok {
+		// Ensure the session index is fresh (picks up newly saved sessions).
+		ys.RebuildSessionIndex()
+	}
+	if !ok {
+		placeholder := canvas.NewText(i18n.T("training.no_sessions"), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
+		placeholder.Alignment = fyne.TextAlignCenter
+		return container.NewCenter(placeholder)
+	}
+	sessions, _ := ys.ListSessions()
+	if len(sessions) == 0 {
+		placeholder := canvas.NewText(i18n.T("training.no_sessions"), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
+		placeholder.Alignment = fyne.TextAlignCenter
+		return container.NewCenter(placeholder)
+	}
+
+	type sessionInfo struct {
+		file  string
+		title string
+		date  string
+	}
+	var infos []sessionInfo
+	for _, name := range sessions {
+		s, err := ys.LoadSession(name)
+		title := name
+		date := ""
+		if err == nil {
+			if s.Title != "" {
+				title = s.Title
+			}
+			date = s.Date
+		}
+		infos = append(infos, sessionInfo{file: name, title: title, date: date})
+	}
+
+	list := widget.NewList(
+		func() int { return len(infos) },
+		func() fyne.CanvasObject {
+			title := widget.NewLabel("")
+			title.TextStyle.Bold = true
+			date := widget.NewLabel("")
+			date.Importance = widget.LowImportance
+			return container.NewHBox(title, layout.NewSpacer(), date)
+		},
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			row := obj.(*fyne.Container)
+			row.Objects[0].(*widget.Label).SetText(infos[id].title)
+			row.Objects[2].(*widget.Label).SetText(infos[id].date)
+		},
+	)
+	list.OnSelected = func(id widget.ListItemID) {
+		s, err := ys.LoadSession(infos[id].file)
+		if err != nil {
+			a.statusBar.SetStatus(fmt.Sprintf("Error: %v", err), 1)
+			return
+		}
+		a.enterTrainingModeWithSession(s)
+	}
+
+	header := canvas.NewText(i18n.T("training.pick_session"), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	header.TextSize = 18
+	header.TextStyle.Bold = true
+
+	return container.NewBorder(container.NewPadded(header), nil, nil, nil, list)
+}
+
+// enterTrainingModeWithSession starts training with the given session.
+func (a *App) enterTrainingModeWithSession(s *model.Session) {
+	if s == nil || len(s.Exercises) == 0 {
+		return
+	}
+	lang := string(i18n.CurrentLang())
+	exercises := make([]*model.Exercise, 0, len(s.Exercises))
+	for _, entry := range s.Exercises {
+		ex, err := a.loadExerciseAny(entry.Exercise)
+		if err != nil {
+			continue
+		}
+		exercises = append(exercises, ex.Localized(lang))
+	}
+	if len(exercises) == 0 {
+		return
+	}
+	a.normalContent = a.window.Content()
+	a.trainingMode = NewTrainingMode(a.window, s, exercises, func() {
+		a.exitTrainingMode()
+	})
+	a.window.SetContent(a.trainingMode.Widget())
+}
+
 func (a *App) enterTrainingMode() {
 	s := a.sessionTab.Session()
 	if s == nil || len(s.Exercises) == 0 {
@@ -1292,6 +1931,10 @@ func (a *App) exitTrainingMode() {
 		a.window.SetContent(a.normalContent)
 		a.normalContent = nil
 	}
+	// Return to training picker (not the previous mode).
+	if a.modeSwitchFunc != nil {
+		a.modeSwitchFunc(ModeTraining)
+	}
 }
 
 // --- Build managed exercises list ---
@@ -1326,6 +1969,14 @@ func (a *App) buildManagedExercises() []ManagedExercise {
 		sortedNames = append(sortedNames, name)
 	}
 	sort.Strings(sortedNames)
+
+	// Build modtime map from index entries.
+	modTimes := make(map[string]time.Time)
+	if ys, ok := a.store.(*store.YAMLStore); ok {
+		for _, entry := range ys.ExerciseIndexEntries() {
+			modTimes[entry.File] = entry.Modified
+		}
+	}
 
 	lang := string(i18n.CurrentLang())
 	items := make([]ManagedExercise, 0, len(sortedNames))
@@ -1391,6 +2042,7 @@ func (a *App) buildManagedExercises() []ManagedExercise {
 			Duration:          duration,
 			Tags:              tags,
 			RemoteTags:        remoteTags,
+			ModTime:           modTimes[name],
 		})
 	}
 	return items

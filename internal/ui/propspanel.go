@@ -18,8 +18,9 @@ import (
 
 // PropertiesPanel is the right sidebar showing element properties and exercise metadata.
 type PropertiesPanel struct {
-	box     *fyne.Container
-	content *fyne.Container
+	box      *fyne.Container
+	content  *fyne.Container
+	updating bool // true during programmatic Update — suppresses OnChanged side effects
 
 	// Metadata editors.
 	nameEntry        *widget.Entry
@@ -222,6 +223,8 @@ func (pp *PropertiesPanel) Widget() fyne.CanvasObject {
 
 // Update syncs the panel with the current exercise/selection state.
 func (pp *PropertiesPanel) Update(exercise *model.Exercise, state *editor.EditorState, seqIndex int, editLang string) {
+	pp.updating = true
+	defer func() { pp.updating = false }()
 	pp.exercise = exercise
 	pp.state = state
 	pp.seqIndex = seqIndex
@@ -463,7 +466,7 @@ func (pp *PropertiesPanel) refreshIntensity() {
 // --- Event handlers ---
 
 func (pp *PropertiesPanel) onNameChanged(s string) {
-	if pp.exercise == nil {
+	if pp.exercise == nil || pp.updating {
 		return
 	}
 	if pp.editLang == "en" {
@@ -477,7 +480,7 @@ func (pp *PropertiesPanel) onNameChanged(s string) {
 }
 
 func (pp *PropertiesPanel) onDescriptionChanged(s string) {
-	if pp.exercise == nil {
+	if pp.exercise == nil || pp.updating {
 		return
 	}
 	if pp.editLang == "en" {
@@ -491,7 +494,7 @@ func (pp *PropertiesPanel) onDescriptionChanged(s string) {
 }
 
 func (pp *PropertiesPanel) onDurationChanged(s string) {
-	if pp.exercise == nil {
+	if pp.exercise == nil || pp.updating {
 		return
 	}
 	pp.exercise.Duration = s
@@ -499,7 +502,7 @@ func (pp *PropertiesPanel) onDurationChanged(s string) {
 }
 
 func (pp *PropertiesPanel) onTagsChanged(s string) {
-	if pp.exercise == nil {
+	if pp.exercise == nil || pp.updating {
 		return
 	}
 	parts := strings.Split(s, ",")
@@ -722,6 +725,9 @@ func (pp *PropertiesPanel) syncAgeGroupSelect(ex *model.Exercise) {
 }
 
 func (pp *PropertiesPanel) markModified() {
+	if pp.updating {
+		return
+	}
 	if pp.state != nil {
 		pp.state.MarkModified()
 	}
@@ -825,14 +831,30 @@ func (pp *PropertiesPanel) makeSection(title string) fyne.CanvasObject {
 
 func (pp *PropertiesPanel) makeField(label string, w fyne.CanvasObject) fyne.CanvasObject {
 	lbl := canvas.NewText(label, color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
+	if isMobile {
+		// Mobile: larger label + min-height row for bigger touch targets.
+		lbl.TextSize = 13
+		rowBg := canvas.NewRectangle(color.NRGBA{R: 0x30, G: 0x30, B: 0x30, A: 0xff})
+		rowBg.SetMinSize(fyne.NewSize(0, 56))
+		inner := container.NewVBox(lbl, w)
+		return container.NewStack(rowBg, container.NewPadded(inner))
+	}
 	lbl.TextSize = 10
 	return container.NewVBox(container.NewPadded(lbl), container.NewPadded(w))
 }
 
 func (pp *PropertiesPanel) makeReadonly(label, value string) fyne.CanvasObject {
 	lbl := canvas.NewText(label, color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
-	lbl.TextSize = 10
 	val := canvas.NewText(value, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	if isMobile {
+		lbl.TextSize = 13
+		val.TextSize = 15
+		rowBg := canvas.NewRectangle(color.NRGBA{R: 0x30, G: 0x30, B: 0x30, A: 0xff})
+		rowBg.SetMinSize(fyne.NewSize(0, 56))
+		inner := container.NewBorder(nil, nil, container.NewPadded(lbl), nil, container.NewPadded(val))
+		return container.NewStack(rowBg, inner)
+	}
+	lbl.TextSize = 10
 	val.TextSize = 12
 	return container.NewVBox(container.NewPadded(lbl), container.NewPadded(val))
 }

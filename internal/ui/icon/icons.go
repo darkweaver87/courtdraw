@@ -71,4 +71,11 @@ var (
 	AccChair  = LoadPngResource("chair")
 
 	ToolSelect = LoadPngResource("select")
+
+	FlagEN = LoadPngResource("flag-en")
+	FlagFR = LoadPngResource("flag-fr")
+
+	ChevronDown  = LoadPngResource("chevron-down")
+	ChevronUp    = LoadPngResource("chevron-up")
+	ChevronRight = LoadPngResource("chevron-right")
 )

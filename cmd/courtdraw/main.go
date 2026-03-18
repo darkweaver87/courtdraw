@@ -50,6 +50,12 @@ func main() {
 	application := ui.NewApp(st, settings, lib, w)
 	w.SetContent(application.BuildUI())
 
+	// Stop background goroutines on close to prevent panic on closed channel.
+	w.SetCloseIntercept(func() {
+		application.Cleanup()
+		a.Quit()
+	})
+
 	// Initialize exercise and session after UI is built (court widget exists).
 	application.NewExercise()
 	application.NewSession()

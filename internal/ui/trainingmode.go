@@ -615,14 +615,13 @@ func (tm *TrainingMode) buildMobileLayout() fyne.CanvasObject {
 	// Tools tab.
 	toolsTab := tm.coachTools.Widget()
 
-	tabs := container.NewAppTabs(
-		container.NewTabItem(i18n.T("mobile.training.court"), courtTab),
-		container.NewTabItem(i18n.T("mobile.training.instructions"), instrTab),
-		container.NewTabItem(i18n.T("mobile.training.tools"), toolsTab),
+	mtb := NewTabBar(
+		TabItem{Icon: icon.Play(), Label: i18n.T("mobile.training.court"), Content: courtTab},
+		TabItem{Icon: icon.Info(), Label: i18n.T("mobile.training.instructions"), Content: instrTab},
+		TabItem{Icon: icon.Timer(), Label: i18n.T("mobile.training.tools"), Content: toolsTab},
 	)
-	tabs.SetTabLocation(container.TabLocationBottom)
 
-	return tabs
+	return mtb.Widget()
 }
 
 func max(a, b int) int {

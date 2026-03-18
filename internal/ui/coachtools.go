@@ -7,9 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"runtime"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	fynetheme "fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/i18n"
@@ -67,18 +70,34 @@ func NewCountdownTimer() *CountdownTimer {
 	ct.resetBtn.Importance = widget.LowImportance
 
 	// +/- buttons to adjust duration.
-	subMin := widget.NewButton("-1m", func() { ct.adjustDuration(-60 * time.Second) })
-	subMin.Importance = widget.LowImportance
-	sub10 := widget.NewButton("-10s", func() { ct.adjustDuration(-10 * time.Second) })
-	sub10.Importance = widget.LowImportance
-	add10 := widget.NewButton("+10s", func() { ct.adjustDuration(10 * time.Second) })
-	add10.Importance = widget.LowImportance
-	addMin := widget.NewButton("+1m", func() { ct.adjustDuration(60 * time.Second) })
-	addMin.Importance = widget.LowImportance
+	var adjustRow fyne.CanvasObject
+	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+		// Mobile: 2 large icon-only buttons (−/+), step = 1 minute.
+		subBtn := widget.NewButtonWithIcon("", fynetheme.ContentRemoveIcon(), func() {
+			ct.adjustDuration(-60 * time.Second)
+		})
+		subBtn.Importance = widget.MediumImportance
+		addBtn := widget.NewButtonWithIcon("", fynetheme.ContentAddIcon(), func() {
+			ct.adjustDuration(60 * time.Second)
+		})
+		addBtn.Importance = widget.MediumImportance
+		adjustRow = container.NewGridWithColumns(2, subBtn, addBtn)
+	} else {
+		// Desktop: 4 text buttons with fine control.
+		subMin := widget.NewButton("-1m", func() { ct.adjustDuration(-60 * time.Second) })
+		subMin.Importance = widget.LowImportance
+		sub10 := widget.NewButton("-10s", func() { ct.adjustDuration(-10 * time.Second) })
+		sub10.Importance = widget.LowImportance
+		add10 := widget.NewButton("+10s", func() { ct.adjustDuration(10 * time.Second) })
+		add10.Importance = widget.LowImportance
+		addMin := widget.NewButton("+1m", func() { ct.adjustDuration(60 * time.Second) })
+		addMin.Importance = widget.LowImportance
+		adjustRow = container.NewGridWithColumns(4, subMin, sub10, add10, addMin)
+	}
 
 	ct.content = container.NewVBox(
 		ct.display,
-		container.NewGridWithColumns(4, subMin, sub10, add10, addMin),
+		adjustRow,
 	)
 	ct.controls = container.NewGridWithColumns(2, ct.startBtn, ct.resetBtn)
 

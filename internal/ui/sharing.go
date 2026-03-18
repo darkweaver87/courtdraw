@@ -445,9 +445,11 @@ func (a *App) importFromLink(link string) {
 }
 
 func (a *App) importSessionAndExercises(s *model.Session, exercises map[string]*model.Exercise) {
-	for _, ex := range exercises {
-		if err := a.store.SaveExercise(ex); err != nil {
-			log.Printf("import: save exercise %s: %v", ex.Name, err)
+	for name, ex := range exercises {
+		// Save using the bundle filename (matches session references),
+		// not ToKebab(ex.Name) which may differ if the name was translated.
+		if err := a.store.SaveExerciseAs(name, ex); err != nil {
+			log.Printf("import: save exercise %s: %v", name, err)
 		}
 	}
 
@@ -458,6 +460,9 @@ func (a *App) importSessionAndExercises(s *model.Session, exercises map[string]*
 
 	a.sessionTab.SetSession(s)
 	a.sessionTab.SetExercises(a.buildManagedExercises())
+	a.sessionNeedsRefresh = true
+	a.myFilesNeedsRefresh = true
+	a.refreshMyFilesTab()
 	a.statusBar.SetStatus(fmt.Sprintf(i18n.T("import.success"), s.Title), 2)
 }
 
