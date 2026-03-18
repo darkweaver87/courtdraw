@@ -222,7 +222,7 @@ func (a *App) initLangButtons() {
 	if a.editLang == "fr" {
 		currentFlag = icon.FlagFR
 	}
-	a.langBtn = NewTipButton(currentFlag, i18n.T("lang.tooltip"), nil)
+	a.langBtn = NewTipButton(currentFlag, i18n.T(i18n.KeyLangTooltip), nil)
 	a.langBtn.onTapped = func() {
 		enItem := fyne.NewMenuItem("🇬🇧 EN", func() {
 			if a.editLang != "en" {
@@ -257,7 +257,7 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	a.editorMode = ModeEdition
 
 	// ── Mode label (displayed in top bar) ──
-	a.modeLabel = canvas.NewText(i18n.T("mode.edition"), color.White)
+	a.modeLabel = canvas.NewText(i18n.T(i18n.KeyModeEdition), color.White)
 	if isMobile {
 		a.modeLabel.TextSize = 20
 	} else {
@@ -323,17 +323,17 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 			bottomStack.Refresh()
 			courtSection.Show()
 			seqBar.Show()
-			a.modeLabel.Text = i18n.T("mode.edition")
+			a.modeLabel.Text = i18n.T(i18n.KeyModeEdition)
 		case ModeAnimation:
 			bottomStack.Objects = []fyne.CanvasObject{animBottom}
 			bottomStack.Refresh()
 			courtSection.Show()
 			seqBar.Show()
-			a.modeLabel.Text = i18n.T("mode.animation")
+			a.modeLabel.Text = i18n.T(i18n.KeyModeAnimation)
 		case ModeNotes:
 			notesContent.Objects = []fyne.CanvasObject{a.buildNotesView()}
 			notesContent.Show()
-			a.modeLabel.Text = i18n.T("mode.notes")
+			a.modeLabel.Text = i18n.T(i18n.KeyModeNotes)
 		case ModeSession:
 			// Rebuild the entire session tab widget (same pattern as Notes/Training).
 			a.sessionTab.Rebuild()
@@ -341,16 +341,16 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 			a.resolveSessionExercises()
 			sessionContent.Objects = []fyne.CanvasObject{a.sessionTab.Widget()}
 			sessionContent.Show()
-			a.modeLabel.Text = i18n.T("mode.session")
+			a.modeLabel.Text = i18n.T(i18n.KeyModeSession)
 		case ModeMyFiles:
 			myFilesContent.Show()
 			a.myFilesNeedsRefresh = true
 			a.refreshMyFilesTab()
-			a.modeLabel.Text = i18n.T("mode.myfiles")
+			a.modeLabel.Text = i18n.T(i18n.KeyModeMyfiles)
 		case ModeTraining:
 			trainingContent.Objects = []fyne.CanvasObject{a.buildTrainingPicker()}
 			trainingContent.Show()
-			a.modeLabel.Text = i18n.T("mode.training")
+			a.modeLabel.Text = i18n.T(i18n.KeyModeTraining)
 		}
 		a.modeLabel.Refresh()
 		mainStack.Refresh()
@@ -410,17 +410,17 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	modeBtn := newTabTappable(
 		container.NewHBox(modeIcon, container.NewPadded(a.modeLabel), modeChevron),
 		func() {
-			editionItem := fyne.NewMenuItem(i18n.T("mode.edition"), func() { switchMode(ModeEdition) })
+			editionItem := fyne.NewMenuItem(i18n.T(i18n.KeyModeEdition), func() { switchMode(ModeEdition) })
 			editionItem.Icon = fynetheme.DocumentCreateIcon()
-			animItem := fyne.NewMenuItem(i18n.T("mode.animation"), func() { switchMode(ModeAnimation) })
+			animItem := fyne.NewMenuItem(i18n.T(i18n.KeyModeAnimation), func() { switchMode(ModeAnimation) })
 			animItem.Icon = fynetheme.MediaPlayIcon()
-			notesItem := fyne.NewMenuItem(i18n.T("mode.notes"), func() { switchMode(ModeNotes) })
+			notesItem := fyne.NewMenuItem(i18n.T(i18n.KeyModeNotes), func() { switchMode(ModeNotes) })
 			notesItem.Icon = fynetheme.DocumentIcon()
-			sessionItem := fyne.NewMenuItem(i18n.T("mode.session"), func() { switchMode(ModeSession) })
+			sessionItem := fyne.NewMenuItem(i18n.T(i18n.KeyModeSession), func() { switchMode(ModeSession) })
 			sessionItem.Icon = fynetheme.FolderIcon()
-			myFilesItem := fyne.NewMenuItem(i18n.T("mode.myfiles"), func() { switchMode(ModeMyFiles) })
+			myFilesItem := fyne.NewMenuItem(i18n.T(i18n.KeyModeMyfiles), func() { switchMode(ModeMyFiles) })
 			myFilesItem.Icon = fynetheme.StorageIcon()
-			trainingItem := fyne.NewMenuItem(i18n.T("mode.training"), func() { switchMode(ModeTraining) })
+			trainingItem := fyne.NewMenuItem(i18n.T(i18n.KeyModeTraining), func() { switchMode(ModeTraining) })
 			trainingItem.Icon = fynetheme.MediaPlayIcon()
 
 			menu := widget.NewPopUpMenu(fyne.NewMenu("",
@@ -435,40 +435,40 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	modeSelector := container.NewStack(modeBg, container.NewPadded(modeBtn))
 
 	// ── Menu "more" (⋯): new, open, recent, import, save as, about ──
-	a.moreBtn = NewTipButton(icon.DragHandle(), i18n.T("tooltip.more"), nil)
+	a.moreBtn = NewTipButton(icon.DragHandle(), i18n.T(i18n.KeyTooltipMore), nil)
 	a.moreBtn.onTapped = func() {
 		var items []*fyne.MenuItem
 
-		aboutItem := fyne.NewMenuItem(i18n.T("tooltip.about"), func() { a.handleFileAction(FileActionAbout) })
+		aboutItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipAbout), func() { a.handleFileAction(FileActionAbout) })
 		aboutItem.Icon = fynetheme.InfoIcon()
 
 		switch a.editorMode {
 		case ModeEdition, ModeAnimation, ModeNotes:
 			// Exercise file operations.
-			newItem := fyne.NewMenuItem(i18n.T("tooltip.new"), func() { a.handleFileAction(FileActionNew) })
+			newItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipNew), func() { a.handleFileAction(FileActionNew) })
 			newItem.Icon = fynetheme.DocumentCreateIcon()
-			openItem := fyne.NewMenuItem(i18n.T("tooltip.open"), func() { a.handleFileAction(FileActionOpen) })
+			openItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipOpen), func() { a.handleFileAction(FileActionOpen) })
 			openItem.Icon = fynetheme.FolderOpenIcon()
-			recentItem := fyne.NewMenuItem(i18n.T("tooltip.recent"), func() { a.handleFileAction(FileActionRecent) })
+			recentItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipRecent), func() { a.handleFileAction(FileActionRecent) })
 			recentItem.Icon = fynetheme.HistoryIcon()
-			importItem := fyne.NewMenuItem(i18n.T("tooltip.import"), func() { a.handleFileAction(FileActionImport) })
+			importItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipImport), func() { a.handleFileAction(FileActionImport) })
 			importItem.Icon = fynetheme.DownloadIcon()
-			saveAsItem := fyne.NewMenuItem(i18n.T("tooltip.save_as"), func() { a.handleFileAction(FileActionSaveAs) })
+			saveAsItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipSaveAs), func() { a.handleFileAction(FileActionSaveAs) })
 			saveAsItem.Icon = fynetheme.DocumentSaveIcon()
 			items = append(items, newItem, openItem, recentItem, importItem,
 				fyne.NewMenuItemSeparator(), saveAsItem)
 
 		case ModeSession:
 			// Session file operations (labels are generic — context is given by the mode).
-			newItem := fyne.NewMenuItem(i18n.T("tooltip.new"), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionNew}) })
+			newItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipNew), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionNew}) })
 			newItem.Icon = fynetheme.DocumentCreateIcon()
-			openItem := fyne.NewMenuItem(i18n.T("tooltip.open"), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionOpen}) })
+			openItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipOpen), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionOpen}) })
 			openItem.Icon = fynetheme.FolderOpenIcon()
-			recentItem := fyne.NewMenuItem(i18n.T("tooltip.recent"), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionRecent}) })
+			recentItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipRecent), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionRecent}) })
 			recentItem.Icon = fynetheme.HistoryIcon()
-			saveItem := fyne.NewMenuItem(i18n.T("tooltip.save"), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionSave}) })
+			saveItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipSave), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionSave}) })
 			saveItem.Icon = fynetheme.DocumentSaveIcon()
-			pdfItem := fyne.NewMenuItem(i18n.T("tooltip.pdf"), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionGenerate}) })
+			pdfItem := fyne.NewMenuItem(i18n.T(i18n.KeyTooltipPdf), func() { a.handleSessionAction(SessionTabEvent{Action: SessionTabActionGenerate}) })
 			pdfItem.Icon = fynetheme.DocumentPrintIcon()
 			items = append(items, newItem, openItem, recentItem,
 				fyne.NewMenuItemSeparator(), saveItem, pdfItem)
@@ -523,10 +523,10 @@ func (a *App) switchLang(lang string) {
 		a.editorShelf.RefreshLanguage()
 	}
 	if a.moreBtn != nil {
-		a.moreBtn.SetTooltip(i18n.T("tooltip.more"))
+		a.moreBtn.SetTooltip(i18n.T(i18n.KeyTooltipMore))
 	}
 	if a.langBtn != nil {
-		a.langBtn.SetTooltip(i18n.T("lang.tooltip"))
+		a.langBtn.SetTooltip(i18n.T(i18n.KeyLangTooltip))
 	}
 	// Refresh mode label text for current mode.
 	if a.modeLabel != nil {
@@ -666,7 +666,7 @@ func (a *App) CheckVersionAtStartup() {
 			url := info.URL
 
 			// Always show update button in status bar.
-			label := fmt.Sprintf("%s %s", i18n.T("update.available"), tag)
+			label := fmt.Sprintf("%s %s", i18n.T(i18n.KeyUpdateAvailable), tag)
 			a.statusBar.ShowUpdateAvailable(label, func() {
 				showUpdateDialog(a.window, tag, url)
 			})
@@ -714,7 +714,7 @@ func (a *App) SetExercise(ex *model.Exercise) {
 }
 
 func (a *App) updateWindowTitle() {
-	title := i18n.T("app.title")
+	title := i18n.T(i18n.KeyAppTitle)
 	switch a.editorMode {
 	case ModeEdition, ModeAnimation, ModeNotes:
 		if a.exercise != nil && a.exercise.Name != "" {
@@ -804,17 +804,17 @@ func (a *App) NewExercise() {
 		ex.SetI18n(a.editLang, tr)
 	}
 	a.SetExercise(ex)
-	a.statusBar.SetStatus(i18n.T("status.new_exercise"), 0)
+	a.statusBar.SetStatus(i18n.T(i18n.KeyStatusNewExercise), 0)
 }
 
 // NewSession creates a blank session.
 func (a *App) NewSession() {
 	s := &model.Session{
-		Title: i18n.T("default.session_name"),
+		Title: i18n.T(i18n.KeyDefaultSessionName),
 		Date:  time.Now().Format("2006-01-02"),
 	}
 	a.sessionTab.SetSession(s)
-	a.statusBar.SetStatus(i18n.T("status.new_session"), 0)
+	a.statusBar.SetStatus(i18n.T(i18n.KeyStatusNewSession), 0)
 }
 
 func (a *App) addSequence() {
@@ -842,7 +842,7 @@ func (a *App) addSequence() {
 	a.court.SetSequence(newIdx)
 	a.editorState.Deselect()
 	a.editorState.MarkModified()
-	a.statusBar.SetStatus(i18n.Tf("status.seq_added", newIdx+1), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSeqAdded, newIdx+1), 0)
 	a.refreshEditor()
 }
 
@@ -862,7 +862,7 @@ func (a *App) deleteSequence(idx int) {
 	a.court.SetSequence(newIdx)
 	a.editorState.Deselect()
 	a.editorState.MarkModified()
-	a.statusBar.SetStatus(i18n.Tf("status.seq_deleted", idx+1), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSeqDeleted, idx+1), 0)
 	a.refreshEditor()
 }
 
@@ -909,7 +909,7 @@ func (a *App) openExercise(name string) {
 	}
 	a.SetExercise(ex)
 	a.recordRecentFile(name)
-	a.statusBar.SetStatus(i18n.Tf("status.opened", name), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusOpened, name), 0)
 }
 
 func (a *App) saveExercise() {
@@ -918,7 +918,7 @@ func (a *App) saveExercise() {
 	}
 	if err := a.store.SaveExercise(a.exercise); err != nil {
 		log.Printf("save exercise: %v", err)
-		a.statusBar.SetStatus(i18n.T("status.save_error"), 1)
+		a.statusBar.SetStatus(i18n.T(i18n.KeyStatusSaveError), 1)
 		return
 	}
 	a.snapshotExerciseSHA()
@@ -929,7 +929,7 @@ func (a *App) saveExercise() {
 	if ys, ok := a.store.(*store.YAMLStore); ok {
 		fileName = filepath.Join(ys.ExercisesDir(), fileName)
 	}
-	a.statusBar.SetStatus(i18n.Tf("status.saved", fileName), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSaved, fileName), 0)
 	a.updateWindowTitle()
 }
 
@@ -939,11 +939,11 @@ func (a *App) saveAsExercise() {
 	}
 
 	entry := widget.NewEntry()
-	entry.SetPlaceHolder(i18n.T("save_as.placeholder"))
+	entry.SetPlaceHolder(i18n.T(i18n.KeySaveAsPlaceholder))
 	entry.SetText(a.exercise.Localized(a.editLang).Name)
 
-	d := dialog.NewForm(i18n.T("save_as.title"), i18n.T("prefs.save"), i18n.T("dialog.cancel"),
-		[]*widget.FormItem{widget.NewFormItem(i18n.T("save_as.name_label"), entry)},
+	d := dialog.NewForm(i18n.T(i18n.KeySaveAsTitle), i18n.T(i18n.KeyPrefsSave), i18n.T(i18n.KeyDialogCancel),
+		[]*widget.FormItem{widget.NewFormItem(i18n.T(i18n.KeySaveAsNameLabel), entry)},
 		func(ok bool) {
 			if !ok {
 				return
@@ -958,8 +958,8 @@ func (a *App) saveAsExercise() {
 			if ys, ok := a.store.(*store.YAMLStore); ok {
 				path := filepath.Join(ys.ExercisesDir(), kebab+".yaml")
 				if _, err := os.Stat(path); err == nil {
-					dialog.ShowConfirm(i18n.T("save_as.overwrite_title"),
-						i18n.Tf("save_as.overwrite_msg", kebab+".yaml"),
+					dialog.ShowConfirm(i18n.T(i18n.KeySaveAsOverwriteTitle),
+						i18n.Tf(i18n.KeySaveAsOverwriteMsg, kebab+".yaml"),
 						func(overwrite bool) {
 							if overwrite {
 								a.doSaveAs(newName)
@@ -978,7 +978,7 @@ func (a *App) doSaveAs(newName string) {
 	a.exercise.Name = newName
 	if err := a.store.SaveExercise(a.exercise); err != nil {
 		log.Printf("save as: %v", err)
-		a.statusBar.SetStatus(i18n.T("status.save_error"), 0)
+		a.statusBar.SetStatus(i18n.T(i18n.KeyStatusSaveError), 0)
 		return
 	}
 	a.editorState.ClearModified()
@@ -986,7 +986,7 @@ func (a *App) doSaveAs(newName string) {
 	if ys, ok := a.store.(*store.YAMLStore); ok {
 		fileName = filepath.Join(ys.ExercisesDir(), fileName)
 	}
-	a.statusBar.SetStatus(i18n.Tf("status.saved", fileName), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSaved, fileName), 0)
 	a.updateWindowTitle()
 	a.refreshEditor()
 }
@@ -1015,7 +1015,7 @@ func (a *App) showOpenDialog() {
 			d.Hide()
 		}
 	}
-	d = dialog.NewCustom(i18n.T("tooltip.open"), i18n.T("dialog.cancel"), list, a.window)
+	d = dialog.NewCustom(i18n.T(i18n.KeyTooltipOpen), i18n.T(i18n.KeyDialogCancel), list, a.window)
 	d.Resize(fyne.NewSize(400, 500))
 	d.Show()
 }
@@ -1048,7 +1048,7 @@ func (a *App) showImportDialog() {
 			d.Hide()
 		}
 	}
-	d = dialog.NewCustom(i18n.T("tooltip.import"), i18n.T("dialog.cancel"), list, a.window)
+	d = dialog.NewCustom(i18n.T(i18n.KeyTooltipImport), i18n.T(i18n.KeyDialogCancel), list, a.window)
 	d.Resize(fyne.NewSize(400, 500))
 	d.Show()
 }
@@ -1070,7 +1070,7 @@ func (a *App) importExercise(name string) {
 	a.sessionNeedsRefresh = true
 	a.refreshSessionTab()
 	a.recordRecentFile(store.ToKebab(ex.Name))
-	a.statusBar.SetStatus(i18n.Tf("status.imported", ex.Name), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusImported, ex.Name), 0)
 }
 
 func (a *App) recordRecentFile(name string) {
@@ -1083,7 +1083,7 @@ func (a *App) recordRecentFile(name string) {
 // Each sequence is shown with a small court diagram and a text entry for instructions.
 func (a *App) buildNotesView() fyne.CanvasObject {
 	if a.exercise == nil {
-		placeholder := canvas.NewText(i18n.T("mode.notes.placeholder"), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
+		placeholder := canvas.NewText(i18n.T(i18n.KeyModeNotesPlaceholder), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
 		placeholder.Alignment = fyne.TextAlignCenter
 		return container.NewCenter(placeholder)
 	}
@@ -1101,7 +1101,7 @@ func (a *App) buildNotesView() fyne.CanvasObject {
 			}
 		}
 		if label == "" {
-			label = i18n.Tf("seq.format", i+1)
+			label = i18n.Tf(i18n.KeySeqFormat, i+1)
 		}
 		seqLabel := canvas.NewText(label, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
 		seqLabel.TextSize = 16
@@ -1122,7 +1122,7 @@ func (a *App) buildNotesView() fyne.CanvasObject {
 
 		instrEntry := widget.NewMultiLineEntry()
 		instrEntry.Wrapping = fyne.TextWrapWord
-		instrEntry.SetPlaceHolder(i18n.T("instr.placeholder"))
+		instrEntry.SetPlaceHolder(i18n.T(i18n.KeyInstrPlaceholder))
 		instrEntry.SetText(instrText)
 		instrEntry.SetMinRowsVisible(3)
 		instrEntry.OnChanged = func(text string) {
@@ -1198,7 +1198,7 @@ func (a *App) showExerciseSettingsDialog() {
 		courtStdSelect.SetSelected("FIBA")
 	}
 
-	courtTypeOptions := []string{i18n.T("court.half"), i18n.T("court.full")}
+	courtTypeOptions := []string{i18n.T(i18n.KeyCourtHalf), i18n.T(i18n.KeyCourtFull)}
 	courtTypeSelect := widget.NewSelect(courtTypeOptions, nil)
 	if ex.CourtType == model.FullCourt {
 		courtTypeSelect.SetSelected(courtTypeOptions[1])
@@ -1216,15 +1216,15 @@ func (a *App) showExerciseSettingsDialog() {
 	}
 
 	items := []*widget.FormItem{
-		widget.NewFormItem(i18n.T("props.name"), nameEntry),
-		widget.NewFormItem(i18n.T("props.description"), descEntry),
-		widget.NewFormItem(i18n.T("props.court_standard"), courtStdSelect),
-		widget.NewFormItem(i18n.T("props.court_type"), courtTypeSelect),
-		widget.NewFormItem(i18n.T("props.duration"), durationEntry),
-		widget.NewFormItem(i18n.T("props.tags"), tagsEntry),
+		widget.NewFormItem(i18n.T(i18n.KeyPropsName), nameEntry),
+		widget.NewFormItem(i18n.T(i18n.KeyPropsDescription), descEntry),
+		widget.NewFormItem(i18n.T(i18n.KeyPropsCourtStandard), courtStdSelect),
+		widget.NewFormItem(i18n.T(i18n.KeyPropsCourtType), courtTypeSelect),
+		widget.NewFormItem(i18n.T(i18n.KeyPropsDuration), durationEntry),
+		widget.NewFormItem(i18n.T(i18n.KeyPropsTags), tagsEntry),
 	}
 
-	dlg := dialog.NewForm(i18n.T("settings.exercise_title"), i18n.T("seq.rename_ok"), i18n.T("seq.rename_cancel"),
+	dlg := dialog.NewForm(i18n.T(i18n.KeySettingsExerciseTitle), i18n.T(i18n.KeySeqRenameOk), i18n.T(i18n.KeySeqRenameCancel),
 		items,
 		func(ok bool) {
 			if !ok {
@@ -1314,7 +1314,7 @@ func (a *App) showRecentFiles() {
 			d.Hide()
 		}
 	}
-	d = dialog.NewCustom(i18n.T("tooltip.recent"), i18n.T("dialog.cancel"), list, a.window)
+	d = dialog.NewCustom(i18n.T(i18n.KeyTooltipRecent), i18n.T(i18n.KeyDialogCancel), list, a.window)
 	d.Resize(fyne.NewSize(400, 400))
 	d.Show()
 }
@@ -1329,7 +1329,7 @@ func (a *App) deleteExercise(name string) {
 	}
 	a.sessionNeedsRefresh = true
 	a.refreshSessionTab()
-	a.statusBar.SetStatus(i18n.Tf("status.deleted", name), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusDeleted, name), 0)
 }
 
 // --- Session operations ---
@@ -1347,7 +1347,7 @@ func (a *App) handleSessionAction(ev SessionTabEvent) {
 	case SessionTabActionRefresh:
 		if ys, ok := a.store.(*store.YAMLStore); ok {
 			if errs := ys.RebuildExerciseIndex(); len(errs) > 0 {
-				a.statusBar.SetStatus(i18n.Tf("status.index_parse_errors", len(errs), strings.Join(errs, "; ")), 1)
+				a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusIndexParseErrors, len(errs), strings.Join(errs, "; ")), 1)
 			}
 		}
 		a.sessionTab.SetExercises(a.buildManagedExercises())
@@ -1425,7 +1425,7 @@ func (a *App) showOpenSessionDialog() {
 			d.Hide()
 		}
 	}
-	d = dialog.NewCustom(i18n.T("session.open"), i18n.T("dialog.cancel"), list, a.window)
+	d = dialog.NewCustom(i18n.T(i18n.KeySessionOpen), i18n.T(i18n.KeyDialogCancel), list, a.window)
 	d.Resize(fyne.NewSize(400, 500))
 	d.Show()
 }
@@ -1458,7 +1458,7 @@ func (a *App) showRecentSessions() {
 			d.Hide()
 		}
 	}
-	d = dialog.NewCustom(i18n.T("session.recent"), i18n.T("dialog.cancel"), list, a.window)
+	d = dialog.NewCustom(i18n.T(i18n.KeySessionRecent), i18n.T(i18n.KeyDialogCancel), list, a.window)
 	d.Resize(fyne.NewSize(400, 400))
 	d.Show()
 }
@@ -1474,7 +1474,7 @@ func (a *App) openSession(name string) {
 	if ys, ok := a.store.(*store.YAMLStore); ok {
 		ys.RecordRecentSession(name)
 	}
-	a.statusBar.SetStatus(i18n.Tf("status.opened", name), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusOpened, name), 0)
 }
 
 func (a *App) saveSession() {
@@ -1484,7 +1484,7 @@ func (a *App) saveSession() {
 	}
 	if err := a.store.SaveSession(s); err != nil {
 		log.Printf("save session: %v", err)
-		a.statusBar.SetStatus(i18n.T("status.save_error"), 1)
+		a.statusBar.SetStatus(i18n.T(i18n.KeyStatusSaveError), 1)
 		return
 	}
 	a.sessionTab.ClearModified()
@@ -1494,7 +1494,7 @@ func (a *App) saveSession() {
 			ys.RecordRecentSession(name)
 		}
 	}
-	a.statusBar.SetStatus(i18n.Tf("status.saved", s.Title), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSaved, s.Title), 0)
 }
 
 func (a *App) deleteSession(name string) {
@@ -1593,8 +1593,8 @@ func (a *App) handleMyFilesAction(ev MyFilesEvent) {
 		a.contributeExercise(ev.Name)
 	case MyFilesActionDeleteExercise:
 		dialog.ShowConfirm(
-			i18n.T("myfiles.delete_exercise"),
-			fmt.Sprintf(i18n.T("myfiles.confirm_delete_exercise"), ev.Name),
+			i18n.T(i18n.KeyMyfilesDeleteExercise),
+			fmt.Sprintf(i18n.T(i18n.KeyMyfilesConfirmDeleteExercise), ev.Name),
 			func(ok bool) {
 				if ok {
 					a.deleteExercise(ev.Name)
@@ -1616,14 +1616,14 @@ func (a *App) deleteSessionWithOrphanCleanup(name string) {
 	}
 
 	dialog.ShowConfirm(
-		i18n.T("myfiles.delete_session"),
-		fmt.Sprintf(i18n.T("myfiles.confirm_delete_session"), s.Title),
+		i18n.T(i18n.KeyMyfilesDeleteSession),
+		fmt.Sprintf(i18n.T(i18n.KeyMyfilesConfirmDeleteSession), s.Title),
 		func(ok bool) {
 			if !ok {
 				return
 			}
 			a.deleteSession(name)
-			a.statusBar.SetStatus(fmt.Sprintf(i18n.T("status.session_deleted"), s.Title), 0)
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyStatusSessionDeleted), s.Title), 0)
 			a.myFilesNeedsRefresh = true
 			a.sessionNeedsRefresh = true
 			a.refreshMyFilesTab()
@@ -1639,8 +1639,8 @@ func (a *App) showPdfExportDialog() {
 
 	pageLayout := pdf.LayoutPortrait
 	opts := []string{
-		i18n.T("pdf.layout_portrait"),
-		i18n.T("pdf.layout_landscape_2up"),
+		i18n.T(i18n.KeyPdfLayoutPortrait),
+		i18n.T(i18n.KeyPdfLayoutLandscape2Up),
 	}
 	radio := widget.NewRadioGroup(opts, func(selected string) {
 		if selected == opts[1] {
@@ -1652,14 +1652,14 @@ func (a *App) showPdfExportDialog() {
 	radio.SetSelected(opts[0])
 
 	content := container.NewVBox(
-		widget.NewLabel(i18n.T("pdf.layout_label")),
+		widget.NewLabel(i18n.T(i18n.KeyPdfLayoutLabel)),
 		radio,
 	)
 
 	dialog.ShowCustomConfirm(
-		i18n.T("pdf.export_title"),
-		i18n.T("pdf.export_confirm"),
-		i18n.T("pdf.export_cancel"),
+		i18n.T(i18n.KeyPdfExportTitle),
+		i18n.T(i18n.KeyPdfExportConfirm),
+		i18n.T(i18n.KeyPdfExportCancel),
 		content,
 		func(ok bool) {
 			if !ok {
@@ -1705,7 +1705,7 @@ func (a *App) pdfDefaultFilename() string {
 	}
 	title := strings.TrimSpace(s.Title)
 	if title == "" {
-		title = stripDiacritics(i18n.T("pdf.filename_prefix"))
+		title = stripDiacritics(i18n.T(i18n.KeyPdfFilenamePrefix))
 	} else {
 		title = stripDiacritics(title)
 	}
@@ -1783,11 +1783,11 @@ func (a *App) contributeExercise(name string) {
 		token = os.Getenv("GITHUB_TOKEN")
 	}
 	if token == "" {
-		a.statusBar.SetStatus(i18n.T("contribute.no_token"), 1)
+		a.statusBar.SetStatus(i18n.T(i18n.KeyContributeNoToken), 1)
 		return
 	}
 
-	a.statusBar.SetStatus(i18n.T("contribute.creating_pr"), 0)
+	a.statusBar.SetStatus(i18n.T(i18n.KeyContributeCreatingPr), 0)
 
 	// Run in background to avoid blocking UI.
 	go func() {
@@ -1795,10 +1795,10 @@ func (a *App) contributeExercise(name string) {
 		fyne.Do(func() {
 			if err != nil {
 				log.Printf("contribute PR failed: %v", err)
-				a.statusBar.SetStatus(i18n.T("contribute.error")+": "+err.Error(), 1)
+				a.statusBar.SetStatus(i18n.T(i18n.KeyContributeError)+": "+err.Error(), 1)
 				return
 			}
-			a.statusBar.SetStatus(i18n.T("contribute.pr_created"), 0)
+			a.statusBar.SetStatus(i18n.T(i18n.KeyContributePrCreated), 0)
 			if prURL != "" {
 				_ = openBrowser(prURL)
 			}
@@ -1816,13 +1816,13 @@ func (a *App) buildTrainingPicker() fyne.CanvasObject {
 		ys.RebuildSessionIndex()
 	}
 	if !ok {
-		placeholder := canvas.NewText(i18n.T("training.no_sessions"), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
+		placeholder := canvas.NewText(i18n.T(i18n.KeyTrainingNoSessions), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
 		placeholder.Alignment = fyne.TextAlignCenter
 		return container.NewCenter(placeholder)
 	}
 	sessions, _ := ys.ListSessions()
 	if len(sessions) == 0 {
-		placeholder := canvas.NewText(i18n.T("training.no_sessions"), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
+		placeholder := canvas.NewText(i18n.T(i18n.KeyTrainingNoSessions), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
 		placeholder.Alignment = fyne.TextAlignCenter
 		return container.NewCenter(placeholder)
 	}
@@ -1877,7 +1877,7 @@ func (a *App) buildTrainingPicker() fyne.CanvasObject {
 		a.enterTrainingModeWithSession(s)
 	}
 
-	header := canvas.NewText(i18n.T("training.pick_session"), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	header := canvas.NewText(i18n.T(i18n.KeyTrainingPickSession), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
 	header.TextSize = 18
 	header.TextStyle.Bold = true
 
@@ -2082,7 +2082,7 @@ func (a *App) syncLibrary() {
 		return
 	}
 	a.syncing = true
-	a.statusBar.SetStatus(i18n.T("sync.in_progress"), 0)
+	a.statusBar.SetStatus(i18n.T(i18n.KeySyncInProgress), 0)
 
 	token := a.settings.GithubToken
 	if token == "" {
@@ -2096,14 +2096,14 @@ func (a *App) syncLibrary() {
 			a.syncing = false
 			if err != nil {
 				log.Printf("sync library: %v", err)
-				a.statusBar.SetStatus(i18n.T("sync.failed"), 1)
+				a.statusBar.SetStatus(i18n.T(i18n.KeySyncFailed), 1)
 			} else {
 				total := len(result.Added) + len(result.Updated) + len(result.Removed)
 				if total == 0 {
-					a.statusBar.SetStatus(i18n.T("sync.up_to_date"), 0)
+					a.statusBar.SetStatus(i18n.T(i18n.KeySyncUpToDate), 0)
 				} else {
 					a.statusBar.SetStatus(
-						i18n.Tf("sync.completed", len(result.Added), len(result.Updated), len(result.Removed)), 0)
+						i18n.Tf(i18n.KeySyncCompleted, len(result.Added), len(result.Updated), len(result.Removed)), 0)
 				}
 			}
 			a.sessionNeedsRefresh = true

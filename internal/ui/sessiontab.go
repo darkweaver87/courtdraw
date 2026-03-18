@@ -180,7 +180,7 @@ func NewSessionTab() *SessionTab {
 
 	// Search.
 	st.searchEntry = widget.NewEntry()
-	st.searchEntry.SetPlaceHolder(i18n.T("session.search"))
+	st.searchEntry.SetPlaceHolder(i18n.T(i18n.KeySessionSearch))
 	st.searchEntry.OnChanged = func(string) {
 		st.refreshLibraryList()
 	}
@@ -191,7 +191,7 @@ func NewSessionTab() *SessionTab {
 
 	// Session metadata entries.
 	st.titleEntry = widget.NewEntry()
-	st.titleEntry.SetPlaceHolder(i18n.T("session.title"))
+	st.titleEntry.SetPlaceHolder(i18n.T(i18n.KeySessionTitle))
 	st.titleEntry.OnChanged = func(s string) {
 		if st.session != nil {
 			st.session.Title = s
@@ -207,7 +207,7 @@ func NewSessionTab() *SessionTab {
 		}
 	}
 	st.subtitleEntry = widget.NewEntry()
-	st.subtitleEntry.SetPlaceHolder(i18n.T("session.subtitle"))
+	st.subtitleEntry.SetPlaceHolder(i18n.T(i18n.KeySessionSubtitle))
 	st.subtitleEntry.OnChanged = func(s string) {
 		if st.session != nil {
 			st.session.Subtitle = s
@@ -215,7 +215,7 @@ func NewSessionTab() *SessionTab {
 		}
 	}
 	st.ageGroupEntry = widget.NewEntry()
-	st.ageGroupEntry.SetPlaceHolder(i18n.T("session.age_group"))
+	st.ageGroupEntry.SetPlaceHolder(i18n.T(i18n.KeySessionAgeGroup))
 	st.ageGroupEntry.OnChanged = func(s string) {
 		if st.session != nil {
 			st.session.AgeGroup = s
@@ -223,7 +223,7 @@ func NewSessionTab() *SessionTab {
 		}
 	}
 	st.philosophyEntry = widget.NewMultiLineEntry()
-	st.philosophyEntry.SetPlaceHolder(i18n.T("session.philosophy"))
+	st.philosophyEntry.SetPlaceHolder(i18n.T(i18n.KeySessionPhilosophy))
 	st.philosophyEntry.OnChanged = func(s string) {
 		if st.session != nil {
 			st.session.Philosophy = s
@@ -278,7 +278,7 @@ func NewSessionTab() *SessionTab {
 	st.tagScroll.SetMinSize(fyne.NewSize(0, viewH))
 	st.tagSection = container.NewStack(st.tagScroll)
 	st.tagSection.Hide()
-	st.tagToggleBtn = widget.NewButtonWithIcon(i18n.T("filter.tags"), icon.ChevronRight, func() {
+	st.tagToggleBtn = widget.NewButtonWithIcon(i18n.T(i18n.KeyFilterTags), icon.ChevronRight, func() {
 		st.tagsExpanded = !st.tagsExpanded
 		if st.tagsExpanded {
 			st.tagSection.Show()
@@ -291,13 +291,13 @@ func NewSessionTab() *SessionTab {
 
 	// Sort selector.
 	st.sortSelect = widget.NewSelect(
-		[]string{i18n.T("sort.alpha"), i18n.T("sort.recent")},
+		[]string{i18n.T(i18n.KeySortAlpha), i18n.T(i18n.KeySortRecent)},
 		func(s string) {
-			st.sortByDate = (s == i18n.T("sort.recent"))
+			st.sortByDate = (s == i18n.T(i18n.KeySortRecent))
 			st.refreshLibraryList()
 		},
 	)
-	st.sortSelect.SetSelected(i18n.T("sort.alpha"))
+	st.sortSelect.SetSelected(i18n.T(i18n.KeySortAlpha))
 
 	// Total duration label.
 	st.totalLabel = canvas.NewText("", color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff})
@@ -306,7 +306,7 @@ func NewSessionTab() *SessionTab {
 
 	// Preview court.
 	st.previewCourt = fynecourt.NewCourtWidget()
-	st.previewLabel = canvas.NewText(i18n.T("session.select_to_preview"), color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
+	st.previewLabel = canvas.NewText(i18n.T(i18n.KeySessionSelectToPreview), color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
 	st.previewLabel.TextSize = 14
 	st.previewLabel.Alignment = fyne.TextAlignCenter
 
@@ -319,10 +319,10 @@ func NewSessionTab() *SessionTab {
 
 func (st *SessionTab) buildLayout() {
 	// Refresh button for library sync.
-	st.refreshBtn = NewTipButton(icon.Refresh(), i18n.T("mgr.refresh"), func() { st.emitAction(SessionTabActionRefresh, "") })
+	st.refreshBtn = NewTipButton(icon.Refresh(), i18n.T(i18n.KeyMgrRefresh), func() { st.emitAction(SessionTabActionRefresh, "") })
 
 	// Add to session button (used in preview).
-	st.addBtn = NewTipButton(fynetheme.NavigateNextIcon(), i18n.T("session.add_to_session"), func() {
+	st.addBtn = NewTipButton(fynetheme.NavigateNextIcon(), i18n.T(i18n.KeySessionAddToSession), func() {
 		filtered := st.filteredExercises()
 		if st.selectedIdx >= 0 && st.selectedIdx < len(filtered) {
 			st.addExerciseByRef(filtered[st.selectedIdx].Name)
@@ -331,15 +331,15 @@ func (st *SessionTab) buildLayout() {
 	st.addBtn.SetImportance(widget.MediumImportance)
 
 	// Library filter buttons.
-	st.filterBtns[0] = widget.NewButton(i18n.T("filter.all"), func() { st.filterIndex = 0; st.updateFilterStyles(); st.refreshLibraryList() })
-	st.filterBtns[1] = widget.NewButton(i18n.T("filter.local"), func() { st.filterIndex = 1; st.updateFilterStyles(); st.refreshLibraryList() })
-	st.filterBtns[2] = widget.NewButton(i18n.T("filter.community"), func() { st.filterIndex = 2; st.updateFilterStyles(); st.refreshLibraryList() })
+	st.filterBtns[0] = widget.NewButton(i18n.T(i18n.KeyFilterAll), func() { st.filterIndex = 0; st.updateFilterStyles(); st.refreshLibraryList() })
+	st.filterBtns[1] = widget.NewButton(i18n.T(i18n.KeyFilterLocal), func() { st.filterIndex = 1; st.updateFilterStyles(); st.refreshLibraryList() })
+	st.filterBtns[2] = widget.NewButton(i18n.T(i18n.KeyFilterCommunity), func() { st.filterIndex = 2; st.updateFilterStyles(); st.refreshLibraryList() })
 	st.filterBtns[0].Importance = widget.HighImportance
 	st.filterBtns[1].Importance = widget.LowImportance
 	st.filterBtns[2].Importance = widget.LowImportance
 
 	// Back button (returns from preview to the originating view).
-	backBtn := NewTipButton(icon.Back(), i18n.T("session.back_to_library"), func() {
+	backBtn := NewTipButton(icon.Back(), i18n.T(i18n.KeySessionBackToLibrary), func() {
 		if st.previewOrigin == previewOriginSession {
 			st.showSession()
 		} else {
@@ -358,7 +358,7 @@ func (st *SessionTab) buildLayout() {
 	)
 
 	// Open in editor button.
-	st.openExBtn = NewTipButton(fynetheme.DocumentCreateIcon(), i18n.T("session.open_exercise"), func() {
+	st.openExBtn = NewTipButton(fynetheme.DocumentCreateIcon(), i18n.T(i18n.KeySessionOpenExercise), func() {
 		filtered := st.filteredExercises()
 		if st.selectedIdx >= 0 && st.selectedIdx < len(filtered) {
 			st.emitAction(SessionTabActionOpenExercise, filtered[st.selectedIdx].Name)
@@ -389,9 +389,9 @@ func (st *SessionTab) buildLayout() {
 	)
 
 	// --- Toggle buttons (Library / Ma séance) ---
-	st.libToggle = widget.NewButton(i18n.T("session.tab_library"), func() { st.showLibrary() })
+	st.libToggle = widget.NewButton(i18n.T(i18n.KeySessionTabLibrary), func() { st.showLibrary() })
 	st.libToggle.Importance = widget.HighImportance
-	st.sesToggle = widget.NewButton(i18n.T("session.tab_session"), func() { st.showSession() })
+	st.sesToggle = widget.NewButton(i18n.T(i18n.KeySessionTabSession), func() { st.showSession() })
 	st.sesToggle.Importance = widget.LowImportance
 	toggleBar := container.NewGridWithColumns(2, st.libToggle, st.sesToggle)
 
@@ -529,7 +529,7 @@ func (st *SessionTab) rebuildTagOptions() {
 
 func (st *SessionTab) updateTagToggleLabel() {
 	n := len(st.filterTags)
-	label := i18n.T("filter.tags")
+	label := i18n.T(i18n.KeyFilterTags)
 	if n > 0 {
 		label = fmt.Sprintf("%s (%d)", label, n)
 	}
@@ -685,7 +685,7 @@ func (st *SessionTab) refreshLibraryList() {
 		st.libraryBox.Add(container.NewStack(bg, tap, row))
 	}
 	if len(filtered) == 0 {
-		st.libraryBox.Add(widget.NewLabel(i18n.T("session.no_exercises")))
+		st.libraryBox.Add(widget.NewLabel(i18n.T(i18n.KeySessionNoExercises)))
 	}
 	st.libraryBox.Refresh()
 	st.libraryScroll.Refresh()
@@ -694,7 +694,7 @@ func (st *SessionTab) refreshLibraryList() {
 func (st *SessionTab) updatePreview() {
 	filtered := st.filteredExercises()
 	if st.selectedIdx < 0 || st.selectedIdx >= len(filtered) {
-		st.previewLabel.Text = i18n.T("session.select_to_preview")
+		st.previewLabel.Text = i18n.T(i18n.KeySessionSelectToPreview)
 		st.previewLabel.Refresh()
 		st.previewCourt.SetAnimMode(false)
 		st.previewCourt.SetExercise(nil)
@@ -807,20 +807,20 @@ func (st *SessionTab) populatePreviewDetail(ex *model.Exercise) {
 	// Metadata row with colored intensity dots.
 	var metaParts []fyne.CanvasObject
 	if ex.Duration != "" {
-		lbl := canvas.NewText(i18n.T("props.duration")+": "+ex.Duration, color.White)
+		lbl := canvas.NewText(i18n.T(i18n.KeyPropsDuration)+": "+ex.Duration, color.White)
 		lbl.TextSize = 11
 		lbl.TextStyle.Bold = true
 		metaParts = append(metaParts, lbl)
 	}
 	if ex.Intensity > 0 {
-		intLabel := canvas.NewText(i18n.T("props.intensity")+": ", color.White)
+		intLabel := canvas.NewText(i18n.T(i18n.KeyPropsIntensity)+": ", color.White)
 		intLabel.TextSize = 11
 		intLabel.TextStyle.Bold = true
 		dots := intensityColorDots(int(ex.Intensity))
 		metaParts = append(metaParts, container.NewHBox(append([]fyne.CanvasObject{intLabel}, dots...)...))
 	}
 	if ex.Category != "" {
-		lbl := canvas.NewText(i18n.T("props.category")+": "+i18n.T("category."+string(ex.Category)), color.White)
+		lbl := canvas.NewText(i18n.T(i18n.KeyPropsCategory)+": "+i18n.T(categoryI18nKey(ex.Category)), color.White)
 		lbl.TextSize = 11
 		lbl.TextStyle.Bold = true
 		metaParts = append(metaParts, lbl)
@@ -843,7 +843,7 @@ func (st *SessionTab) populatePreviewDetail(ex *model.Exercise) {
 		}
 		label := seq.Label
 		if label == "" {
-			label = fmt.Sprintf(i18n.T("seq.format"), si+1)
+			label = fmt.Sprintf(i18n.T(i18n.KeySeqFormat), si+1)
 		}
 		seqTitle := widget.NewRichTextFromMarkdown("**" + label + "**")
 		st.previewDetail.Add(seqTitle)
@@ -870,7 +870,7 @@ func (st *SessionTab) addExerciseByRef(name string) {
 	st.refreshSessionList()
 	st.notifySessionChanged()
 	if st.OnStatus != nil {
-		st.OnStatus(fmt.Sprintf(i18n.T("status.exercise_added"), name), 0)
+		st.OnStatus(fmt.Sprintf(i18n.T(i18n.KeyStatusExerciseAdded), name), 0)
 	}
 }
 
@@ -938,7 +938,7 @@ func (st *SessionTab) removeExercise(idx int) {
 	st.refreshSessionList()
 	st.notifySessionChanged()
 	if st.OnStatus != nil {
-		st.OnStatus(fmt.Sprintf(i18n.T("status.exercise_removed"), name), 0)
+		st.OnStatus(fmt.Sprintf(i18n.T(i18n.KeyStatusExerciseRemoved), name), 0)
 	}
 }
 
@@ -950,7 +950,7 @@ func (st *SessionTab) notifySessionChanged() {
 }
 
 func (st *SessionTab) refreshTotal() {
-	st.totalLabel.Text = fmt.Sprintf(i18n.T("session.total_format"), st.computeTotalDuration())
+	st.totalLabel.Text = fmt.Sprintf(i18n.T(i18n.KeySessionTotalFormat), st.computeTotalDuration())
 	st.totalLabel.Refresh()
 
 	// Training and share are now in other modes — no buttons to show/hide here.
@@ -964,13 +964,13 @@ func (st *SessionTab) emitAction(action SessionTabAction, name string) {
 
 func (st *SessionTab) buildCategoryOptions() []string {
 	return []string{
-		i18n.T("session.category_all"),
-		i18n.T("category." + string(model.CategoryWarmup)),
-		i18n.T("category." + string(model.CategoryOffense)),
-		i18n.T("category." + string(model.CategoryDefense)),
-		i18n.T("category." + string(model.CategoryTransition)),
-		i18n.T("category." + string(model.CategoryScrimmage)),
-		i18n.T("category." + string(model.CategoryCooldown)),
+		i18n.T(i18n.KeySessionCategoryAll),
+		i18n.T(i18n.KeyCategoryWarmup),
+		i18n.T(i18n.KeyCategoryOffense),
+		i18n.T(i18n.KeyCategoryDefense),
+		i18n.T(i18n.KeyCategoryTransition),
+		i18n.T(i18n.KeyCategoryScrimmage),
+		i18n.T(i18n.KeyCategoryCooldown),
 	}
 }
 
@@ -991,9 +991,9 @@ func (st *SessionTab) categoryKeyFromLabel(s string) model.Category {
 
 func (st *SessionTab) buildCourtTypeOptions() []string {
 	return []string{
-		i18n.T("session.category_all"),
-		i18n.T("court_type." + string(model.HalfCourt)),
-		i18n.T("court_type." + string(model.FullCourt)),
+		i18n.T(i18n.KeySessionCategoryAll),
+		i18n.T(i18n.KeyCourtTypeHalfCourt),
+		i18n.T(i18n.KeyCourtTypeFullCourt),
 	}
 }
 
@@ -1011,14 +1011,14 @@ func (st *SessionTab) courtTypeKeyFromLabel(s string) model.CourtType {
 
 // RefreshLanguage updates all translatable text in the session tab.
 func (st *SessionTab) RefreshLanguage() {
-	st.searchEntry.SetPlaceHolder(i18n.T("session.search"))
-	st.titleEntry.SetPlaceHolder(i18n.T("session.title"))
-	st.subtitleEntry.SetPlaceHolder(i18n.T("session.subtitle"))
-	st.ageGroupEntry.SetPlaceHolder(i18n.T("session.age_group"))
-	st.philosophyEntry.SetPlaceHolder(i18n.T("session.philosophy"))
+	st.searchEntry.SetPlaceHolder(i18n.T(i18n.KeySessionSearch))
+	st.titleEntry.SetPlaceHolder(i18n.T(i18n.KeySessionTitle))
+	st.subtitleEntry.SetPlaceHolder(i18n.T(i18n.KeySessionSubtitle))
+	st.ageGroupEntry.SetPlaceHolder(i18n.T(i18n.KeySessionAgeGroup))
+	st.philosophyEntry.SetPlaceHolder(i18n.T(i18n.KeySessionPhilosophy))
 
 	// Filter buttons.
-	filterKeys := [3]string{"filter.all", "filter.local", "filter.community"}
+	filterKeys := [3]string{i18n.KeyFilterAll, i18n.KeyFilterLocal, i18n.KeyFilterCommunity}
 	for i, key := range filterKeys {
 		st.filterBtns[i].SetText(i18n.T(key))
 	}
@@ -1044,27 +1044,27 @@ func (st *SessionTab) RefreshLanguage() {
 
 	// Preview placeholder.
 	if st.selectedIdx < 0 {
-		st.previewLabel.Text = i18n.T("session.select_to_preview")
+		st.previewLabel.Text = i18n.T(i18n.KeySessionSelectToPreview)
 		st.previewLabel.Refresh()
 	}
 
 	// Toolbar button tooltips.
-	st.refreshBtn.SetTooltip(i18n.T("mgr.refresh"))
-	st.addBtn.SetTooltip(i18n.T("session.add_to_session"))
+	st.refreshBtn.SetTooltip(i18n.T(i18n.KeyMgrRefresh))
+	st.addBtn.SetTooltip(i18n.T(i18n.KeySessionAddToSession))
 
 	// Toggle buttons.
 	if st.libToggle != nil {
-		st.libToggle.SetText(i18n.T("session.tab_library"))
+		st.libToggle.SetText(i18n.T(i18n.KeySessionTabLibrary))
 	}
 	if st.sesToggle != nil {
-		st.sesToggle.SetText(i18n.T("session.tab_session"))
+		st.sesToggle.SetText(i18n.T(i18n.KeySessionTabSession))
 	}
 	if st.sortSelect != nil {
-		st.sortSelect.Options = []string{i18n.T("sort.alpha"), i18n.T("sort.recent")}
+		st.sortSelect.Options = []string{i18n.T(i18n.KeySortAlpha), i18n.T(i18n.KeySortRecent)}
 		if st.sortByDate {
-			st.sortSelect.SetSelected(i18n.T("sort.recent"))
+			st.sortSelect.SetSelected(i18n.T(i18n.KeySortRecent))
 		} else {
-			st.sortSelect.SetSelected(i18n.T("sort.alpha"))
+			st.sortSelect.SetSelected(i18n.T(i18n.KeySortAlpha))
 		}
 	}
 

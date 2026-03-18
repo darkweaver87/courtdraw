@@ -165,7 +165,7 @@ func NewTrainingMode(w fyne.Window, session *model.Session, exercises []*model.E
 	tm.coachTools.SetAlertCallback(systemBeep)
 
 	// Quit button.
-	tm.quitBtn = widget.NewButtonWithIcon(i18n.T("training.quit"), icon.Back(), func() {
+	tm.quitBtn = widget.NewButtonWithIcon(i18n.T(i18n.KeyTrainingQuit), icon.Back(), func() {
 		tm.Stop()
 		if tm.OnExit != nil {
 			tm.OnExit()
@@ -313,7 +313,7 @@ func (tm *TrainingMode) loadExercise(idx int) {
 	}
 
 	// Navigation.
-	tm.progressText.Text = fmt.Sprintf(i18n.T("training.progress"), idx+1, len(tm.exercises))
+	tm.progressText.Text = fmt.Sprintf(i18n.T(i18n.KeyTrainingProgress), idx+1, len(tm.exercises))
 	tm.progressText.Refresh()
 
 	tm.nameText.Text = ex.Name
@@ -330,7 +330,7 @@ func (tm *TrainingMode) loadExercise(idx int) {
 
 	// Metadata.
 	if ex.Category != "" {
-		tm.categoryText.Text = i18n.T("category." + string(ex.Category))
+		tm.categoryText.Text = i18n.T(categoryI18nKey(ex.Category))
 		tm.categoryText.Color = theme.CategoryColor(ex.Category)
 	} else {
 		tm.categoryText.Text = ""
@@ -339,7 +339,7 @@ func (tm *TrainingMode) loadExercise(idx int) {
 
 	tm.durationText.Text = ex.Duration
 	if tm.durationText.Text == "" {
-		tm.durationText.Text = i18n.T("training.no_duration")
+		tm.durationText.Text = i18n.T(i18n.KeyTrainingNoDuration)
 	}
 	tm.durationText.Refresh()
 
@@ -379,7 +379,7 @@ func (tm *TrainingMode) refreshSeqUI() {
 		tm.pauseBtn.Hide()
 		tm.speedBtn.Hide()
 	} else {
-		tm.seqLabel.Text = fmt.Sprintf(i18n.T("training.seq"), tm.seqIdx+1, numSeqs)
+		tm.seqLabel.Text = fmt.Sprintf(i18n.T(i18n.KeyTrainingSeq), tm.seqIdx+1, numSeqs)
 		tm.seqPrevBtn.Show()
 		tm.seqNextBtn.Show()
 		tm.speedBtn.Show()
@@ -412,7 +412,7 @@ func (tm *TrainingMode) refreshSeqUI() {
 
 		label := seq.Label
 		if label == "" {
-			label = fmt.Sprintf(i18n.T("training.seq"), si+1, numSeqs)
+			label = fmt.Sprintf(i18n.T(i18n.KeyTrainingSeq), si+1, numSeqs)
 		}
 		lbl := canvas.NewText(label, headerColor)
 		lbl.TextSize = 14
@@ -506,7 +506,7 @@ func (tm *TrainingMode) startExerciseTimer(ex *model.Exercise) {
 				fyne.Do(func() {
 					tm.refreshTimerDisplay(rem)
 					if expired {
-						tm.timerBanner.Text = i18n.T("training.time_expired")
+						tm.timerBanner.Text = i18n.T(i18n.KeyTrainingTimeExpired)
 						tm.timerBanner.Refresh()
 					}
 				})
@@ -616,9 +616,9 @@ func (tm *TrainingMode) buildMobileLayout() fyne.CanvasObject {
 	toolsTab := tm.coachTools.Widget()
 
 	mtb := NewTabBar(
-		TabItem{Icon: icon.Play(), Label: i18n.T("mobile.training.court"), Content: courtTab},
-		TabItem{Icon: icon.Info(), Label: i18n.T("mobile.training.instructions"), Content: instrTab},
-		TabItem{Icon: icon.Timer(), Label: i18n.T("mobile.training.tools"), Content: toolsTab},
+		TabItem{Icon: icon.Play(), Label: i18n.T(i18n.KeyMobileTrainingCourt), Content: courtTab},
+		TabItem{Icon: icon.Info(), Label: i18n.T(i18n.KeyMobileTrainingInstructions), Content: instrTab},
+		TabItem{Icon: icon.Timer(), Label: i18n.T(i18n.KeyMobileTrainingTools), Content: toolsTab},
 	)
 
 	return mtb.Widget()

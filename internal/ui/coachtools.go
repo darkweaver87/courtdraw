@@ -50,7 +50,7 @@ func NewCountdownTimer() *CountdownTimer {
 	ct.display.TextStyle.Bold = true
 	ct.display.Alignment = fyne.TextAlignCenter
 
-	ct.startBtn = widget.NewButton(i18n.T("coach.start"), func() {
+	ct.startBtn = widget.NewButton(i18n.T(i18n.KeyCoachStart), func() {
 		ct.mu.Lock()
 		running := ct.running
 		ct.mu.Unlock()
@@ -62,7 +62,7 @@ func NewCountdownTimer() *CountdownTimer {
 	})
 	ct.startBtn.Importance = widget.HighImportance
 
-	ct.resetBtn = widget.NewButton(i18n.T("coach.reset"), func() {
+	ct.resetBtn = widget.NewButton(i18n.T(i18n.KeyCoachReset), func() {
 		ct.reset()
 	})
 	ct.resetBtn.Importance = widget.LowImportance
@@ -133,7 +133,7 @@ func (ct *CountdownTimer) start() {
 	ct.ticker = time.NewTicker(100 * time.Millisecond)
 	ct.mu.Unlock()
 
-	ct.startBtn.SetText(i18n.T("coach.pause"))
+	ct.startBtn.SetText(i18n.T(i18n.KeyCoachPause))
 
 	go func() {
 		last := time.Now()
@@ -181,7 +181,7 @@ func (ct *CountdownTimer) pause() {
 	ct.running = false
 	ct.ticker.Stop()
 	close(ct.done)
-	ct.startBtn.SetText(i18n.T("coach.start"))
+	ct.startBtn.SetText(i18n.T(i18n.KeyCoachStart))
 }
 
 func (ct *CountdownTimer) reset() {
@@ -192,7 +192,7 @@ func (ct *CountdownTimer) reset() {
 	rem := ct.remaining
 	ct.mu.Unlock()
 	ct.refreshDisplay(rem)
-	ct.startBtn.SetText(i18n.T("coach.start"))
+	ct.startBtn.SetText(i18n.T(i18n.KeyCoachStart))
 }
 
 func (ct *CountdownTimer) refreshDisplay(rem time.Duration) {
@@ -253,7 +253,7 @@ func NewStopwatch() *Stopwatch {
 	sw.display.TextStyle.Bold = true
 	sw.display.Alignment = fyne.TextAlignCenter
 
-	sw.startBtn = widget.NewButton(i18n.T("coach.start"), func() {
+	sw.startBtn = widget.NewButton(i18n.T(i18n.KeyCoachStart), func() {
 		sw.mu.Lock()
 		running := sw.running
 		sw.mu.Unlock()
@@ -265,7 +265,7 @@ func NewStopwatch() *Stopwatch {
 	})
 	sw.startBtn.Importance = widget.HighImportance
 
-	sw.resetBtn = widget.NewButton(i18n.T("coach.reset"), func() {
+	sw.resetBtn = widget.NewButton(i18n.T(i18n.KeyCoachReset), func() {
 		sw.resetTimer()
 	})
 	sw.resetBtn.Importance = widget.LowImportance
@@ -287,7 +287,7 @@ func (sw *Stopwatch) start() {
 	sw.ticker = time.NewTicker(10 * time.Millisecond)
 	sw.mu.Unlock()
 
-	sw.startBtn.SetText(i18n.T("coach.pause"))
+	sw.startBtn.SetText(i18n.T(i18n.KeyCoachPause))
 
 	go func() {
 		last := time.Now()
@@ -331,7 +331,7 @@ func (sw *Stopwatch) stop() {
 	sw.running = false
 	sw.ticker.Stop()
 	close(sw.done)
-	sw.startBtn.SetText(i18n.T("coach.start"))
+	sw.startBtn.SetText(i18n.T(i18n.KeyCoachStart))
 }
 
 func (sw *Stopwatch) resetTimer() {
@@ -341,7 +341,7 @@ func (sw *Stopwatch) resetTimer() {
 	sw.mu.Unlock()
 	sw.display.Text = "00:00.000"
 	sw.display.Refresh()
-	sw.startBtn.SetText(i18n.T("coach.start"))
+	sw.startBtn.SetText(i18n.T(i18n.KeyCoachStart))
 }
 
 // Stop halts the stopwatch.
@@ -416,12 +416,12 @@ type LucLeger struct {
 func NewLucLeger() *LucLeger {
 	ll := &LucLeger{}
 
-	ll.stageLabel = canvas.NewText(fmt.Sprintf(i18n.T("coach.stage"), 1), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	ll.stageLabel = canvas.NewText(fmt.Sprintf(i18n.T(i18n.KeyCoachStage), 1), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
 	ll.stageLabel.TextSize = 28
 	ll.stageLabel.TextStyle.Bold = true
 	ll.stageLabel.Alignment = fyne.TextAlignCenter
 
-	ll.shuttleLabel = canvas.NewText(fmt.Sprintf(i18n.T("coach.shuttle"), 0, legerProtocol[0].Shuttles),
+	ll.shuttleLabel = canvas.NewText(fmt.Sprintf(i18n.T(i18n.KeyCoachShuttle), 0, legerProtocol[0].Shuttles),
 		color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
 	ll.shuttleLabel.TextSize = 18
 	ll.shuttleLabel.Alignment = fyne.TextAlignCenter
@@ -431,7 +431,7 @@ func NewLucLeger() *LucLeger {
 	ll.speedLabel.TextSize = 14
 	ll.speedLabel.Alignment = fyne.TextAlignCenter
 
-	ll.startBtn = widget.NewButton(i18n.T("coach.start"), func() {
+	ll.startBtn = widget.NewButton(i18n.T(i18n.KeyCoachStart), func() {
 		ll.mu.Lock()
 		running := ll.running
 		ll.mu.Unlock()
@@ -443,7 +443,7 @@ func NewLucLeger() *LucLeger {
 	})
 	ll.startBtn.Importance = widget.HighImportance
 
-	ll.resetBtn = widget.NewButton(i18n.T("coach.reset"), func() {
+	ll.resetBtn = widget.NewButton(i18n.T(i18n.KeyCoachReset), func() {
 		ll.resetTest()
 	})
 	ll.resetBtn.Importance = widget.LowImportance
@@ -475,7 +475,7 @@ func (ll *LucLeger) start() {
 	ll.ticker = time.NewTicker(interval)
 	ll.mu.Unlock()
 
-	ll.startBtn.SetText(i18n.T("coach.pause"))
+	ll.startBtn.SetText(i18n.T(i18n.KeyCoachPause))
 
 	go func() {
 		for {
@@ -496,7 +496,7 @@ func (ll *LucLeger) start() {
 						ll.mu.Unlock()
 						fyne.Do(func() {
 							ll.refreshLabels()
-							ll.startBtn.SetText(i18n.T("coach.start"))
+							ll.startBtn.SetText(i18n.T(i18n.KeyCoachStart))
 						})
 						return
 					}
@@ -532,7 +532,7 @@ func (ll *LucLeger) pause() {
 	ll.running = false
 	ll.ticker.Stop()
 	close(ll.done)
-	ll.startBtn.SetText(i18n.T("coach.start"))
+	ll.startBtn.SetText(i18n.T(i18n.KeyCoachStart))
 }
 
 func (ll *LucLeger) resetTest() {
@@ -542,7 +542,7 @@ func (ll *LucLeger) resetTest() {
 	ll.shuttle = 0
 	ll.mu.Unlock()
 	ll.refreshLabels()
-	ll.startBtn.SetText(i18n.T("coach.start"))
+	ll.startBtn.SetText(i18n.T(i18n.KeyCoachStart))
 }
 
 func (ll *LucLeger) refreshLabels() {
@@ -552,9 +552,9 @@ func (ll *LucLeger) refreshLabels() {
 	ll.mu.Unlock()
 
 	stg := legerProtocol[stage]
-	ll.stageLabel.Text = fmt.Sprintf(i18n.T("coach.stage"), stage+1)
+	ll.stageLabel.Text = fmt.Sprintf(i18n.T(i18n.KeyCoachStage), stage+1)
 	ll.stageLabel.Refresh()
-	ll.shuttleLabel.Text = fmt.Sprintf(i18n.T("coach.shuttle"), shuttle, stg.Shuttles)
+	ll.shuttleLabel.Text = fmt.Sprintf(i18n.T(i18n.KeyCoachShuttle), shuttle, stg.Shuttles)
 	ll.shuttleLabel.Refresh()
 	ll.speedLabel.Text = fmt.Sprintf("%.1f km/h", stg.Speed)
 	ll.speedLabel.Refresh()
@@ -606,9 +606,9 @@ func (p *CoachToolsPanel) BuildWidget() fyne.CanvasObject {
 	}
 
 	labels := []string{
-		i18n.T("coach.countdown"),
-		i18n.T("coach.stopwatch"),
-		i18n.T("coach.leger"),
+		i18n.T(i18n.KeyCoachCountdown),
+		i18n.T(i18n.KeyCoachStopwatch),
+		i18n.T(i18n.KeyCoachLeger),
 	}
 
 	// Fixed-height content area so layout doesn't shift between tools.

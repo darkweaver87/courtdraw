@@ -93,11 +93,11 @@ func NewEditorShelf(state *editor.EditorState, palette *ToolPalette) *EditorShel
 
 func (ms *EditorShelf) build() {
 	// --- Tools: select + delete ---
-	selectBtn := ms.addBtn(icon.ToolSelect, "tool.select", func() {
+	selectBtn := ms.addBtn(icon.ToolSelect, i18n.KeyToolSelect, func() {
 		ms.state.SetTool(editor.ToolSelect)
 		ms.syncHighlights()
 	})
-	deleteBtn := ms.addBtn(icon.Delete(), "tool.delete", func() {
+	deleteBtn := ms.addBtn(icon.Delete(), i18n.KeyToolDelete, func() {
 		if ms.state.SelectedElement != nil {
 			ms.state.DeleteRequested = true
 		} else {
@@ -115,9 +115,9 @@ func (ms *EditorShelf) build() {
 		model.RolePowerForward, model.RoleCenter,
 	}
 	playerKeys := []string{
-		"tool.player.attacker", "tool.player.defender", "tool.player.coach",
-		"tool.player.pg", "tool.player.sg", "tool.player.sf",
-		"tool.player.pf", "tool.player.center",
+		i18n.KeyToolPlayerAttacker, i18n.KeyToolPlayerDefender, i18n.KeyToolPlayerCoach,
+		i18n.KeyToolPlayerPg, i18n.KeyToolPlayerSg, i18n.KeyToolPlayerSf,
+		i18n.KeyToolPlayerPf, i18n.KeyToolPlayerCenter,
 	}
 	playerIcons := []fyne.Resource{
 		icon.PlayerAttacker, icon.PlayerDefender, icon.PlayerCoach,
@@ -134,7 +134,7 @@ func (ms *EditorShelf) build() {
 		})
 		playerGrid.Add(btn)
 	}
-	queueBtn := ms.addBtn(icon.PlayerQueue, "tool.player.queue", func() {
+	queueBtn := ms.addBtn(icon.PlayerQueue, i18n.KeyToolPlayerQueue, func() {
 		ms.state.SetQueueTool()
 		ms.syncHighlights()
 		ms.collapse()
@@ -149,9 +149,9 @@ func (ms *EditorShelf) build() {
 		model.ActionCloseOut, model.ActionContest, model.ActionReverse,
 	}
 	actionKeys := []string{
-		"tool.action.pass", "tool.action.dribble", "tool.action.sprint",
-		"tool.action.shot", "tool.action.screen", "tool.action.cut",
-		"tool.action.close_out", "tool.action.contest", "tool.action.reverse",
+		i18n.KeyToolActionPass, i18n.KeyToolActionDribble, i18n.KeyToolActionSprint,
+		i18n.KeyToolActionShot, i18n.KeyToolActionScreen, i18n.KeyToolActionCut,
+		i18n.KeyToolActionCloseOut, i18n.KeyToolActionContest, i18n.KeyToolActionReverse,
 	}
 	actionIcons := []fyne.Resource{
 		icon.ActionPass, icon.ActionDribble, icon.ActionSprint,
@@ -174,7 +174,7 @@ func (ms *EditorShelf) build() {
 	accTypes := []model.AccessoryType{
 		model.AccessoryCone, model.AccessoryAgilityLadder, model.AccessoryChair,
 	}
-	accKeys := []string{"tool.accessory.cone", "tool.accessory.ladder", "tool.accessory.chair"}
+	accKeys := []string{i18n.KeyToolAccessoryCone, i18n.KeyToolAccessoryLadder, i18n.KeyToolAccessoryChair}
 	accIcons := []fyne.Resource{icon.AccCone, icon.AccLadder, icon.AccChair}
 	accGrid := container.NewGridWrap(shelfCellSize)
 	for i, at := range accTypes {
@@ -348,10 +348,10 @@ func (ms *EditorShelf) Widget() fyne.CanvasObject {
 		label string
 		cat   shelfCategory
 	}{
-		{icon.ToolSelect, i18n.T("mobile.shelf.tools"), shelfTools},
-		{icon.PlayerAttacker, i18n.T("mobile.shelf.players"), shelfPlayers},
-		{icon.ActionPass, i18n.T("mobile.shelf.actions"), shelfActions},
-		{icon.AccCone, i18n.T("mobile.shelf.accessories"), shelfAccessories},
+		{icon.ToolSelect, i18n.T(i18n.KeyMobileShelfTools), shelfTools},
+		{icon.PlayerAttacker, i18n.T(i18n.KeyMobileShelfPlayers), shelfPlayers},
+		{icon.ActionPass, i18n.T(i18n.KeyMobileShelfActions), shelfActions},
+		{icon.AccCone, i18n.T(i18n.KeyMobileShelfAccessories), shelfAccessories},
 	}
 	tabItems := make([]fyne.CanvasObject, len(tabs))
 	for i, t := range tabs {
@@ -390,8 +390,8 @@ func (ms *EditorShelf) Widget() fyne.CanvasObject {
 // RefreshLanguage updates tab labels.
 func (ms *EditorShelf) RefreshLanguage() {
 	keys := []string{
-		"mobile.shelf.tools", "mobile.shelf.players",
-		"mobile.shelf.actions", "mobile.shelf.accessories",
+		i18n.KeyMobileShelfTools, i18n.KeyMobileShelfPlayers,
+		i18n.KeyMobileShelfActions, i18n.KeyMobileShelfAccessories,
 	}
 	for i, k := range keys {
 		if ms.tabLabels[i] != nil {

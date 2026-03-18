@@ -716,7 +716,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 		idx := len(seq.Players) - 1
 		state.Select(editor.SelectPlayer, idx, w.seqIndex)
 		state.MarkModified()
-		state.SetStatus(i18n.Tf("status.player_added", p.Label), 0)
+		state.SetStatus(i18n.Tf(i18n.KeyStatusPlayerAdded, p.Label), 0)
 		w.Refresh()
 		w.notifyChanged()
 
@@ -727,7 +727,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 				sel.SeqIndex == w.seqIndex && sel.Index < len(seq.Players) {
 				id := seq.Players[sel.Index].ID
 				if model.RequiresBall(state.ToolActionType) && !seq.BallCarrier.HasBall(id) {
-					state.SetStatus(i18n.T("status.requires_ball"), 1)
+					state.SetStatus(i18n.T(i18n.KeyStatusRequiresBall), 1)
 					w.notifyChanged()
 					return
 				}
@@ -739,7 +739,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 			if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
 				id := seq.Players[pi].ID
 				if model.RequiresBall(state.ToolActionType) && !seq.BallCarrier.HasBall(id) {
-					state.SetStatus(i18n.T("status.requires_ball"), 1)
+					state.SetStatus(i18n.T(i18n.KeyStatusRequiresBall), 1)
 					w.notifyChanged()
 					return
 				}
@@ -751,7 +751,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 				toRef.IsPlayer = true
 				toRef.PlayerID = seq.Players[pi].ID
 			} else if state.ToolActionType == model.ActionPass {
-				state.SetStatus(i18n.T("status.pass_requires_player"), 1)
+				state.SetStatus(i18n.T(i18n.KeyStatusPassRequiresPlayer), 1)
 				w.notifyChanged()
 				return
 			} else {
@@ -771,7 +771,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 			}
 			state.ActionFrom = nil
 			state.MarkModified()
-			state.SetStatus(i18n.Tf("status.action_added", string(action.Type)), 0)
+			state.SetStatus(i18n.Tf(i18n.KeyStatusActionAdded, string(action.Type)), 0)
 			w.Refresh()
 			w.notifyChanged()
 		}
@@ -788,7 +788,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 		idx := len(seq.Accessories) - 1
 		state.Select(editor.SelectAccessory, idx, w.seqIndex)
 		state.MarkModified()
-		state.SetStatus(i18n.Tf("status.accessory_added", string(acc.Type)), 0)
+		state.SetStatus(i18n.Tf(i18n.KeyStatusAccessoryAdded, string(acc.Type)), 0)
 		w.Refresh()
 		w.notifyChanged()
 
@@ -955,7 +955,7 @@ func (w *CourtWidget) DeleteSelected() {
 	}
 	state.Deselect()
 	state.MarkModified()
-	state.SetStatus(i18n.T("status.element_deleted"), 0)
+	state.SetStatus(i18n.T(i18n.KeyStatusElementDeleted), 0)
 	w.Refresh()
 	w.notifyChanged()
 }

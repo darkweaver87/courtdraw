@@ -79,14 +79,14 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 
 	// Select tool.
 	selectGrid := newToolGrid()
-	addToolToGrid(selectGrid, "tool.select", icon.ToolSelect, func() {
+	addToolToGrid(selectGrid, i18n.KeyToolSelect, icon.ToolSelect, func() {
 		state.SetTool(editor.ToolSelect)
 		tp.updateActive()
 	})
 	vbox.Add(selectGrid)
 
 	// --- Players ---
-	vbox.Add(tp.makeHeader("tool.header.players"))
+	vbox.Add(tp.makeHeader(i18n.KeyToolHeaderPlayers))
 
 	playerRoles := []model.PlayerRole{
 		model.RoleAttacker, model.RoleDefender, model.RoleCoach,
@@ -94,9 +94,9 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 		model.RolePowerForward, model.RoleCenter,
 	}
 	playerKeys := []string{
-		"tool.player.attacker", "tool.player.defender", "tool.player.coach",
-		"tool.player.pg", "tool.player.sg", "tool.player.sf",
-		"tool.player.pf", "tool.player.center",
+		i18n.KeyToolPlayerAttacker, i18n.KeyToolPlayerDefender, i18n.KeyToolPlayerCoach,
+		i18n.KeyToolPlayerPg, i18n.KeyToolPlayerSg, i18n.KeyToolPlayerSf,
+		i18n.KeyToolPlayerPf, i18n.KeyToolPlayerCenter,
 	}
 	playerIcons := []fyne.Resource{
 		icon.PlayerAttacker, icon.PlayerDefender, icon.PlayerCoach,
@@ -112,14 +112,14 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 		})
 	}
 	// Queue tool in the same grid.
-	addToolToGrid(playerGrid, "tool.player.queue", icon.PlayerQueue, func() {
+	addToolToGrid(playerGrid, i18n.KeyToolPlayerQueue, icon.PlayerQueue, func() {
 		state.SetQueueTool()
 		tp.updateActive()
 	})
 	vbox.Add(playerGrid)
 
 	// --- Actions ---
-	vbox.Add(tp.makeHeader("tool.header.actions"))
+	vbox.Add(tp.makeHeader(i18n.KeyToolHeaderActions))
 
 	actionTypes := []model.ActionType{
 		model.ActionPass, model.ActionDribble, model.ActionSprint,
@@ -127,9 +127,9 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 		model.ActionCloseOut, model.ActionContest, model.ActionReverse,
 	}
 	actionKeys := []string{
-		"tool.action.pass", "tool.action.dribble", "tool.action.sprint",
-		"tool.action.shot", "tool.action.screen", "tool.action.cut",
-		"tool.action.close_out", "tool.action.contest", "tool.action.reverse",
+		i18n.KeyToolActionPass, i18n.KeyToolActionDribble, i18n.KeyToolActionSprint,
+		i18n.KeyToolActionShot, i18n.KeyToolActionScreen, i18n.KeyToolActionCut,
+		i18n.KeyToolActionCloseOut, i18n.KeyToolActionContest, i18n.KeyToolActionReverse,
 	}
 	actionIcons := []fyne.Resource{
 		icon.ActionPass, icon.ActionDribble, icon.ActionSprint,
@@ -147,12 +147,12 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 	vbox.Add(actionGrid)
 
 	// --- Accessories ---
-	vbox.Add(tp.makeHeader("tool.header.accessories"))
+	vbox.Add(tp.makeHeader(i18n.KeyToolHeaderAccessories))
 
 	accTypes := []model.AccessoryType{
 		model.AccessoryCone, model.AccessoryAgilityLadder, model.AccessoryChair,
 	}
-	accKeys := []string{"tool.accessory.cone", "tool.accessory.ladder", "tool.accessory.chair"}
+	accKeys := []string{i18n.KeyToolAccessoryCone, i18n.KeyToolAccessoryLadder, i18n.KeyToolAccessoryChair}
 	accIcons := []fyne.Resource{icon.AccCone, icon.AccLadder, icon.AccChair}
 	accGrid := newToolGrid()
 	for i, at := range accTypes {
@@ -167,7 +167,7 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 	// --- Delete ---
 	vbox.Add(widget.NewSeparator())
 	deleteGrid := newToolGrid()
-	addToolToGrid(deleteGrid, "tool.delete", icon.Delete(), func() {
+	addToolToGrid(deleteGrid, i18n.KeyToolDelete, icon.Delete(), func() {
 		if state.SelectedElement != nil {
 			state.DeleteRequested = true
 		} else {

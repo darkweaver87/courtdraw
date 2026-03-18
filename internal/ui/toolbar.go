@@ -39,43 +39,43 @@ type FileToolbar struct {
 func NewFileToolbar() *FileToolbar {
 	ft := &FileToolbar{}
 
-	ft.btns[0] = NewTipButton(icon.New(), i18n.T("tooltip.new"), func() {
+	ft.btns[0] = NewTipButton(icon.New(), i18n.T(i18n.KeyTooltipNew), func() {
 		if ft.OnAction != nil {
 			ft.OnAction(FileActionNew)
 		}
 	})
-	ft.btns[1] = NewTipButton(icon.Open(), i18n.T("tooltip.open"), func() {
+	ft.btns[1] = NewTipButton(icon.Open(), i18n.T(i18n.KeyTooltipOpen), func() {
 		if ft.OnAction != nil {
 			ft.OnAction(FileActionOpen)
 		}
 	})
-	ft.btns[2] = NewTipButton(icon.Refresh(), i18n.T("tooltip.recent"), func() {
+	ft.btns[2] = NewTipButton(icon.Refresh(), i18n.T(i18n.KeyTooltipRecent), func() {
 		if ft.OnAction != nil {
 			ft.OnAction(FileActionRecent)
 		}
 	})
-	ft.btns[3] = NewTipButton(icon.Save(), i18n.T("tooltip.save"), func() {
+	ft.btns[3] = NewTipButton(icon.Save(), i18n.T(i18n.KeyTooltipSave), func() {
 		if ft.OnAction != nil {
 			ft.OnAction(FileActionSave)
 		}
 	})
 	ft.saveBtn = ft.btns[3]
-	ft.btns[4] = NewTipButton(icon.Duplicate(), i18n.T("tooltip.save_as"), func() {
+	ft.btns[4] = NewTipButton(icon.Duplicate(), i18n.T(i18n.KeyTooltipSaveAs), func() {
 		if ft.OnAction != nil {
 			ft.OnAction(FileActionSaveAs)
 		}
 	})
-	ft.btns[5] = NewTipButton(icon.Import(), i18n.T("tooltip.import"), func() {
+	ft.btns[5] = NewTipButton(icon.Import(), i18n.T(i18n.KeyTooltipImport), func() {
 		if ft.OnAction != nil {
 			ft.OnAction(FileActionImport)
 		}
 	})
-	ft.btns[6] = NewTipButton(icon.Info(), i18n.T("tooltip.about"), func() {
+	ft.btns[6] = NewTipButton(icon.Info(), i18n.T(i18n.KeyTooltipAbout), func() {
 		if ft.OnAction != nil {
 			ft.OnAction(FileActionAbout)
 		}
 	})
-	ft.btns[7] = NewTipButton(icon.Settings(), i18n.T("tooltip.preferences"), func() {
+	ft.btns[7] = NewTipButton(icon.Settings(), i18n.T(i18n.KeyTooltipPreferences), func() {
 		if ft.OnAction != nil {
 			ft.OnAction(FileActionPreferences)
 		}
@@ -89,7 +89,7 @@ func NewFileToolbar() *FileToolbar {
 
 // RefreshLanguage updates tooltip text for the current language.
 func (ft *FileToolbar) RefreshLanguage() {
-	keys := [8]string{"tooltip.new", "tooltip.open", "tooltip.recent", "tooltip.save", "tooltip.save_as", "tooltip.import", "tooltip.about", "tooltip.preferences"}
+	keys := [8]string{i18n.KeyTooltipNew, i18n.KeyTooltipOpen, i18n.KeyTooltipRecent, i18n.KeyTooltipSave, i18n.KeyTooltipSaveAs, i18n.KeyTooltipImport, i18n.KeyTooltipAbout, i18n.KeyTooltipPreferences}
 	for i, key := range keys {
 		ft.btns[i].SetTooltip(i18n.T(key))
 	}

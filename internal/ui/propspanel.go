@@ -88,12 +88,12 @@ func NewPropertiesPanel() *PropertiesPanel {
 	})
 
 	pp.courtTypeSelect = widget.NewSelect(
-		[]string{i18n.T("props.court_half"), i18n.T("props.court_full")},
+		[]string{i18n.T(i18n.KeyPropsCourtHalf), i18n.T(i18n.KeyPropsCourtFull)},
 		func(s string) {
 			if pp.exercise == nil {
 				return
 			}
-			if s == i18n.T("props.court_full") {
+			if s == i18n.T(i18n.KeyPropsCourtFull) {
 				pp.exercise.CourtType = model.FullCourt
 			} else {
 				pp.exercise.CourtType = model.HalfCourt
@@ -103,13 +103,13 @@ func NewPropertiesPanel() *PropertiesPanel {
 	)
 
 	categories := []string{
-		i18n.T("props.category_none"),
-		i18n.T("category." + string(model.CategoryWarmup)),
-		i18n.T("category." + string(model.CategoryOffense)),
-		i18n.T("category." + string(model.CategoryDefense)),
-		i18n.T("category." + string(model.CategoryTransition)),
-		i18n.T("category." + string(model.CategoryScrimmage)),
-		i18n.T("category." + string(model.CategoryCooldown)),
+		i18n.T(i18n.KeyPropsCategoryNone),
+		i18n.T(i18n.KeyCategoryWarmup),
+		i18n.T(i18n.KeyCategoryOffense),
+		i18n.T(i18n.KeyCategoryDefense),
+		i18n.T(i18n.KeyCategoryTransition),
+		i18n.T(i18n.KeyCategoryScrimmage),
+		i18n.T(i18n.KeyCategoryCooldown),
 	}
 	categoryKeys := []model.Category{
 		"", model.CategoryWarmup, model.CategoryOffense, model.CategoryDefense,
@@ -129,9 +129,9 @@ func NewPropertiesPanel() *PropertiesPanel {
 	})
 
 	ageGroups := []string{
-		i18n.T("props.category_none"),
+		i18n.T(i18n.KeyPropsCategoryNone),
 		"U9", "U11", "U13", "U15", "U17", "U19",
-		i18n.T("age_group." + string(model.AgeGroupSenior)),
+		i18n.T(i18n.KeyAgeGroupSenior),
 	}
 	ageGroupKeys := []model.AgeGroup{
 		"", model.AgeGroupU9, model.AgeGroupU11, model.AgeGroupU13,
@@ -175,9 +175,9 @@ func NewPropertiesPanel() *PropertiesPanel {
 	pp.playerLabelEntry.OnChanged = func(s string) { pp.onPlayerLabelChanged(s) }
 
 	roles := []string{
-		i18n.T("tool.player.attacker"), i18n.T("tool.player.defender"), i18n.T("tool.player.coach"),
-		i18n.T("tool.player.pg"), i18n.T("tool.player.sg"), i18n.T("tool.player.sf"),
-		i18n.T("tool.player.pf"), i18n.T("tool.player.center"),
+		i18n.T(i18n.KeyToolPlayerAttacker), i18n.T(i18n.KeyToolPlayerDefender), i18n.T(i18n.KeyToolPlayerCoach),
+		i18n.T(i18n.KeyToolPlayerPg), i18n.T(i18n.KeyToolPlayerSg), i18n.T(i18n.KeyToolPlayerSf),
+		i18n.T(i18n.KeyToolPlayerPf), i18n.T(i18n.KeyToolPlayerCenter),
 	}
 	roleKeys := []model.PlayerRole{
 		model.RoleAttacker, model.RoleDefender, model.RoleCoach,
@@ -188,10 +188,10 @@ func NewPropertiesPanel() *PropertiesPanel {
 		pp.onPlayerRoleChanged(s, pp.playerRoleSelect.Options, roleKeys)
 	})
 
-	pp.ballCheck = widget.NewCheck(i18n.T("props.ball"), func(checked bool) {
+	pp.ballCheck = widget.NewCheck(i18n.T(i18n.KeyPropsBall), func(checked bool) {
 		pp.toggleBallCarrier(checked)
 	})
-	pp.queueCheck = widget.NewCheck(i18n.T("tool.player.queue"), func(checked bool) {
+	pp.queueCheck = widget.NewCheck(i18n.T(i18n.KeyToolPlayerQueue), func(checked bool) {
 		pp.toggleQueue(checked)
 	})
 
@@ -201,7 +201,7 @@ func NewPropertiesPanel() *PropertiesPanel {
 	pp.rotationLabel = canvas.NewText("0°", color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
 	pp.rotationLabel.TextSize = 12
 
-	calloutLabels := []string{i18n.T("callout.none")}
+	calloutLabels := []string{i18n.T(i18n.KeyCalloutNone)}
 	for _, c := range model.AllCallouts() {
 		calloutLabels = append(calloutLabels, i18n.T("callout."+string(c)))
 	}
@@ -258,7 +258,7 @@ func (pp *PropertiesPanel) Update(exercise *model.Exercise, state *editor.Editor
 			}
 		}
 
-		pp.content.Add(pp.makeSection(i18n.T("props.element")))
+		pp.content.Add(pp.makeSection(i18n.T(i18n.KeyPropsElement)))
 
 		switch sel.Kind {
 		case editor.SelectPlayer:
@@ -279,46 +279,46 @@ func (pp *PropertiesPanel) Update(exercise *model.Exercise, state *editor.Editor
 	}
 
 	// Exercise metadata.
-	pp.content.Add(pp.makeSection(i18n.T("props.exercise")))
+	pp.content.Add(pp.makeSection(i18n.T(i18n.KeyPropsExercise)))
 	pp.addMetadataFields(exercise, editLang)
 }
 
 // RefreshLanguage rebuilds all translatable Select options and labels.
 func (pp *PropertiesPanel) RefreshLanguage() {
 	// Court type.
-	pp.courtTypeSelect.Options = []string{i18n.T("props.court_half"), i18n.T("props.court_full")}
+	pp.courtTypeSelect.Options = []string{i18n.T(i18n.KeyPropsCourtHalf), i18n.T(i18n.KeyPropsCourtFull)}
 	pp.courtTypeSelect.Refresh()
 
 	// Category.
 	pp.categorySelect.Options = []string{
-		i18n.T("props.category_none"),
-		i18n.T("category." + string(model.CategoryWarmup)),
-		i18n.T("category." + string(model.CategoryOffense)),
-		i18n.T("category." + string(model.CategoryDefense)),
-		i18n.T("category." + string(model.CategoryTransition)),
-		i18n.T("category." + string(model.CategoryScrimmage)),
-		i18n.T("category." + string(model.CategoryCooldown)),
+		i18n.T(i18n.KeyPropsCategoryNone),
+		i18n.T(i18n.KeyCategoryWarmup),
+		i18n.T(i18n.KeyCategoryOffense),
+		i18n.T(i18n.KeyCategoryDefense),
+		i18n.T(i18n.KeyCategoryTransition),
+		i18n.T(i18n.KeyCategoryScrimmage),
+		i18n.T(i18n.KeyCategoryCooldown),
 	}
 	pp.categorySelect.Refresh()
 
 	// Age group.
 	pp.ageGroupSelect.Options = []string{
-		i18n.T("props.category_none"),
+		i18n.T(i18n.KeyPropsCategoryNone),
 		"U9", "U11", "U13", "U15", "U17", "U19",
-		i18n.T("age_group." + string(model.AgeGroupSenior)),
+		i18n.T(i18n.KeyAgeGroupSenior),
 	}
 	pp.ageGroupSelect.Refresh()
 
 	// Player role.
 	pp.playerRoleSelect.Options = []string{
-		i18n.T("tool.player.attacker"), i18n.T("tool.player.defender"), i18n.T("tool.player.coach"),
-		i18n.T("tool.player.pg"), i18n.T("tool.player.sg"), i18n.T("tool.player.sf"),
-		i18n.T("tool.player.pf"), i18n.T("tool.player.center"),
+		i18n.T(i18n.KeyToolPlayerAttacker), i18n.T(i18n.KeyToolPlayerDefender), i18n.T(i18n.KeyToolPlayerCoach),
+		i18n.T(i18n.KeyToolPlayerPg), i18n.T(i18n.KeyToolPlayerSg), i18n.T(i18n.KeyToolPlayerSf),
+		i18n.T(i18n.KeyToolPlayerPf), i18n.T(i18n.KeyToolPlayerCenter),
 	}
 	pp.playerRoleSelect.Refresh()
 
 	// Callout.
-	calloutLabels := []string{i18n.T("callout.none")}
+	calloutLabels := []string{i18n.T(i18n.KeyCalloutNone)}
 	for _, c := range model.AllCallouts() {
 		calloutLabels = append(calloutLabels, i18n.T("callout."+string(c)))
 	}
@@ -326,9 +326,9 @@ func (pp *PropertiesPanel) RefreshLanguage() {
 	pp.calloutSelect.Refresh()
 
 	// Checkboxes.
-	pp.ballCheck.Text = i18n.T("props.ball")
+	pp.ballCheck.Text = i18n.T(i18n.KeyPropsBall)
 	pp.ballCheck.Refresh()
-	pp.queueCheck.Text = i18n.T("tool.player.queue")
+	pp.queueCheck.Text = i18n.T(i18n.KeyToolPlayerQueue)
 	pp.queueCheck.Refresh()
 
 	// Force re-sync of metadata so Select values match new options.
@@ -345,8 +345,8 @@ func (pp *PropertiesPanel) SyncFromExercise() {
 func (pp *PropertiesPanel) addPlayerProps(seq *model.Sequence, idx int) {
 	p := &seq.Players[idx]
 
-	pp.content.Add(pp.makeField(i18n.T("props.label"), pp.playerLabelEntry))
-	pp.content.Add(pp.makeField(i18n.T("props.role"), pp.playerRoleSelect))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsLabel), pp.playerLabelEntry))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsRole), pp.playerRoleSelect))
 	pp.playerRoleSelect.SetSelected(roleDisplayLabel(p.Role))
 
 	// Ball carrier checkbox.
@@ -361,9 +361,9 @@ func (pp *PropertiesPanel) addPlayerProps(seq *model.Sequence, idx int) {
 	if p.Callout != "" {
 		pp.calloutSelect.SetSelected(i18n.T("callout." + string(p.Callout)))
 	} else {
-		pp.calloutSelect.SetSelected(i18n.T("callout.none"))
+		pp.calloutSelect.SetSelected(i18n.T(i18n.KeyCalloutNone))
 	}
-	pp.content.Add(pp.makeField(i18n.T("props.callout"), pp.calloutSelect))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsCallout), pp.calloutSelect))
 
 	// Position with ± buttons.
 	pp.content.Add(pp.makePositionEditor(p))
@@ -371,12 +371,12 @@ func (pp *PropertiesPanel) addPlayerProps(seq *model.Sequence, idx int) {
 	// Rotation slider.
 	pp.rotationSlider.Value = p.Rotation
 	pp.rotationLabel.Text = fmt.Sprintf("%.0f°", p.Rotation)
-	pp.content.Add(pp.makeField(i18n.T("props.rotation"),
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsRotation),
 		container.NewBorder(nil, nil, nil, pp.rotationLabel, pp.rotationSlider)))
 }
 
 func (pp *PropertiesPanel) addAccessoryProps(a *model.Accessory) {
-	pp.content.Add(pp.makeReadonly(i18n.T("props.type"), string(a.Type)))
+	pp.content.Add(pp.makeReadonly(i18n.T(i18n.KeyPropsType), string(a.Type)))
 
 	// Position with ± buttons.
 	pp.content.Add(pp.makeAccessoryPositionEditor(a))
@@ -384,35 +384,35 @@ func (pp *PropertiesPanel) addAccessoryProps(a *model.Accessory) {
 	// Rotation slider.
 	pp.rotationSlider.Value = a.Rotation
 	pp.rotationLabel.Text = fmt.Sprintf("%.0f°", a.Rotation)
-	pp.content.Add(pp.makeField(i18n.T("props.rotation"),
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsRotation),
 		container.NewBorder(nil, nil, nil, pp.rotationLabel, pp.rotationSlider)))
 }
 
 func (pp *PropertiesPanel) addActionProps(a *model.Action) {
-	pp.content.Add(pp.makeReadonly(i18n.T("props.type"), string(a.Type)))
-	pp.content.Add(pp.makeReadonly(i18n.T("props.from"), refString(a.From)))
-	pp.content.Add(pp.makeReadonly(i18n.T("props.to"), refString(a.To)))
+	pp.content.Add(pp.makeReadonly(i18n.T(i18n.KeyPropsType), string(a.Type)))
+	pp.content.Add(pp.makeReadonly(i18n.T(i18n.KeyPropsFrom), refString(a.From)))
+	pp.content.Add(pp.makeReadonly(i18n.T(i18n.KeyPropsTo), refString(a.To)))
 }
 
 func (pp *PropertiesPanel) addMetadataFields(ex *model.Exercise, editLang string) {
 	// Add widgets to the container first, then sync values.
 	// This ensures SetText/SetSelected happen while widgets are attached,
 	// avoiding Fyne visual stale-state issues.
-	pp.content.Add(pp.makeField(i18n.T("props.name"), pp.nameEntry))
-	pp.content.Add(pp.makeField(i18n.T("props.description"), pp.descriptionEntry))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsName), pp.nameEntry))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsDescription), pp.descriptionEntry))
 
 	// Non-translatable fields — always visible regardless of editLang.
-	pp.content.Add(pp.makeField(i18n.T("props.standard"), pp.courtStdSelect))
-	pp.content.Add(pp.makeField(i18n.T("props.court"), pp.courtTypeSelect))
-	pp.content.Add(pp.makeField(i18n.T("props.duration"), pp.durationEntry))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsStandard), pp.courtStdSelect))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsCourt), pp.courtTypeSelect))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsDuration), pp.durationEntry))
 
 	pp.refreshIntensity()
 	intensityRow := container.NewHBox(pp.intensityBtns[0], pp.intensityBtns[1], pp.intensityBtns[2])
-	pp.content.Add(pp.makeField(i18n.T("props.intensity"), intensityRow))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsIntensity), intensityRow))
 
-	pp.content.Add(pp.makeField(i18n.T("props.category"), pp.categorySelect))
-	pp.content.Add(pp.makeField(i18n.T("props.age_group"), pp.ageGroupSelect))
-	pp.content.Add(pp.makeField(i18n.T("props.tags"), pp.tagsEntry))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsCategory), pp.categorySelect))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsAgeGroup), pp.ageGroupSelect))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsTags), pp.tagsEntry))
 
 	// Sync text values after widgets are attached.
 	if !pp.metaSynced {
@@ -434,9 +434,9 @@ func (pp *PropertiesPanel) addMetadataFields(ex *model.Exercise, editLang string
 	// Always sync Select widgets and intensity.
 	pp.courtStdSelect.SetSelected(strings.ToUpper(string(ex.CourtStandard)))
 	if ex.CourtType == model.FullCourt {
-		pp.courtTypeSelect.SetSelected(i18n.T("props.court_full"))
+		pp.courtTypeSelect.SetSelected(i18n.T(i18n.KeyPropsCourtFull))
 	} else {
-		pp.courtTypeSelect.SetSelected(i18n.T("props.court_half"))
+		pp.courtTypeSelect.SetSelected(i18n.T(i18n.KeyPropsCourtHalf))
 	}
 	pp.syncCategorySelect(ex)
 	pp.syncAgeGroupSelect(ex)
@@ -708,17 +708,17 @@ func (pp *PropertiesPanel) onCalloutChanged(s string, labels []string) {
 
 func (pp *PropertiesPanel) syncCategorySelect(ex *model.Exercise) {
 	if ex.Category == "" {
-		pp.categorySelect.SetSelected(i18n.T("props.category_none"))
+		pp.categorySelect.SetSelected(i18n.T(i18n.KeyPropsCategoryNone))
 	} else {
-		pp.categorySelect.SetSelected(i18n.T("category." + string(ex.Category)))
+		pp.categorySelect.SetSelected(i18n.T(categoryI18nKey(ex.Category)))
 	}
 }
 
 func (pp *PropertiesPanel) syncAgeGroupSelect(ex *model.Exercise) {
 	if ex.AgeGroup == "" {
-		pp.ageGroupSelect.SetSelected(i18n.T("props.category_none"))
+		pp.ageGroupSelect.SetSelected(i18n.T(i18n.KeyPropsCategoryNone))
 	} else if ex.AgeGroup == model.AgeGroupSenior {
-		pp.ageGroupSelect.SetSelected(i18n.T("age_group." + string(ex.AgeGroup)))
+		pp.ageGroupSelect.SetSelected(i18n.T(i18n.KeyAgeGroupSenior))
 	} else {
 		pp.ageGroupSelect.SetSelected(string(ex.AgeGroup))
 	}
@@ -777,7 +777,7 @@ func (pp *PropertiesPanel) makePositionEditor(p *model.Player) fyne.CanvasObject
 	xRow := container.NewHBox(xMinus, xLabel, xPlus)
 	yRow := container.NewHBox(yMinus, yLabel, yPlus)
 	posRow := container.NewGridWithColumns(2, xRow, yRow)
-	return pp.makeField(i18n.T("props.position"), posRow)
+	return pp.makeField(i18n.T(i18n.KeyPropsPosition), posRow)
 }
 
 func (pp *PropertiesPanel) makeAccessoryPositionEditor(a *model.Accessory) fyne.CanvasObject {
@@ -817,7 +817,7 @@ func (pp *PropertiesPanel) makeAccessoryPositionEditor(a *model.Accessory) fyne.
 	xRow := container.NewHBox(xMinus, xLabel, xPlus)
 	yRow := container.NewHBox(yMinus, yLabel, yPlus)
 	posRow := container.NewGridWithColumns(2, xRow, yRow)
-	return pp.makeField(i18n.T("props.position"), posRow)
+	return pp.makeField(i18n.T(i18n.KeyPropsPosition), posRow)
 }
 
 // --- Layout helpers ---
@@ -864,23 +864,43 @@ func (pp *PropertiesPanel) makeReadonly(label, value string) fyne.CanvasObject {
 func roleDisplayLabel(role model.PlayerRole) string {
 	switch role {
 	case model.RoleAttacker:
-		return i18n.T("tool.player.attacker")
+		return i18n.T(i18n.KeyToolPlayerAttacker)
 	case model.RoleDefender:
-		return i18n.T("tool.player.defender")
+		return i18n.T(i18n.KeyToolPlayerDefender)
 	case model.RoleCoach:
-		return i18n.T("tool.player.coach")
+		return i18n.T(i18n.KeyToolPlayerCoach)
 	case model.RolePointGuard:
-		return i18n.T("tool.player.pg")
+		return i18n.T(i18n.KeyToolPlayerPg)
 	case model.RoleShootingGuard:
-		return i18n.T("tool.player.sg")
+		return i18n.T(i18n.KeyToolPlayerSg)
 	case model.RoleSmallForward:
-		return i18n.T("tool.player.sf")
+		return i18n.T(i18n.KeyToolPlayerSf)
 	case model.RolePowerForward:
-		return i18n.T("tool.player.pf")
+		return i18n.T(i18n.KeyToolPlayerPf)
 	case model.RoleCenter:
-		return i18n.T("tool.player.center")
+		return i18n.T(i18n.KeyToolPlayerCenter)
 	default:
 		return string(role)
+	}
+}
+
+// categoryI18nKey returns the i18n constant key for a known category.
+func categoryI18nKey(cat model.Category) string {
+	switch cat {
+	case model.CategoryWarmup:
+		return i18n.KeyCategoryWarmup
+	case model.CategoryOffense:
+		return i18n.KeyCategoryOffense
+	case model.CategoryDefense:
+		return i18n.KeyCategoryDefense
+	case model.CategoryTransition:
+		return i18n.KeyCategoryTransition
+	case model.CategoryScrimmage:
+		return i18n.KeyCategoryScrimmage
+	case model.CategoryCooldown:
+		return i18n.KeyCategoryCooldown
+	default:
+		return "category." + string(cat)
 	}
 }
 

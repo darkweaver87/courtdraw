@@ -47,7 +47,7 @@ func NewInstructionsPanel() *InstructionsPanel {
 	})
 	ip.addBtn.Importance = widget.LowImportance
 
-	ip.header = canvas.NewText(i18n.T("instr.header"), color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff})
+	ip.header = canvas.NewText(i18n.T(i18n.KeyInstrHeader), color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff})
 	ip.header.TextSize = 11
 	ip.header.TextStyle.Bold = true
 
@@ -92,7 +92,7 @@ func (ip *InstructionsPanel) Update(exercise *model.Exercise, state *editor.Edit
 
 // RefreshLanguage updates the header text for the current language.
 func (ip *InstructionsPanel) RefreshLanguage() {
-	ip.header.Text = i18n.T("instr.header")
+	ip.header.Text = i18n.T(i18n.KeyInstrHeader)
 	ip.header.Refresh()
 }
 

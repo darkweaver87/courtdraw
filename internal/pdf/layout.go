@@ -221,7 +221,7 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 		pdf.SetTextColor(colorNeutral[0], colorNeutral[1], colorNeutral[2])
 		for _, v := range block.entry.Variants {
 			pdf.SetXY(ctx.colX+4, y)
-			pdf.CellFormat(colW, 3.5, tr(i18n.Tf("pdf.variant", v.Exercise)), "", 0, "L", false, 0, "")
+			pdf.CellFormat(colW, 3.5, tr(i18n.Tf(i18n.KeyPdfVariant, v.Exercise)), "", 0, "L", false, 0, "")
 			y += 4
 		}
 	}
@@ -241,7 +241,7 @@ func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, block
 	pdf.SetFont("Helvetica", "B", fontSizeHeader)
 	pdf.SetTextColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
 	pdf.SetXY(ctx.colX, y)
-	pdf.CellFormat(colW, 6, tr(i18n.T("pdf.summary")), "", 0, "L", false, 0, "")
+	pdf.CellFormat(colW, 6, tr(i18n.T(i18n.KeyPdfSummary)), "", 0, "L", false, 0, "")
 	y += 8
 
 	nameW := colW*0.5 - 10
@@ -253,7 +253,7 @@ func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, block
 		catW = 10
 	}
 	colWidths := []float64{10, nameW, 30, 20, catW}
-	headers := []string{tr(i18n.T("pdf.col_num")), tr(i18n.T("pdf.col_exercise")), tr(i18n.T("pdf.col_duration")), tr(i18n.T("pdf.col_intensity")), tr(i18n.T("pdf.col_category"))}
+	headers := []string{tr(i18n.T(i18n.KeyPdfColNum)), tr(i18n.T(i18n.KeyPdfColExercise)), tr(i18n.T(i18n.KeyPdfColDuration)), tr(i18n.T(i18n.KeyPdfColIntensity)), tr(i18n.T(i18n.KeyPdfColCategory))}
 	pdf.SetFont("Helvetica", "B", fontSizeSmall)
 	pdf.SetFillColor(colorLightBg[0], colorLightBg[1], colorLightBg[2])
 	pdf.SetDrawColor(colorBlack[0], colorBlack[1], colorBlack[2])
@@ -278,7 +278,7 @@ func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, block
 			tr(b.exercise.Name),
 			tr(b.exercise.Duration),
 			"",
-			tr(i18n.T("category." + string(b.exercise.Category))),
+			tr(i18n.T(categoryI18nKey(b.exercise.Category))),
 		}
 		aligns := []string{"C", "L", "C", "C", "C"}
 
@@ -314,9 +314,9 @@ func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, block
 	y += 2
 	pdf.SetFont("Helvetica", "B", fontSizeBody)
 	pdf.SetXY(ctx.colX, y)
-	totalStr := i18n.Tf("pdf.total_format", i18n.Tf("session.duration_m", totalMinutes))
+	totalStr := i18n.Tf(i18n.KeyPdfTotalFormat, i18n.Tf(i18n.KeySessionDurationM, totalMinutes))
 	if totalMinutes >= 60 {
-		totalStr = i18n.Tf("pdf.total_format", i18n.Tf("session.duration_hm", totalMinutes/60, totalMinutes%60))
+		totalStr = i18n.Tf(i18n.KeyPdfTotalFormat, i18n.Tf(i18n.KeySessionDurationHm, totalMinutes/60, totalMinutes%60))
 	}
 	pdf.CellFormat(colW, 5, tr(totalStr), "", 0, "R", false, 0, "")
 	y += 7
@@ -340,7 +340,7 @@ func layoutCoachNotes(pdf *fpdf.Fpdf, tr func(string) string, y float64, session
 		pdf.SetFont("Helvetica", "B", fontSizeHeader)
 		pdf.SetTextColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
 		pdf.SetXY(ctx.colX, y)
-		pdf.CellFormat(colW, 6, tr(i18n.T("pdf.coach_notes")), "", 0, "L", false, 0, "")
+		pdf.CellFormat(colW, 6, tr(i18n.T(i18n.KeyPdfCoachNotes)), "", 0, "L", false, 0, "")
 		y += 7
 
 		pdf.SetFont("Helvetica", "", fontSizeBody)
@@ -365,7 +365,7 @@ func layoutCoachNotes(pdf *fpdf.Fpdf, tr func(string) string, y float64, session
 		pdf.SetFont("Helvetica", "B", fontSizeHeader)
 		pdf.SetTextColor(colorHeaderBg[0], colorHeaderBg[1], colorHeaderBg[2])
 		pdf.SetXY(ctx.colX, y)
-		pdf.CellFormat(colW, 6, tr(i18n.T("pdf.philosophy")), "", 0, "L", false, 0, "")
+		pdf.CellFormat(colW, 6, tr(i18n.T(i18n.KeyPdfPhilosophy)), "", 0, "L", false, 0, "")
 		y += 7
 
 		pdf.SetFillColor(colorLightBg[0], colorLightBg[1], colorLightBg[2])
@@ -409,6 +409,26 @@ func drawIntensityDots(pdf *fpdf.Fpdf, x, y float64, level int, r float64) {
 			pdf.SetFillColor(colorIntOff[0], colorIntOff[1], colorIntOff[2])
 		}
 		pdf.Circle(cx, y, r, "F")
+	}
+}
+
+// categoryI18nKey returns the i18n constant key for a known category.
+func categoryI18nKey(cat model.Category) string {
+	switch cat {
+	case model.CategoryWarmup:
+		return i18n.KeyCategoryWarmup
+	case model.CategoryOffense:
+		return i18n.KeyCategoryOffense
+	case model.CategoryDefense:
+		return i18n.KeyCategoryDefense
+	case model.CategoryTransition:
+		return i18n.KeyCategoryTransition
+	case model.CategoryScrimmage:
+		return i18n.KeyCategoryScrimmage
+	case model.CategoryCooldown:
+		return i18n.KeyCategoryCooldown
+	default:
+		return "category." + string(cat)
 	}
 }
 

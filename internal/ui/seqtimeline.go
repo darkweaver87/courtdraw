@@ -155,7 +155,7 @@ func (st *SeqTimeline) resolveLabel(idx int) string {
 	}
 
 	if label == "" {
-		label = i18n.Tf("seq.format", idx+1)
+		label = i18n.Tf(i18n.KeySeqFormat, idx+1)
 	}
 	return label
 }
@@ -171,9 +171,9 @@ func (st *SeqTimeline) showRenameDialog(idx int, exercise *model.Exercise) {
 	entry := widget.NewEntry()
 	entry.SetText(currentLabel)
 
-	dlg := dialog.NewForm(i18n.T("seq.rename_title"), i18n.T("seq.rename_ok"), i18n.T("seq.rename_cancel"),
+	dlg := dialog.NewForm(i18n.T(i18n.KeySeqRenameTitle), i18n.T(i18n.KeySeqRenameOk), i18n.T(i18n.KeySeqRenameCancel),
 		[]*widget.FormItem{
-			widget.NewFormItem(i18n.T("seq.rename_label"), entry),
+			widget.NewFormItem(i18n.T(i18n.KeySeqRenameLabel), entry),
 		},
 		func(ok bool) {
 			if ok && st.OnSeqRenamed != nil {

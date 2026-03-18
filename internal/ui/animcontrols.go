@@ -36,35 +36,35 @@ type AnimControls struct {
 func NewAnimControls() *AnimControls {
 	ac := &AnimControls{}
 
-	ac.prevBtn = NewTipButton(icon.Prev(), i18n.T("tooltip.prev"), func() {
+	ac.prevBtn = NewTipButton(icon.Prev(), i18n.T(i18n.KeyTooltipPrev), func() {
 		if ac.playback != nil {
 			ac.playback.PrevSeq()
 			ac.notify()
 			ac.Refresh()
 		}
 	})
-	ac.playBtn = NewTipButton(icon.Play(), i18n.T("tooltip.play"), func() {
+	ac.playBtn = NewTipButton(icon.Play(), i18n.T(i18n.KeyTooltipPlay), func() {
 		if ac.playback != nil {
 			ac.playback.Play()
 			ac.notify()
 			ac.Refresh()
 		}
 	})
-	ac.pauseBtn = NewTipButton(icon.Pause(), i18n.T("tooltip.pause"), func() {
+	ac.pauseBtn = NewTipButton(icon.Pause(), i18n.T(i18n.KeyTooltipPause), func() {
 		if ac.playback != nil {
 			ac.playback.Pause()
 			ac.notify()
 			ac.Refresh()
 		}
 	})
-	ac.stopBtn = NewTipButton(icon.Stop(), i18n.T("tooltip.stop"), func() {
+	ac.stopBtn = NewTipButton(icon.Stop(), i18n.T(i18n.KeyTooltipStop), func() {
 		if ac.playback != nil {
 			ac.playback.Stop()
 			ac.notify()
 			ac.Refresh()
 		}
 	})
-	ac.nextBtn = NewTipButton(icon.Next(), i18n.T("tooltip.next"), func() {
+	ac.nextBtn = NewTipButton(icon.Next(), i18n.T(i18n.KeyTooltipNext), func() {
 		if ac.playback != nil {
 			ac.playback.NextSeq()
 			ac.notify()
@@ -150,11 +150,11 @@ func (ac *AnimControls) refreshSeqDots(current, total int) {
 
 // RefreshLanguage updates tooltip text for the current language.
 func (ac *AnimControls) RefreshLanguage() {
-	ac.prevBtn.SetTooltip(i18n.T("tooltip.prev"))
-	ac.playBtn.SetTooltip(i18n.T("tooltip.play"))
-	ac.pauseBtn.SetTooltip(i18n.T("tooltip.pause"))
-	ac.stopBtn.SetTooltip(i18n.T("tooltip.stop"))
-	ac.nextBtn.SetTooltip(i18n.T("tooltip.next"))
+	ac.prevBtn.SetTooltip(i18n.T(i18n.KeyTooltipPrev))
+	ac.playBtn.SetTooltip(i18n.T(i18n.KeyTooltipPlay))
+	ac.pauseBtn.SetTooltip(i18n.T(i18n.KeyTooltipPause))
+	ac.stopBtn.SetTooltip(i18n.T(i18n.KeyTooltipStop))
+	ac.nextBtn.SetTooltip(i18n.T(i18n.KeyTooltipNext))
 }
 
 func (ac *AnimControls) notify() {

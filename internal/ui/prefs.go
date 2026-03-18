@@ -19,7 +19,7 @@ import (
 func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStore, onSaved func(langChanged bool)) {
 	// GitHub Token.
 	tokenEntry := widget.NewPasswordEntry()
-	tokenEntry.SetPlaceHolder(i18n.T("prefs.token_placeholder"))
+	tokenEntry.SetPlaceHolder(i18n.T(i18n.KeyPrefsTokenPlaceholder))
 	token := settings.GithubToken
 	if token == "" {
 		token = os.Getenv("GITHUB_TOKEN")
@@ -47,7 +47,7 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 	dirEntry.SetText(dirValue)
 	dirEntry.SetPlaceHolder(defaultDir)
 
-	browseBtn := widget.NewButton(i18n.T("prefs.browse"), func() {
+	browseBtn := widget.NewButton(i18n.T(i18n.KeyPrefsBrowse), func() {
 		fd := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
 			if err != nil || uri == nil {
 				return
@@ -75,7 +75,7 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 	pdfDirEntry := widget.NewEntry()
 	pdfDirEntry.SetText(pdfDirValue)
 
-	pdfBrowseBtn := widget.NewButton(i18n.T("prefs.browse"), func() {
+	pdfBrowseBtn := widget.NewButton(i18n.T(i18n.KeyPrefsBrowse), func() {
 		fd := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
 			if err != nil || uri == nil {
 				return
@@ -94,21 +94,21 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 	pdfDirRow := container.NewBorder(nil, nil, nil, pdfBrowseBtn, pdfDirEntry)
 
 	form := container.NewVBox(
-		widget.NewLabel(i18n.T("prefs.github_token")),
+		widget.NewLabel(i18n.T(i18n.KeyPrefsGithubToken)),
 		tokenEntry,
-		widget.NewLabel(i18n.T("prefs.language")),
+		widget.NewLabel(i18n.T(i18n.KeyPrefsLanguage)),
 		langSelect,
-		widget.NewLabel(i18n.T("prefs.exercise_dir")),
+		widget.NewLabel(i18n.T(i18n.KeyPrefsExerciseDir)),
 		dirRow,
-		widget.NewLabel(i18n.T("prefs.pdf_export_dir")),
+		widget.NewLabel(i18n.T(i18n.KeyPrefsPdfExportDir)),
 		pdfDirRow,
 		layout.NewSpacer(),
 	)
 
 	d := dialog.NewCustomConfirm(
-		i18n.T("prefs.title"),
-		i18n.T("prefs.save"),
-		i18n.T("dialog.cancel"),
+		i18n.T(i18n.KeyPrefsTitle),
+		i18n.T(i18n.KeyPrefsSave),
+		i18n.T(i18n.KeyDialogCancel),
 		form,
 		func(ok bool) {
 			if !ok {

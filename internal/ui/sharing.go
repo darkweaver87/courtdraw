@@ -42,7 +42,7 @@ func (a *App) shareSession() {
 
 	names := share.CollectExerciseNames(s)
 	if len(names) == 0 {
-		a.statusBar.SetStatus(i18n.T("share.no_exercises"), 1)
+		a.statusBar.SetStatus(i18n.T(i18n.KeyShareNoExercises), 1)
 		return
 	}
 
@@ -57,9 +57,9 @@ func (a *App) shareSession() {
 	}
 
 	dialog.ShowCustomConfirm(
-		i18n.T("share.title"),
-		i18n.T("share.via_qr"),
-		i18n.T("share.save_file"),
+		i18n.T(i18n.KeyShareTitle),
+		i18n.T(i18n.KeyShareViaQr),
+		i18n.T(i18n.KeyShareSaveFile),
 		widget.NewLabel(fmt.Sprintf("%d exercises", len(exercises))),
 		func(qr bool) {
 			if qr {
@@ -73,13 +73,13 @@ func (a *App) shareSession() {
 }
 
 func (a *App) shareViaQR(s *model.Session, exercises map[string]*model.Exercise) {
-	a.statusBar.SetStatus(i18n.T("share.exporting"), 0)
+	a.statusBar.SetStatus(i18n.T(i18n.KeyShareExporting), 0)
 
 	go func() {
 		var buf bytes.Buffer
 		if err := share.CreateBundle(&buf, s, exercises); err != nil {
 			fyne.Do(func() {
-				a.statusBar.SetStatus(fmt.Sprintf(i18n.T("share.error"), err), 1)
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
 			})
 			return
 		}
@@ -87,27 +87,27 @@ func (a *App) shareViaQR(s *model.Session, exercises map[string]*model.Exercise)
 		key, err := share.GenerateKey()
 		if err != nil {
 			fyne.Do(func() {
-				a.statusBar.SetStatus(fmt.Sprintf(i18n.T("share.error"), err), 1)
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
 			})
 			return
 		}
 		encrypted, err := share.Encrypt(key, buf.Bytes())
 		if err != nil {
 			fyne.Do(func() {
-				a.statusBar.SetStatus(fmt.Sprintf(i18n.T("share.error"), err), 1)
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
 			})
 			return
 		}
 
 		fyne.Do(func() {
-			a.statusBar.SetStatus(i18n.T("share.uploading"), 0)
+			a.statusBar.SetStatus(i18n.T(i18n.KeyShareUploading), 0)
 		})
 		result, err := share.Upload(context.Background(), encrypted, "session.courtdraw.enc")
 		if err != nil {
 			fyne.Do(func() {
 				dialog.ShowConfirm(
-					i18n.T("share.title"),
-					i18n.T("share.upload_failed"),
+					i18n.T(i18n.KeyShareTitle),
+					i18n.T(i18n.KeyShareUploadFailed),
 					func(ok bool) {
 						if ok {
 							a.shareToFile(s, exercises)
@@ -124,7 +124,7 @@ func (a *App) shareViaQR(s *model.Session, exercises map[string]*model.Exercise)
 		qrImg, err := generateQR(shareURL)
 		if err != nil {
 			fyne.Do(func() {
-				a.statusBar.SetStatus(fmt.Sprintf(i18n.T("share.error"), err), 1)
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
 			})
 			return
 		}
@@ -148,16 +148,16 @@ func (a *App) shareToFile(s *model.Session, exercises map[string]*model.Exercise
 
 		f, err := os.Create(path)
 		if err != nil {
-			a.statusBar.SetStatus(fmt.Sprintf(i18n.T("share.error"), err), 1)
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
 			return
 		}
 		defer f.Close()
 
 		if err := share.CreateBundle(f, s, exercises); err != nil {
-			a.statusBar.SetStatus(fmt.Sprintf(i18n.T("share.error"), err), 1)
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
 			return
 		}
-		a.statusBar.SetStatus(fmt.Sprintf(i18n.T("import.success"), s.Title), 2)
+		a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportSuccess), s.Title), 2)
 	}, a.window)
 
 	title := s.Title
@@ -183,19 +183,19 @@ func (a *App) showQRDialog(qrImg image.Image, shareURL string) {
 	urlEntry := widget.NewEntry()
 	urlEntry.SetText(shareURL)
 
-	copyBtn := widget.NewButton(i18n.T("share.copy_link"), func() {
+	copyBtn := widget.NewButton(i18n.T(i18n.KeyShareCopyLink), func() {
 		a.window.Clipboard().SetContent(shareURL)
-		a.statusBar.SetStatus(i18n.T("share.link_copied"), 2)
+		a.statusBar.SetStatus(i18n.T(i18n.KeyShareLinkCopied), 2)
 	})
 
 	content := container.NewVBox(
 		img,
-		widget.NewLabel(i18n.T("share.qr_instructions")),
+		widget.NewLabel(i18n.T(i18n.KeyShareQrInstructions)),
 		urlEntry,
 		copyBtn,
 	)
 
-	dialog.ShowCustom(i18n.T("share.qr_title"), i18n.T("dialog.cancel"), content, a.window)
+	dialog.ShowCustom(i18n.T(i18n.KeyShareQrTitle), i18n.T(i18n.KeyDialogCancel), content, a.window)
 }
 
 // showImportBundleDialog checks the clipboard for a share URL. If found,
@@ -205,8 +205,8 @@ func (a *App) showImportBundleDialog() {
 	clip := a.window.Clipboard().Content()
 	if isShareURL(clip) {
 		dialog.ShowConfirm(
-			i18n.T("import.title"),
-			i18n.T("import.found_in_clipboard"),
+			i18n.T(i18n.KeyImportTitle),
+			i18n.T(i18n.KeyImportFoundInClipboard),
 			func(ok bool) {
 				if ok {
 					a.importFromLink(clip)
@@ -219,13 +219,13 @@ func (a *App) showImportBundleDialog() {
 
 	var d dialog.Dialog
 
-	scanBtn := widget.NewButton(i18n.T("import.scan_qr"), func() {
+	scanBtn := widget.NewButton(i18n.T(i18n.KeyImportScanQr), func() {
 		d.Hide()
 		a.startQRScanImport()
 	})
 	scanBtn.Importance = widget.HighImportance
 
-	fileBtn := widget.NewButton(i18n.T("import.from_file"), func() {
+	fileBtn := widget.NewButton(i18n.T(i18n.KeyImportFromFile), func() {
 		d.Hide()
 		a.importFromFile()
 	})
@@ -236,7 +236,7 @@ func (a *App) showImportBundleDialog() {
 		fileBtn,
 	)
 
-	d = dialog.NewCustom(i18n.T("import.title"), i18n.T("dialog.cancel"), content, a.window)
+	d = dialog.NewCustom(i18n.T(i18n.KeyImportTitle), i18n.T(i18n.KeyDialogCancel), content, a.window)
 	d.Show()
 }
 
@@ -244,7 +244,7 @@ func (a *App) showImportBundleDialog() {
 // When the app returns to foreground, it reads the photo and decodes the QR.
 func (a *App) startQRScanImport() {
 	if !openCameraForQR() {
-		a.statusBar.SetStatus(i18n.T("import.camera_error"), 1)
+		a.statusBar.SetStatus(i18n.T(i18n.KeyImportCameraError), 1)
 		return
 	}
 
@@ -264,7 +264,7 @@ func (a *App) startQRScanImport() {
 		log.Printf("QR scan: read photo, %d bytes", len(data))
 		if len(data) == 0 {
 			cleanupPhotoURI()
-			a.statusBar.SetStatus(i18n.T("import.scan_cancelled"), 1) //nolint:misspell // i18n key
+			a.statusBar.SetStatus(i18n.T(i18n.KeyImportScanCancelled), 1)
 			return
 		}
 
@@ -272,13 +272,13 @@ func (a *App) startQRScanImport() {
 		link, err := decodeQRFromImageBytes(data)
 		if err != nil {
 			log.Printf("QR scan: decode error: %v", err)
-			a.statusBar.SetStatus(i18n.T("import.qr_not_found"), 1)
+			a.statusBar.SetStatus(i18n.T(i18n.KeyImportQrNotFound), 1)
 			return
 		}
 		log.Printf("QR scan: decoded link: %s", link)
 
 		if !isShareURL(link) {
-			a.statusBar.SetStatus(i18n.T("import.invalid_link"), 1)
+			a.statusBar.SetStatus(i18n.T(i18n.KeyImportInvalidLink), 1)
 			return
 		}
 
@@ -378,7 +378,7 @@ func (a *App) importFromFile() {
 
 		session, exercises, err := share.ExtractBundle(reader)
 		if err != nil {
-			a.statusBar.SetStatus(fmt.Sprintf(i18n.T("import.error"), err), 1)
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), err), 1)
 			return
 		}
 		a.importSessionAndExercises(session, exercises)
@@ -395,27 +395,27 @@ func isShareURL(s string) bool {
 func (a *App) importFromLink(link string) {
 	u, err := url.Parse(link)
 	if err != nil {
-		a.statusBar.SetStatus(fmt.Sprintf(i18n.T("import.error"), err), 1)
+		a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), err), 1)
 		return
 	}
 
 	keyHex := strings.TrimPrefix(u.Fragment, "k=")
 	key, err := hex.DecodeString(keyHex)
 	if err != nil || len(key) != 32 {
-		a.statusBar.SetStatus(i18n.T("import.invalid_link"), 1)
+		a.statusBar.SetStatus(i18n.T(i18n.KeyImportInvalidLink), 1)
 		return
 	}
 
 	u.Fragment = ""
 	downloadURL := u.String()
 
-	a.statusBar.SetStatus(i18n.T("import.downloading"), 0)
+	a.statusBar.SetStatus(i18n.T(i18n.KeyImportDownloading), 0)
 
 	go func() {
 		data, err := share.Download(context.Background(), downloadURL)
 		if err != nil {
 			fyne.Do(func() {
-				a.statusBar.SetStatus(fmt.Sprintf(i18n.T("import.error"), err), 1)
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), err), 1)
 			})
 			return
 		}
@@ -423,7 +423,7 @@ func (a *App) importFromLink(link string) {
 		plaintext, err := share.Decrypt(key, data)
 		if err != nil {
 			fyne.Do(func() {
-				a.statusBar.SetStatus(fmt.Sprintf(i18n.T("import.error"), err), 1)
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), err), 1)
 			})
 			return
 		}
@@ -431,7 +431,7 @@ func (a *App) importFromLink(link string) {
 		session, exercises, err := share.ExtractBundle(bytes.NewReader(plaintext))
 		if err != nil {
 			fyne.Do(func() {
-				a.statusBar.SetStatus(fmt.Sprintf(i18n.T("import.error"), err), 1)
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), err), 1)
 			})
 			return
 		}
@@ -452,7 +452,7 @@ func (a *App) importSessionAndExercises(s *model.Session, exercises map[string]*
 	}
 
 	if err := a.store.SaveSession(s); err != nil {
-		a.statusBar.SetStatus(fmt.Sprintf(i18n.T("import.error"), err), 1)
+		a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), err), 1)
 		return
 	}
 
@@ -461,7 +461,7 @@ func (a *App) importSessionAndExercises(s *model.Session, exercises map[string]*
 	a.sessionNeedsRefresh = true
 	a.myFilesNeedsRefresh = true
 	a.refreshMyFilesTab()
-	a.statusBar.SetStatus(fmt.Sprintf(i18n.T("import.success"), s.Title), 2)
+	a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportSuccess), s.Title), 2)
 }
 
 func generateQR(data string) (image.Image, error) {

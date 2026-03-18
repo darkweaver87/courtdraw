@@ -13,7 +13,7 @@ import (
 
 // showAboutDialog displays a dialog with the application version.
 func showAboutDialog(w fyne.Window, version string) {
-	versionLabel := widget.NewLabel(i18n.T("prefs.version") + " : " + version)
+	versionLabel := widget.NewLabel(i18n.T(i18n.KeyPrefsVersion) + " : " + version)
 	versionLabel.Wrapping = fyne.TextWrapOff
 
 	content := container.NewVBox(
@@ -22,8 +22,8 @@ func showAboutDialog(w fyne.Window, version string) {
 	)
 
 	d := dialog.NewCustom(
-		i18n.T("about.title"),
-		i18n.T("dialog.cancel"),
+		i18n.T(i18n.KeyAboutTitle),
+		i18n.T(i18n.KeyDialogCancel),
 		content,
 		w,
 	)
@@ -34,18 +34,18 @@ func showAboutDialog(w fyne.Window, version string) {
 // showUpdateDialog displays a dialog notifying the user of a new version,
 // with a hyperlink to the GitHub release page.
 func showUpdateDialog(w fyne.Window, tag, releaseURL string) {
-	msg := widget.NewLabel(i18n.Tf("version.new_available", tag))
+	msg := widget.NewLabel(i18n.Tf(i18n.KeyVersionNewAvailable, tag))
 	msg.Wrapping = fyne.TextWrapWord
 
 	content := container.NewVBox(msg)
 
 	if u, err := url.Parse(releaseURL); err == nil && releaseURL != "" {
-		link := widget.NewHyperlink(i18n.T("version.release_notes"), u)
+		link := widget.NewHyperlink(i18n.T(i18n.KeyVersionReleaseNotes), u)
 		content.Add(link)
 	}
 
 	d := dialog.NewCustom(
-		i18n.T("version.update_title"),
+		i18n.T(i18n.KeyVersionUpdateTitle),
 		"OK",
 		content,
 		w,

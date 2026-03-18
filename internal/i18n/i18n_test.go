@@ -22,7 +22,7 @@ func TestT_EnglishDefault(t *testing.T) {
 	Load()
 	SetLang(EN)
 
-	got := T("app.title")
+	got := T(KeyAppTitle)
 	if got != "CourtDraw" {
 		t.Errorf("T(app.title) = %q, want \"CourtDraw\"", got)
 	}
@@ -33,7 +33,7 @@ func TestT_French(t *testing.T) {
 	SetLang(FR)
 	defer SetLang(EN)
 
-	got := T("tab.exercise_editor")
+	got := T(KeyTabExerciseEditor)
 	if got != "Éditeur d'exercice" {
 		t.Errorf("T(tab.exercise_editor) = %q, want French", got)
 	}
@@ -46,7 +46,7 @@ func TestT_FallbackToEnglish(t *testing.T) {
 
 	// If a key exists in EN but not FR, should fall back to EN.
 	// Since we have full parity, test by verifying a known key works.
-	got := T("app.title")
+	got := T(KeyAppTitle)
 	if got == "app.title" {
 		t.Error("expected fallback to EN, got key itself")
 	}
@@ -66,7 +66,7 @@ func TestTf(t *testing.T) {
 	Load()
 	SetLang(EN)
 
-	got := Tf("anim.seq_format", 2, 5)
+	got := Tf(KeyAnimSeqFormat, 2, 5)
 	if got != "Seq 2/5" {
 		t.Errorf("Tf(anim.seq_format, 2, 5) = %q, want \"Seq 2/5\"", got)
 	}
@@ -77,7 +77,7 @@ func TestTf_French(t *testing.T) {
 	SetLang(FR)
 	defer SetLang(EN)
 
-	got := Tf("anim.seq_format", 1, 3)
+	got := Tf(KeyAnimSeqFormat, 1, 3)
 	if got != "Seq 1/3" {
 		t.Errorf("Tf(anim.seq_format, 1, 3) = %q, want \"Seq 1/3\"", got)
 	}

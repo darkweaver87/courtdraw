@@ -88,26 +88,26 @@ func NewMyFilesTab() *MyFilesTab {
 
 	// Session search.
 	mf.sessionSearchEntry = widget.NewEntry()
-	mf.sessionSearchEntry.PlaceHolder = i18n.T("myfiles.search_sessions")
+	mf.sessionSearchEntry.PlaceHolder = i18n.T(i18n.KeyMyfilesSearchSessions)
 	mf.sessionSearchEntry.OnChanged = func(_ string) { mf.refreshSessionList() }
 	mf.sessionBox = container.NewVBox()
 	mf.sessionScroll = container.NewVScroll(mf.sessionBox)
 
 	// Exercise search.
 	mf.exerciseSearchEntry = widget.NewEntry()
-	mf.exerciseSearchEntry.PlaceHolder = i18n.T("myfiles.search_exercises")
+	mf.exerciseSearchEntry.PlaceHolder = i18n.T(i18n.KeyMyfilesSearchExercises)
 	mf.exerciseSearchEntry.OnChanged = func(_ string) { mf.refreshExerciseList() }
 	mf.exerciseBox = container.NewVBox()
 	mf.exerciseScroll = container.NewVScroll(mf.exerciseBox)
 
 	// Exercise filter buttons (same style as session tab).
-	mf.filterAllBtn = widget.NewButton(i18n.T("myfiles.filter_all"), func() {
+	mf.filterAllBtn = widget.NewButton(i18n.T(i18n.KeyMyfilesFilterAll), func() {
 		mf.filterOrphan = false
 		mf.updateFilterStyles()
 		mf.refreshExerciseList()
 	})
 	mf.filterAllBtn.Importance = widget.HighImportance
-	mf.filterOrphanBtn = widget.NewButton(i18n.T("myfiles.filter_orphan"), func() {
+	mf.filterOrphanBtn = widget.NewButton(i18n.T(i18n.KeyMyfilesFilterOrphan), func() {
 		mf.filterOrphan = true
 		mf.updateFilterStyles()
 		mf.refreshExerciseList()
@@ -115,7 +115,7 @@ func NewMyFilesTab() *MyFilesTab {
 	mf.filterOrphanBtn.Importance = widget.LowImportance
 
 	// Import button.
-	importBtn := widget.NewButtonWithIcon(i18n.T("import.bundle"), icon.Import(), func() {
+	importBtn := widget.NewButtonWithIcon(i18n.T(i18n.KeyImportBundle), icon.Import(), func() {
 		mf.emitAction(MyFilesActionImportBundle, "")
 	})
 	importBtn.Importance = widget.LowImportance
@@ -137,9 +137,9 @@ func NewMyFilesTab() *MyFilesTab {
 	)
 
 	// --- Toggle buttons ---
-	mf.sesToggle = widget.NewButton(i18n.T("myfiles.sessions"), func() { mf.showSessions() })
+	mf.sesToggle = widget.NewButton(i18n.T(i18n.KeyMyfilesSessions), func() { mf.showSessions() })
 	mf.sesToggle.Importance = widget.HighImportance
-	mf.exToggle = widget.NewButton(i18n.T("myfiles.exercises"), func() { mf.showExercises() })
+	mf.exToggle = widget.NewButton(i18n.T(i18n.KeyMyfilesExercises), func() { mf.showExercises() })
 	mf.exToggle.Importance = widget.LowImportance
 	toggleBar := container.NewGridWithColumns(2, mf.sesToggle, mf.exToggle)
 
@@ -215,9 +215,9 @@ func (mf *MyFilesTab) refreshSessionList() {
 		titleLabel.Wrapping = fyne.TextWrapWord
 
 		subtleColor := color.NRGBA{R: 0x99, G: 0x99, B: 0x99, A: 0xff}
-		dateText := canvas.NewText(fmt.Sprintf(i18n.T("myfiles.session_date"), item.Date), subtleColor)
+		dateText := canvas.NewText(fmt.Sprintf(i18n.T(i18n.KeyMyfilesSessionDate), item.Date), subtleColor)
 		dateText.TextSize = 11
-		countText := canvas.NewText(fmt.Sprintf(i18n.T("myfiles.session_exercises"), item.ExerciseCount), subtleColor)
+		countText := canvas.NewText(fmt.Sprintf(i18n.T(i18n.KeyMyfilesSessionExercises), item.ExerciseCount), subtleColor)
 		countText.TextSize = 11
 
 		openBtn := widget.NewButtonWithIcon("", icon.Open(), func() {
@@ -246,7 +246,7 @@ func (mf *MyFilesTab) refreshSessionList() {
 	}
 
 	if count == 0 {
-		mf.sessionBox.Add(widget.NewLabel(i18n.T("myfiles.no_sessions")))
+		mf.sessionBox.Add(widget.NewLabel(i18n.T(i18n.KeyMyfilesNoSessions)))
 	}
 }
 
@@ -280,7 +280,7 @@ func (mf *MyFilesTab) refreshExerciseList() {
 			if meta != "" {
 				meta += " · "
 			}
-			meta += i18n.T("myfiles.filter_orphan")
+			meta += i18n.T(i18n.KeyMyfilesFilterOrphan)
 		}
 		metaText := canvas.NewText(meta, subtleColor)
 		metaText.TextSize = 11
@@ -310,7 +310,7 @@ func (mf *MyFilesTab) refreshExerciseList() {
 	}
 
 	if count == 0 {
-		mf.exerciseBox.Add(widget.NewLabel(i18n.T("myfiles.no_exercises")))
+		mf.exerciseBox.Add(widget.NewLabel(i18n.T(i18n.KeyMyfilesNoExercises)))
 	}
 }
 
@@ -322,17 +322,17 @@ func (mf *MyFilesTab) emitAction(action MyFilesAction, name string) {
 
 // RefreshLanguage updates all translatable text.
 func (mf *MyFilesTab) RefreshLanguage() {
-	mf.sessionSearchEntry.PlaceHolder = i18n.T("myfiles.search_sessions")
+	mf.sessionSearchEntry.PlaceHolder = i18n.T(i18n.KeyMyfilesSearchSessions)
 	mf.sessionSearchEntry.Refresh()
-	mf.exerciseSearchEntry.PlaceHolder = i18n.T("myfiles.search_exercises")
+	mf.exerciseSearchEntry.PlaceHolder = i18n.T(i18n.KeyMyfilesSearchExercises)
 	mf.exerciseSearchEntry.Refresh()
-	mf.filterAllBtn.SetText(i18n.T("myfiles.filter_all"))
-	mf.filterOrphanBtn.SetText(i18n.T("myfiles.filter_orphan"))
+	mf.filterAllBtn.SetText(i18n.T(i18n.KeyMyfilesFilterAll))
+	mf.filterOrphanBtn.SetText(i18n.T(i18n.KeyMyfilesFilterOrphan))
 	if mf.sesToggle != nil {
-		mf.sesToggle.SetText(i18n.T("myfiles.sessions"))
+		mf.sesToggle.SetText(i18n.T(i18n.KeyMyfilesSessions))
 	}
 	if mf.exToggle != nil {
-		mf.exToggle.SetText(i18n.T("myfiles.exercises"))
+		mf.exToggle.SetText(i18n.T(i18n.KeyMyfilesExercises))
 	}
 	mf.refreshSessionList()
 	mf.refreshExerciseList()
