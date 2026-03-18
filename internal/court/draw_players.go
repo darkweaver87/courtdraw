@@ -42,7 +42,9 @@ func DrawPlayerWithLabel(img *image.RGBA, vp *Viewport, player *model.Player, la
 	col := model.RoleColor(player.Role)
 
 	if selected {
-		DrawCircleOutline(img, center, vp.S(PlayerRadius+4), vp.S(2.5), HighlightColor)
+		alpha := uint8(pulseAlpha() * 255)
+		pulseColor := color.NRGBA{R: HighlightColor.R, G: HighlightColor.G, B: HighlightColor.B, A: alpha}
+		DrawCircleOutline(img, center, vp.S(PlayerRadius+4), vp.S(2.5), pulseColor)
 	}
 
 	ballPos := drawPlayerBody(img, vp, center, player, col, label, face, 0xff)

@@ -258,9 +258,7 @@ func DrawCircleFill(img *image.RGBA, center Point, radius float32, col color.NRG
 func DrawArc(img *image.RGBA, center Point, radius float32, startAngle, endAngle float64, width float32, col color.NRGBA) {
 	arcLen := endAngle - startAngle
 	segments := int(math.Ceil(math.Abs(arcLen) / (math.Pi / 16)))
-	if segments < 4 {
-		segments = 4
-	}
+	segments = max(segments, 4)
 
 	outerR := radius + width/2
 	innerR := radius - width/2

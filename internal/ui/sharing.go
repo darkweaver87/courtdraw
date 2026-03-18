@@ -294,7 +294,7 @@ func decodeQRFromImageBytes(data []byte) (string, error) {
 		return "", err
 	}
 
-	hints := map[gozxing.DecodeHintType]interface{}{
+	hints := map[gozxing.DecodeHintType]any{
 		gozxing.DecodeHintType_TRY_HARDER: true,
 	}
 
@@ -337,10 +337,7 @@ func decodeQRFromImageBytes(data []byte) (string, error) {
 func downscaleForQR(img image.Image, maxPx int) image.Image {
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
-	longest := w
-	if h > longest {
-		longest = h
-	}
+	longest := max(w, h)
 	if longest <= maxPx {
 		return img
 	}

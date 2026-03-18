@@ -15,6 +15,7 @@ import (
 // Tooltip text is shown in the shared status bar on hover (no overlay).
 type TipButton struct {
 	widget.BaseWidget
+
 	Icon          fyne.Resource
 	tooltip       string
 	onTapped      func()

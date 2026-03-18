@@ -1,4 +1,5 @@
 // Code generated from locales/en.yaml. DO NOT EDIT.
+
 package i18n
 
 // Translation keys.

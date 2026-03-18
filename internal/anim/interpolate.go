@@ -9,18 +9,21 @@ import (
 // AnimatedPlayer is a player with interpolated position and opacity.
 type AnimatedPlayer struct {
 	model.Player
+
 	Opacity float64 // 0.0 = invisible, 1.0 = fully visible
 }
 
 // AnimatedAccessory is an accessory with an opacity for appear/disappear.
 type AnimatedAccessory struct {
 	model.Accessory
+
 	Opacity float64
 }
 
 // AnimatedAction is an action with a progress value for progressive drawing.
 type AnimatedAction struct {
 	model.Action
+
 	Progress float64 // 0.0 = not drawn, 1.0 = fully drawn
 }
 

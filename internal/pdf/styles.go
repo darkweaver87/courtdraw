@@ -73,7 +73,7 @@ const (
 	lineWidthThick = 0.6
 
 	intensityDotR      = 1.3 // intensity dot radius (portrait)
-	intensityDotR_a5   = 1.3 // intensity dot radius (landscape A5)
+	intensityDotRA5   = 1.3 // intensity dot radius (landscape A5)
 )
 
 // layoutContext holds geometry for the current layout mode.
@@ -96,7 +96,7 @@ type layoutContext struct {
 
 func (ctx *layoutContext) dotRadius() float64 { //nolint:unparam
 	if ctx.mode == LayoutLandscape2Up {
-		return intensityDotR_a5
+		return intensityDotRA5
 	}
 	return intensityDotR
 }

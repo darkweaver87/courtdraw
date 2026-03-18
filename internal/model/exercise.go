@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 )
@@ -109,12 +110,7 @@ type BallCarriers []string
 
 // HasBall returns true if the given player ID is a ball carrier.
 func (bc BallCarriers) HasBall(id string) bool {
-	for _, c := range bc {
-		if c == id {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(bc, id)
 }
 
 // AddBall adds a player ID as a ball carrier (no duplicates).
@@ -169,7 +165,7 @@ func (bc *BallCarriers) UnmarshalYAML(value *yaml.Node) error {
 
 // MarshalYAML outputs a single string when len==1, a list otherwise.
 // Returns (nil, nil) for empty carriers, which is the standard YAML omitempty pattern.
-func (bc BallCarriers) MarshalYAML() (interface{}, error) {
+func (bc BallCarriers) MarshalYAML() (any, error) {
 	switch len(bc) {
 	case 0:
 		return nil, nil //nolint:nilnil // standard MarshalYAML pattern to omit empty field
@@ -237,7 +233,7 @@ func (r *ActionRef) UnmarshalYAML(value *yaml.Node) error {
 }
 
 // MarshalYAML implements custom YAML marshaling for ActionRef.
-func (r ActionRef) MarshalYAML() (interface{}, error) {
+func (r ActionRef) MarshalYAML() (any, error) {
 	if r.IsPlayer {
 		return r.PlayerID, nil
 	}

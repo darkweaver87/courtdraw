@@ -209,7 +209,7 @@ func (ms *EditorShelf) syncHighlights() {
 		btn.Refresh()
 	}
 	// Index map: 0=select, 1=delete, 2..9=players, 10=queue, 11..19=actions, 20..22=accessories
-	var idx int = -1
+	idx := -1
 	switch ms.state.ActiveTool {
 	case editor.ToolSelect:
 		idx = 0

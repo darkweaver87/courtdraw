@@ -250,6 +250,7 @@ func newDragRow(idx int, text string, dl *DragList) *dragRow {
 // tappableArea is an invisible widget that captures tap events.
 type tappableArea struct {
 	widget.BaseWidget
+
 	onTap func()
 }
 

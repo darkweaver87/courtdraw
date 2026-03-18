@@ -1,8 +1,7 @@
-run:
-  timeout: 5m
+version: "2"
 
 linters:
-  enable-all: true
+  default: all
   disable:
     # Redundant with gocyclo
     - cyclop
@@ -37,8 +36,6 @@ linters:
     - depguard         # no import restrictions needed
     - gomoddirectives  # no module directive restrictions
     - gomodguard       # no module guard restrictions
-    - gci              # import order handled by goimports
-    - gofumpt          # gofmt is enough
     - goheader         # no file headers required
     - interfacebloat   # large interfaces are fine for UI contracts
     - inamedparam      # unnamed params are fine
@@ -69,10 +66,7 @@ linters:
     - errorlint        # error wrapping checks too strict for app-level code
     - predeclared      # shadowing predeclared identifiers is fine (e.g. copy, len)
     - bidichk          # no bidirectional text concerns
-    - tenv             # deprecated
     - revive           # too many opinionated rules
-    - gofmt            # goimports handles formatting
-    - goimports        # import order is cosmetic
     - forbidigo        # no forbidden identifiers
     - fatcontext       # no context in loops concern
     - exptostd         # no x/exp usage to migrate
@@ -80,68 +74,83 @@ linters:
     - asciicheck       # non-ASCII identifiers are fine (French comments)
     - usetesting       # t.Setenv etc. not critical
     - recvcheck        # mixed receivers on slice types is idiomatic Go
-    - stylecheck       # too strict on naming (underscores in layout constants)
+    - funcorder        # function ordering is project preference (UI code has logical grouping)
+    - wsl_v5           # v2 replacement for wsl — same rationale
+    - noinlineerr      # same whitespace style camp as wsl/nlreturn
+    - gosec            # panics on Go 1.26 with golangci-lint v2.10.1
 
-linters-settings:
-  gocyclo:
-    min-complexity: 30
+  settings:
+    gocyclo:
+      min-complexity: 30
 
-  nestif:
-    min-complexity: 8
+    nestif:
+      min-complexity: 8
 
-  goconst:
-    min-len: 3
-    min-occurrences: 3
+    goconst:
+      min-len: 3
+      min-occurrences: 3
 
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment # too noisy for UI code
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment # too noisy for UI code
 
-  errcheck:
-    check-type-assertions: true
+    errcheck:
+      check-type-assertions: true
 
-  gosec:
-    excludes:
-      - G101  # false positives on variable names like "token"
-      - G304  # file inclusion via variable (expected for file-based app)
+    gosec:
+      excludes:
+        - G101  # false positives on variable names like "token"
+        - G304  # file inclusion via variable (expected for file-based app)
 
-  misspell:
-    locale: US
+    misspell:
+      locale: US
 
-  unparam:
-    check-exported: false
+    unparam:
+      check-exported: false
 
-  staticcheck:
-    checks:
-      - all
-      - -SA1019  # deprecated usage (handle separately)
+    staticcheck:
+      checks:
+        - all
+        - -SA1019  # deprecated usage (handle separately)
 
-  revive:
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: exported
-        disabled: true  # too noisy for internal packages
+      # Test files: relax some linters
+      - path: _test\.go
+        linters:
+          - goconst
+          - gosec
+          - unparam
+          - errcheck
+          - gocritic
+          - dupl
+
+      # Main entry point
+      - path: cmd/
+        linters:
+          - gocyclo
+    paths:
+      - vendor
+      - fyne-cross
+      - third_party$
+      - builtin$
+      - examples$
 
 issues:
-  exclude-dirs:
-    - vendor
-    - fyne-cross
-
-  exclude-rules:
-    # Test files: relax some linters
-    - path: _test\.go
-      linters:
-        - goconst
-        - gosec
-        - unparam
-        - errcheck
-        - gocritic
-        - dupl
-
-    # Main entry point
-    - path: cmd/
-      linters:
-        - gocyclo
-
   max-issues-per-linter: 0
   max-same-issues: 0
+
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

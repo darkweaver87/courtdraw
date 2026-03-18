@@ -151,6 +151,7 @@ func (mtb *TabBar) Widget() fyne.CanvasObject {
 // tabTappable wraps a canvas object to make it tappable.
 type tabTappable struct {
 	widget.BaseWidget
+
 	content fyne.CanvasObject
 	onTap   func()
 }

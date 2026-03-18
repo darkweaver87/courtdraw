@@ -151,9 +151,7 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 
 	for si := 0; si < actualSeqs; si += seqCols {
 		rowEnd := si + seqCols
-		if rowEnd > actualSeqs {
-			rowEnd = actualSeqs
-		}
+		rowEnd = min(rowEnd, actualSeqs)
 
 		rowEstimate := seqDiagramH + 25
 		if y+rowEstimate > ctx.maxY {

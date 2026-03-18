@@ -6,7 +6,7 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
-// NBA court dimensions in meters.
+// NBAGeometry returns NBA court dimensions in meters.
 func NBAGeometry() *CourtGeometry {
 	return &CourtGeometry{
 		Width:                15.24,

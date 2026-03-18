@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -610,14 +611,7 @@ func (st *SessionTab) filteredExercises() []ManagedExercise {
 		if len(st.filterTags) > 0 {
 			match := true
 			for _, ft := range st.filterTags {
-				found := false
-				for _, t := range item.EffectiveTags(st.filterIndex) {
-					if t == ft {
-						found = true
-						break
-					}
-				}
-				if !found {
+				if !slices.Contains(item.EffectiveTags(st.filterIndex), ft) {
 					match = false
 					break
 				}

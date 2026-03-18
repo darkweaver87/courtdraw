@@ -7,8 +7,8 @@ import (
 	pngassets "github.com/darkweaver87/courtdraw/assets/icons"
 )
 
-// Standard Fyne theme icons for toolbar actions.
-// These are functions (not vars) to avoid calling fyne.CurrentApp() at init time.
+// New returns the standard Fyne theme icon for "new document".
+// Icon functions (not vars) avoid calling fyne.CurrentApp() at init time.
 func New() fyne.Resource       { return theme.DocumentCreateIcon() }
 func Open() fyne.Resource      { return theme.FolderOpenIcon() }
 func Save() fyne.Resource      { return theme.DocumentSaveIcon() }

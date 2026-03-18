@@ -201,8 +201,10 @@ func NewPropertiesPanel() *PropertiesPanel {
 	pp.rotationLabel = canvas.NewText("0°", color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
 	pp.rotationLabel.TextSize = 12
 
-	calloutLabels := []string{i18n.T(i18n.KeyCalloutNone)}
-	for _, c := range model.AllCallouts() {
+	allCallouts := model.AllCallouts()
+	calloutLabels := make([]string, 0, 1+len(allCallouts))
+	calloutLabels = append(calloutLabels, i18n.T(i18n.KeyCalloutNone))
+	for _, c := range allCallouts {
 		calloutLabels = append(calloutLabels, i18n.T("callout."+string(c)))
 	}
 	pp.calloutSelect = widget.NewSelect(calloutLabels, func(s string) {
@@ -318,8 +320,10 @@ func (pp *PropertiesPanel) RefreshLanguage() {
 	pp.playerRoleSelect.Refresh()
 
 	// Callout.
-	calloutLabels := []string{i18n.T(i18n.KeyCalloutNone)}
-	for _, c := range model.AllCallouts() {
+	allCallouts := model.AllCallouts()
+	calloutLabels := make([]string, 0, 1+len(allCallouts))
+	calloutLabels = append(calloutLabels, i18n.T(i18n.KeyCalloutNone))
+	for _, c := range allCallouts {
 		calloutLabels = append(calloutLabels, i18n.T("callout."+string(c)))
 	}
 	pp.calloutSelect.Options = calloutLabels
@@ -715,11 +719,12 @@ func (pp *PropertiesPanel) syncCategorySelect(ex *model.Exercise) {
 }
 
 func (pp *PropertiesPanel) syncAgeGroupSelect(ex *model.Exercise) {
-	if ex.AgeGroup == "" {
+	switch ex.AgeGroup {
+	case "":
 		pp.ageGroupSelect.SetSelected(i18n.T(i18n.KeyPropsCategoryNone))
-	} else if ex.AgeGroup == model.AgeGroupSenior {
+	case model.AgeGroupSenior:
 		pp.ageGroupSelect.SetSelected(i18n.T(i18n.KeyAgeGroupSenior))
-	} else {
+	default:
 		pp.ageGroupSelect.SetSelected(string(ex.AgeGroup))
 	}
 }

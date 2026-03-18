@@ -624,9 +624,3 @@ func (tm *TrainingMode) buildMobileLayout() fyne.CanvasObject {
 	return mtb.Widget()
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

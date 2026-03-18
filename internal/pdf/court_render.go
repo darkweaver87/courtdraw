@@ -205,10 +205,7 @@ func (cr *courtRenderer) drawPlayers(seq *model.Sequence) {
 		// Queue circles behind the main player (clamped to court bounds).
 		if p.Type == "queue" && p.Count > 1 {
 			col := roleColorPDF(p.Role)
-			qCount := p.Count
-			if qCount > 4 {
-				qCount = 4
-			}
+			qCount := min(p.Count, 4)
 			qr := cr.su(float64(court.QueueRadius))
 			qs := cr.su(float64(court.QueueSpacing))
 			for qi := qCount - 1; qi >= 1; qi-- {

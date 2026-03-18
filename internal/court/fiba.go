@@ -8,7 +8,7 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
-// FIBA court dimensions in meters.
+// FIBAGeometry returns FIBA court dimensions in meters.
 func FIBAGeometry() *CourtGeometry {
 	return &CourtGeometry{
 		Width:                15.0,

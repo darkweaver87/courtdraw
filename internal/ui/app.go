@@ -633,7 +633,6 @@ func (a *App) showAbout() {
 	showAboutDialog(a.window, a.appVersion())
 }
 
-// CheckVersionAtStartup checks GitHub for a newer release in the background.
 // Cleanup stops all background goroutines (timers, animations) before app exit.
 func (a *App) Cleanup() {
 	if a.playback != nil {
@@ -1262,14 +1261,7 @@ func (a *App) showExerciseSettingsDialog() {
 }
 
 func joinTags(tags []string) string {
-	result := ""
-	for i, t := range tags {
-		if i > 0 {
-			result += ", "
-		}
-		result += t
-	}
-	return result
+	return strings.Join(tags, ", ")
 }
 
 func splitTags(s string) []string {

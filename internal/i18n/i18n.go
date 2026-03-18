@@ -1,6 +1,4 @@
-// Package i18n provides internationalization for CourtDraw.
-// Translations are loaded from embedded YAML locale files.
-// Call Load() once at startup, then use T(key) and Tf(key, args...) everywhere.
+// Package i18n provides internationalization for CourtDraw. Translations are loaded from embedded YAML locale files; call Load() once at startup, then use T(key) and Tf(key, args...) everywhere.
 package i18n
 
 import (
