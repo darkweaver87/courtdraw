@@ -23,6 +23,7 @@ type ExerciseIndexEntry struct {
 	CourtType  string    `yaml:"court_type,omitempty"`
 	Duration   string    `yaml:"duration,omitempty"`
 	Tags       []string  `yaml:"tags,omitempty"`
+	Created    time.Time `yaml:"created,omitempty"`
 	Modified   time.Time `yaml:"modified"`
 	LastOpened time.Time `yaml:"last_opened,omitempty"`
 }

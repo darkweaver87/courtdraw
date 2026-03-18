@@ -434,11 +434,18 @@ func (s *YAMLStore) migrateRecentFiles() {
 func (s *YAMLStore) upsertExerciseEntry(entry ExerciseIndexEntry) {
 	for i, e := range s.exerciseIndex.Entries {
 		if e.File == entry.File {
-			// Preserve LastOpened from existing entry.
+			// Preserve LastOpened and Created from existing entry.
 			entry.LastOpened = e.LastOpened
+			if !e.Created.IsZero() {
+				entry.Created = e.Created
+			}
 			s.exerciseIndex.Entries[i] = entry
 			return
 		}
+	}
+	// New entry: set Created to now if not already set.
+	if entry.Created.IsZero() {
+		entry.Created = entry.Modified
 	}
 	s.exerciseIndex.Entries = append(s.exerciseIndex.Entries, entry)
 }

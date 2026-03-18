@@ -179,50 +179,43 @@ Deliverable: coaches share sessions from PC to phone by scanning a QR code or se
 Goal: make the mobile experience feel native and the desktop editor cleaner. Court always visible, tools accessible without switching tabs.
 
 ### Touch targets & widget sizing (done)
-77. Enlarge touch targets — TipButton mobile: 56dp (icon 36dp + padding 10dp), tool palette grid cells: 64×80dp
-78. Icon-first buttons — timer adjustments use −/+ icons (2 columns) on mobile, sequence indicator uses dot pills on mobile
-79. Custom bottom tab bar — `MobileTabBar` widget: 52dp height, 24dp icons, 10pt labels (replaces Fyne's `AppTabs` in all mobile layouts)
-80. Properties panel mobile — `makeField` returns 56dp-height rows with 13pt labels on mobile
+77. ✅ Enlarge touch targets — TipButton mobile: 56dp (icon 36dp + padding 10dp), tool palette grid cells: 64×64dp, shelf cells: 64×64dp
+78. ✅ Icon-first buttons — timer adjustments use −/+ icons on mobile, sequence indicator uses dot pills on mobile
+79. ✅ Custom bottom tab bar — `MobileTabBar` widget: 52dp height, 24dp icons, 10pt labels (replaces Fyne's `AppTabs` in all mobile layouts)
+80. ✅ Properties panel mobile — `makeField` returns 56dp-height rows with 13pt labels on mobile
 
-### Mobile layout: shelf architecture (in progress)
-81. Court always visible — the court is never hidden behind a tab. Tools, properties, and file operations live in a collapsible shelf below the court
-82. Tool shelf with category tabs — bottom tab bar with 4 categories: Outils (select+delete) | Joueurs | Actions | Accessoires. Each category shows a horizontally-scrollable single row of icon buttons
-83. Collapsible shelf — a chevron (▼/▲) collapses/expands the shelf. Shelf auto-collapses after selecting a tool to maximize court space
-84. Top bar — compact row above the court: [mode toggle Draw/Animate] [file icons: new/open/save/recent] [language flag] [settings gear]
-85. Sequence bar — below top bar, above court: [← prev] [Phase 1/3] [next →] [+ add] [📋 instructions button → opens instructions editor for current sequence]
+### Mobile layout: shelf architecture (done)
+81. ✅ Court always visible — the court is never hidden behind a tab. Tools live in a collapsible shelf below the court
+82. ✅ Tool shelf with category tabs — bottom tab bar with 4 categories: Tools | Players | Actions | Accessories. Each category shows a grid of icon buttons
+83. ✅ Collapsible shelf — chevron icon collapses/expands the shelf. Shelf auto-collapses after selecting a tool to maximize court space
+84. ✅ Top bar — compact row above the court: [mode selector] [file icons: new/open/save/recent] [language flag] [settings gear] [about]
+85. ✅ Sequence bar — below top bar, above court: [← prev] [label (tap to rename)] [next →] [+ add] [delete] [settings] [instructions]
 
 ### Library & file management
-86. Sort by date — library sort selector (A→Z / Recent first) using file ModTime from exercise index
-87. Date of creation — store a `created` timestamp in exercise index entries for proper "date added" sorting (currently uses file ModTime which changes on every save)
+86. ✅ Sort by date — library sort selector (A→Z / Recent first) using file ModTime from exercise index
+87. ✅ Date of creation — `Created` timestamp in exercise index entries, preserved across saves, set to Modified on first index
 
 ### Desktop improvements
-88. Tool palette icon-only with tooltip — keep icons without text labels (tooltip on hover suffices), palette stays as left sidebar
-89. Sequence dots on desktop — replace "2 / 4" text with dot pills indicator (same as mobile) for visual consistency
+88. ✅ Tool palette icon-only with tooltip — keep icons without text labels (tooltip on hover suffices), palette stays as left sidebar
+89. ✅ Sequence dots on desktop — dot pills indicator on both mobile and desktop for visual consistency
+
+### Mode system (done, was Phase 15b)
+90. ✅ Mode toggle — mode selector in top bar (mobile) or toolbar (desktop) switches between Edition, Animation, Notes, Session, MyFiles, Training modes
+91. ✅ Mode persistence — switching mode does not lose editor state (selected element, active tool)
+92. ✅ Desktop integration — same mode switch on desktop and mobile for consistency
 
 Deliverable: court-centric layout on mobile with instant tool access, cleaner desktop editor.
 
-## Phase 15b — Draw/Animate Mode Switch ⚡ P1
-
-Goal: separate editing and playback into distinct modes to declutter the UI.
-
-88. Mode toggle — a single button in the top bar (mobile) or toolbar (desktop) switches between Draw and Animate modes:
-    - **Draw mode** (default): tool shelf visible, court is editable (drag, place, delete), animation controls hidden
-    - **Animate mode**: tool shelf replaced by playback controls (play/pause/stop, speed, sequence dots/navigation), court is read-only (no drag/placement), mode icon changes to indicate active mode
-89. Mode persistence — switching mode does not lose editor state (selected element, active tool). Returning to Draw restores the previous tool
-90. Desktop integration — on desktop, Draw/Animate could remain side-by-side (animation controls below court) since screen space allows it, or adopt the same mode switch for consistency. Start with mode switch everywhere, iterate based on feedback
-
-Deliverable: the editor UI shows only what's relevant — editing tools OR playback controls, never both at once.
-
-## Phase 15c — Action Timeline ⚡ P1
+## Phase 15b — Action Timeline ⚡ P1
 
 Goal: define the order of actions within a single sequence, enabling complex plays without creating many sequences.
 
-91. `step` field on Action — new optional `int` field (default 1, backward-compatible). Actions with the same step play simultaneously, different steps play sequentially within the sequence
-92. Data model update — `internal/model/action.go`: add `Step int` field, YAML tag `step,omitempty`. Validation: step >= 1. Existing exercises without step default to step=1 (all simultaneous, current behavior)
-93. Animation engine update — `internal/anim/`: within a sequence, group actions by step. Interpolate step 1 actions first, then step 2, etc. Each step gets an equal share of the sequence's animation duration
-94. UI: step indicator — in Draw mode, each action arrow displays a small circled number (①②③) at its midpoint showing its step. Default new actions get step = max_existing_step + 1 (sequential by default)
-95. UI: step editing — select an action, change its step in the properties panel (number input or +/− buttons). Or drag actions in a timeline strip to reorder steps
-96. UI: timeline strip (optional, v2) — a horizontal strip below the court showing steps as columns, with action icons in each column. Drag actions between columns to change step order
+93. `step` field on Action — new optional `int` field (default 1, backward-compatible). Actions with the same step play simultaneously, different steps play sequentially within the sequence
+94. Data model update — `internal/model/action.go`: add `Step int` field, YAML tag `step,omitempty`. Validation: step >= 1. Existing exercises without step default to step=1 (all simultaneous, current behavior)
+95. Animation engine update — `internal/anim/`: within a sequence, group actions by step. Interpolate step 1 actions first, then step 2, etc. Each step gets an equal share of the sequence's animation duration
+96. UI: step indicator — in Draw mode, each action arrow displays a small circled number (①②③) at its midpoint showing its step. Default new actions get step = max_existing_step + 1 (sequential by default)
+97. UI: step editing — select an action, change its step in the properties panel (number input or +/− buttons). Or drag actions in a timeline strip to reorder steps
+98. UI: timeline strip (optional, v2) — a horizontal strip below the court showing steps as columns, with action icons in each column. Drag actions between columns to change step order
 
 Deliverable: coaches express "A passes to B, then B drives to the basket" within a single sequence instead of creating two.
 

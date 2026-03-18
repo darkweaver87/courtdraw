@@ -3,7 +3,6 @@ package ui
 import (
 	"fmt"
 	"image/color"
-	"runtime"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -24,8 +23,7 @@ type AnimControls struct {
 	prevBtn  *TipButton
 	nextBtn  *TipButton
 	speedBtn *widget.Button
-	seqLabel *canvas.Text     // desktop: "2 / 4"
-	seqDots  *fyne.Container  // mobile: dot pills indicator (nil on desktop)
+	seqDots  *fyne.Container // dot pills indicator
 	box      *fyne.Container
 
 	playback *anim.Playback
@@ -88,20 +86,11 @@ func NewAnimControls() *AnimControls {
 	})
 	ac.speedBtn.Importance = widget.LowImportance
 
-	ac.seqLabel = canvas.NewText("", color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
-	ac.seqLabel.TextSize = 11
-
 	ac.pauseBtn.Hide()
 
 	bg := canvas.NewRectangle(color.NRGBA{R: 0x28, G: 0x28, B: 0x28, A: 0xff})
-	var seqIndicator fyne.CanvasObject
-	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
-		ac.seqDots = container.NewHBox()
-		seqIndicator = ac.seqDots
-	} else {
-		seqIndicator = ac.seqLabel
-	}
-	buttons := container.NewHBox(ac.prevBtn, ac.playBtn, ac.pauseBtn, ac.stopBtn, ac.nextBtn, ac.speedBtn, seqIndicator, layout.NewSpacer())
+	ac.seqDots = container.NewHBox()
+	buttons := container.NewHBox(ac.prevBtn, ac.playBtn, ac.pauseBtn, ac.stopBtn, ac.nextBtn, ac.speedBtn, ac.seqDots, layout.NewSpacer())
 	ac.box = container.NewStack(bg, buttons)
 	ac.box.Hide()
 	return ac
@@ -138,12 +127,7 @@ func (ac *AnimControls) Refresh() {
 		ac.playBtn.Show()
 	}
 	ac.speedBtn.SetText(fmt.Sprintf("%.1fx", ac.playback.Speed()))
-	if ac.seqDots != nil {
-		ac.refreshSeqDots(ac.playback.SeqIndex(), ac.numSeqs)
-	} else {
-		ac.seqLabel.Text = fmt.Sprintf("%d / %d", ac.playback.SeqIndex()+1, ac.numSeqs)
-		ac.seqLabel.Refresh()
-	}
+	ac.refreshSeqDots(ac.playback.SeqIndex(), ac.numSeqs)
 }
 
 // refreshSeqDots rebuilds the sequence dot pills indicator.
