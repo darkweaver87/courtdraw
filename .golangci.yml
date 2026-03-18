@@ -1,0 +1,101 @@
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    # Bugs & correctness
+    - errcheck        # unchecked errors
+    - govet           # go vet checks
+    - staticcheck     # advanced static analysis
+    - typecheck       # type-checking errors
+    - bodyclose       # unclosed HTTP response bodies
+    - nilerr          # returning nil after checking err != nil
+    - nilnil          # returning nil, nil
+    - rowserrcheck    # unchecked sql.Rows.Err()
+    - sqlclosecheck   # unclosed sql.Rows/Stmt
+    - durationcheck   # multiplication of time.Duration
+
+    # Unused code
+    - unused          # unused variables, functions, types
+    - ineffassign     # ineffectual assignments
+    - wastedassign    # wasted assignments
+    - unparam         # unused function parameters
+
+    # Style & simplification
+    - gosimple        # simplification suggestions
+    - goconst         # repeated strings that could be constants
+    - unconvert       # unnecessary type conversions
+    - dupword         # duplicated words in comments
+    - errname         # error type naming conventions
+    - copyloopvar     # loop variable copy issues
+    - intrange        # integer range simplification
+    - usestdlibvars   # stdlib constants instead of magic values
+    - whitespace      # unnecessary blank lines
+
+    # Code quality
+    - gocyclo         # cyclomatic complexity
+    - nestif          # deeply nested ifs
+    - prealloc        # slice preallocation hints
+    - misspell        # common misspellings
+    - perfsprint      # fmt.Sprintf optimization
+    - reassign        # parameter reassignment
+
+    # Security
+    - gosec           # security issues
+
+linters-settings:
+  gocyclo:
+    min-complexity: 30
+
+  nestif:
+    min-complexity: 8
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment # too noisy for UI code
+
+  errcheck:
+    check-type-assertions: true
+
+  gosec:
+    excludes:
+      - G101  # false positives on variable names like "token"
+      - G304  # file inclusion via variable (expected for file-based app)
+
+  misspell:
+    locale: US
+
+  unparam:
+    check-exported: false
+
+  staticcheck:
+    checks:
+      - all
+      - -SA1019  # deprecated usage (handle separately)
+
+issues:
+  exclude-dirs:
+    - vendor
+    - fyne-cross
+
+  exclude-rules:
+    # Test files can have unused params, magic numbers, etc.
+    - path: _test\.go
+      linters:
+        - goconst
+        - gosec
+        - unparam
+        - errcheck
+
+    # Main entry point
+    - path: cmd/
+      linters:
+        - gocyclo
+
+  max-issues-per-linter: 0
+  max-same-issues: 0

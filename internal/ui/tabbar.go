@@ -2,7 +2,6 @@ package ui
 
 import (
 	"image/color"
-	"runtime"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -17,7 +16,7 @@ var (
 )
 
 func init() {
-	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+	if isMobile {
 		tabBarHeight = 80
 		tabIconSize = 40
 		tabFontSize = 14

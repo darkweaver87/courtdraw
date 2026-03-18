@@ -2,6 +2,7 @@ package pdf
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/go-pdf/fpdf"
@@ -160,7 +161,7 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 		}
 
 		// Sequence labels — use ctx.colX (may have changed after nextPage).
-		for ci := 0; ci < rowEnd-si; ci++ {
+		for ci := range rowEnd - si {
 			seq := &ex.Sequences[si+ci]
 			cx := ctx.colX + float64(ci)*(cellW+gap)
 			if seq.Label != "" {
@@ -172,20 +173,20 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 		}
 		y += 4
 
-		for ci := 0; ci < rowEnd-si; ci++ {
+		for ci := range rowEnd - si {
 			cx := ctx.colX + float64(ci)*(cellW+gap)
 			drawCourtDiagram(pdf, cx, y, courtActualW, seqDiagramH, ex, si+ci)
 		}
 		y += seqDiagramH + 1
 
 		instrYs := make([]float64, rowEnd-si)
-		for ci := 0; ci < rowEnd-si; ci++ {
+		for ci := range rowEnd - si {
 			instrYs[ci] = y
 		}
 
 		pdf.SetFont("Helvetica", "", fontSizeSmall)
 		pdf.SetTextColor(colorBlack[0], colorBlack[1], colorBlack[2])
-		for ci := 0; ci < rowEnd-si; ci++ {
+		for ci := range rowEnd - si {
 			cx := ctx.colX + float64(ci)*(cellW+gap)
 			seq := &ex.Sequences[si+ci]
 			iy := instrYs[ci]
@@ -273,7 +274,7 @@ func layoutSummaryTable(pdf *fpdf.Fpdf, tr func(string) string, y float64, block
 			continue
 		}
 		cells := []string{
-			fmt.Sprintf("%d", b.index+1),
+			strconv.Itoa(b.index+1),
 			tr(b.exercise.Name),
 			tr(b.exercise.Duration),
 			"",
@@ -400,7 +401,7 @@ func layoutCoachNotes(pdf *fpdf.Fpdf, tr func(string) string, y float64, session
 // drawIntensityDots draws 3 colored circles (green/yellow/red) at the given position.
 func drawIntensityDots(pdf *fpdf.Fpdf, x, y float64, level int, r float64) {
 	colors := [3][3]int{colorIntGreen, colorIntYellow, colorIntRed}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		cx := x + float64(i)*(r*2+1.5)
 		if i < level {
 			pdf.SetFillColor(colors[i][0], colors[i][1], colors[i][2])

@@ -65,7 +65,6 @@ func (m ManagedExercise) EffectiveTags(filterIndex int) []string {
 	return m.Tags
 }
 
-const maxMgrItems = 200
 const maxSessionItems = 50
 
 // SessionTabAction represents an action the user performed in the session tab.
@@ -149,9 +148,6 @@ type SessionTab struct {
 	previewName   string          // name of currently previewed exercise (avoid restart)
 	previewDetail *fyne.Container // exercise details (duration, intensity, instructions)
 
-	// Event channel — consumed by App each frame.
-	pendingEvent SessionTabEvent
-
 	// Session overlay.
 	sessionOverlay *SessionListOverlay
 
@@ -169,6 +165,12 @@ type SessionTab struct {
 	OnStatus         func(string, int)
 	LoadExercise     func(name string) (*model.Exercise, error) // fallback loader
 }
+
+// Preview origin constants — identify which view the preview was opened from.
+const (
+	previewOriginLibrary = "library"
+	previewOriginSession = "session"
+)
 
 // NewSessionTab creates a new session tab.
 func NewSessionTab() *SessionTab {
@@ -338,7 +340,7 @@ func (st *SessionTab) buildLayout() {
 
 	// Back button (returns from preview to the originating view).
 	backBtn := NewTipButton(icon.Back(), i18n.T("session.back_to_library"), func() {
-		if st.previewOrigin == "session" {
+		if st.previewOrigin == previewOriginSession {
 			st.showSession()
 		} else {
 			st.showLibrary()
@@ -494,7 +496,7 @@ func (st *SessionTab) rebuildTagOptions() {
 			selectedSet[ft] = true
 		}
 	}
-	var valid []string
+	valid := make([]string, 0, len(selectedSet))
 	for t := range selectedSet {
 		valid = append(valid, t)
 	}
@@ -582,7 +584,7 @@ func (st *SessionTab) SessionListOverlay() *SessionListOverlay {
 }
 
 func (st *SessionTab) filteredExercises() []ManagedExercise {
-	var result []ManagedExercise
+	result := make([]ManagedExercise, 0, len(st.items))
 	search := strings.ToLower(st.searchEntry.Text)
 	for _, item := range st.items {
 		// Status filter.
@@ -666,7 +668,7 @@ func (st *SessionTab) refreshLibraryList() {
 		eyeBtn := widget.NewButtonWithIcon("", icon.Preview(), func() {
 			st.selectedIdx = idx
 			st.updatePreview()
-			st.previewOrigin = "library"
+			st.previewOrigin = previewOriginLibrary
 			st.showPreview()
 		})
 		eyeBtn.Importance = widget.LowImportance
@@ -675,7 +677,7 @@ func (st *SessionTab) refreshLibraryList() {
 		tap := newTappableArea(func() {
 			st.selectedIdx = idx
 			st.updatePreview()
-			st.previewOrigin = "library"
+			st.previewOrigin = previewOriginLibrary
 			st.showPreview()
 		})
 
@@ -795,7 +797,7 @@ func (st *SessionTab) previewSessionExercise(idx int) {
 	}
 
 	st.populatePreviewDetail(ex)
-	st.previewOrigin = "session"
+	st.previewOrigin = previewOriginSession
 	st.showPreview()
 }
 
@@ -1128,7 +1130,7 @@ func intensityColorDots(level int) []fyne.CanvasObject {
 	}
 	off := color.NRGBA{R: 120, G: 120, B: 120, A: 255}
 	dots := make([]fyne.CanvasObject, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		c := off
 		if i < level {
 			c = colors[i]
@@ -1152,7 +1154,6 @@ type SessionListOverlay struct {
 	OnDelete string
 	OnRemove string
 
-	dialog fyne.CanvasObject
 }
 
 // NewSessionListOverlay creates a new session list overlay.

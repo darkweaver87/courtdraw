@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -30,7 +31,7 @@ func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 // push the exercise file, and open a pull request. Returns the PR URL.
 func createContributionPR(token, name string, yamlData []byte) (string, error) {
 	if token == "" {
-		return "", fmt.Errorf("no GitHub token configured")
+		return "", errors.New("no GitHub token configured")
 	}
 
 	ctx := context.Background()
@@ -47,13 +48,8 @@ func createContributionPR(token, name string, yamlData []byte) (string, error) {
 	login := user.GetLogin()
 
 	// 2. Fork the repo (no-op if already forked).
-	_, _, err = client.Repositories.CreateFork(ctx, upstreamOwner, upstreamRepo, &github.RepositoryCreateForkOptions{})
-	if err != nil {
-		// 422 = fork already exists, which is fine.
-		if !strings.Contains(err.Error(), "try again later") {
-			// Ignore "job scheduled" responses — fork is being created.
-		}
-	}
+	// CreateFork returns 202 (job scheduled) or 422 (already exists) — both are fine.
+	_, _, _ = client.Repositories.CreateFork(ctx, upstreamOwner, upstreamRepo, &github.RepositoryCreateForkOptions{})
 
 	// 3. Get upstream main branch SHA.
 	ref, _, err := client.Git.GetRef(ctx, upstreamOwner, upstreamRepo, "refs/heads/main")
@@ -78,7 +74,7 @@ func createContributionPR(token, name string, yamlData []byte) (string, error) {
 	}
 
 	// 5. Upload the exercise file.
-	commitMsg := fmt.Sprintf("Add exercise: %s", name)
+	commitMsg := "Add exercise: " + name
 	_, _, err = client.Repositories.CreateFile(ctx, login, upstreamRepo, filePath, &github.RepositoryContentFileOptions{
 		Message: github.Ptr(commitMsg),
 		Content: yamlData,
@@ -90,9 +86,9 @@ func createContributionPR(token, name string, yamlData []byte) (string, error) {
 
 	// 6. Create pull request.
 	pr, _, err := client.PullRequests.Create(ctx, upstreamOwner, upstreamRepo, &github.NewPullRequest{
-		Title: github.Ptr(fmt.Sprintf("Add exercise: %s", name)),
-		Body:  github.Ptr(fmt.Sprintf("Community exercise contribution: **%s**", name)),
-		Head:  github.Ptr(fmt.Sprintf("%s:%s", login, branch)),
+		Title: github.Ptr("Add exercise: " + name),
+		Body:  github.Ptr("Community exercise contribution: **" + name + "**"),
+		Head:  github.Ptr(login + ":" + branch),
 		Base:  github.Ptr("main"),
 	})
 	if err != nil {

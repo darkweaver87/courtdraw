@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -94,20 +95,20 @@ func (s *YAMLStore) SaveExercise(exercise *model.Exercise) error {
 // SaveExerciseAs saves an exercise with an explicit file name (without extension).
 func (s *YAMLStore) SaveExerciseAs(name string, exercise *model.Exercise) error {
 	if name == "" {
-		return fmt.Errorf("exercise name is empty")
+		return errors.New("exercise name is empty")
 	}
 	path := filepath.Join(s.exercisesDir, name+".yaml")
 	data, err := yaml.Marshal(exercise)
 	if err != nil {
 		return fmt.Errorf("marshal exercise: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0600); err != nil {
 		return err
 	}
 	now := time.Now()
 	entry := exerciseEntryFromExercise(name, exercise, now)
 	s.upsertExerciseEntry(entry)
-	saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
+	_ = saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 	return nil
 }
 
@@ -117,7 +118,7 @@ func (s *YAMLStore) DeleteExercise(name string) error {
 		return fmt.Errorf("delete exercise %s: %w", name, err)
 	}
 	s.removeExerciseEntry(name)
-	saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
+	_ = saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 	return nil
 }
 
@@ -145,20 +146,20 @@ func (s *YAMLStore) LoadSession(name string) (*model.Session, error) {
 func (s *YAMLStore) SaveSession(session *model.Session) error {
 	name := SessionFileName(session)
 	if name == "" {
-		return fmt.Errorf("session title is empty")
+		return errors.New("session title is empty")
 	}
 	path := filepath.Join(s.sessionsDir, name+".yaml")
 	data, err := yaml.Marshal(session)
 	if err != nil {
 		return fmt.Errorf("marshal session: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0600); err != nil {
 		return err
 	}
 	now := time.Now()
 	entry := sessionEntryFromSession(name, session, now)
 	s.upsertSessionEntry(entry)
-	saveSessionIndex(s.sessionsDir, s.sessionIndex)
+	_ = saveSessionIndex(s.sessionsDir, s.sessionIndex)
 	return nil
 }
 
@@ -169,7 +170,7 @@ func (s *YAMLStore) DeleteSession(name string) error {
 		return fmt.Errorf("delete session %s: %w", name, err)
 	}
 	s.removeSessionEntry(name)
-	saveSessionIndex(s.sessionsDir, s.sessionIndex)
+	_ = saveSessionIndex(s.sessionsDir, s.sessionIndex)
 	return nil
 }
 
@@ -187,34 +188,12 @@ func SessionFileName(session *model.Session) string {
 	return title + "-" + date
 }
 
-// listYAML returns the base names (without .yaml) of all YAML files in a directory.
-func listYAML(dir string) ([]string, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, fmt.Errorf("list %s: %w", dir, err)
-	}
-	var names []string
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		name := e.Name()
-		if isIndexFile(name) {
-			continue
-		}
-		if strings.HasSuffix(name, ".yaml") || strings.HasSuffix(name, ".yml") {
-			names = append(names, strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml"))
-		}
-	}
-	return names, nil
-}
-
 // ClearRecentFile removes an exercise from the recent files list by resetting LastOpened.
 func (s *YAMLStore) ClearRecentFile(name string) {
 	for i := range s.exerciseIndex.Entries {
 		if s.exerciseIndex.Entries[i].File == name {
 			s.exerciseIndex.Entries[i].LastOpened = time.Time{}
-			saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
+			_ = saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 			return
 		}
 	}
@@ -226,7 +205,7 @@ func (s *YAMLStore) RecordRecentFile(name string) {
 	for i := range s.exerciseIndex.Entries {
 		if s.exerciseIndex.Entries[i].File == name {
 			s.exerciseIndex.Entries[i].LastOpened = now
-			saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
+			_ = saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 			return
 		}
 	}
@@ -263,7 +242,7 @@ func (s *YAMLStore) RecordRecentSession(name string) {
 	for i := range s.sessionIndex.Entries {
 		if s.sessionIndex.Entries[i].File == name {
 			s.sessionIndex.Entries[i].LastOpened = now
-			saveSessionIndex(s.sessionsDir, s.sessionIndex)
+			_ = saveSessionIndex(s.sessionsDir, s.sessionIndex)
 			return
 		}
 	}
@@ -299,7 +278,7 @@ func (s *YAMLStore) ClearRecentSession(name string) {
 	for i := range s.sessionIndex.Entries {
 		if s.sessionIndex.Entries[i].File == name {
 			s.sessionIndex.Entries[i].LastOpened = time.Time{}
-			saveSessionIndex(s.sessionsDir, s.sessionIndex)
+			_ = saveSessionIndex(s.sessionsDir, s.sessionIndex)
 			return
 		}
 	}
@@ -317,14 +296,14 @@ func (s *YAMLStore) ExerciseIndexEntries() []ExerciseIndexEntry {
 func (s *YAMLStore) RebuildExerciseIndex() []string {
 	idx, errs := rebuildExerciseIndex(s.exercisesDir)
 	s.exerciseIndex = idx
-	saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
+	_ = saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 	return errs
 }
 
 // RebuildSessionIndex rebuilds the session index from disk.
 func (s *YAMLStore) RebuildSessionIndex() {
 	s.sessionIndex = rebuildSessionIndex(s.sessionsDir)
-	saveSessionIndex(s.sessionsDir, s.sessionIndex)
+	_ = saveSessionIndex(s.sessionsDir, s.sessionIndex)
 }
 
 // ensureExerciseIndex loads the exercise index, rebuilding if absent or stale.
@@ -333,7 +312,7 @@ func (s *YAMLStore) ensureExerciseIndex() {
 	if _, err := os.Stat(path); err != nil {
 		idx, _ := rebuildExerciseIndex(s.exercisesDir)
 		s.exerciseIndex = idx
-		saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
+		_ = saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 		return
 	}
 	s.exerciseIndex = loadExerciseIndex(s.exercisesDir)
@@ -355,7 +334,7 @@ func (s *YAMLStore) ensureExerciseIndex() {
 			}
 		}
 		s.exerciseIndex = idx
-		saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
+		_ = saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 	}
 }
 
@@ -364,7 +343,7 @@ func (s *YAMLStore) ensureSessionIndex() {
 	path := filepath.Join(s.sessionsDir, indexFileName)
 	if _, err := os.Stat(path); err != nil {
 		s.sessionIndex = rebuildSessionIndex(s.sessionsDir)
-		saveSessionIndex(s.sessionsDir, s.sessionIndex)
+		_ = saveSessionIndex(s.sessionsDir, s.sessionIndex)
 		return
 	}
 	s.sessionIndex = loadSessionIndex(s.sessionsDir)
@@ -384,7 +363,7 @@ func (s *YAMLStore) ensureSessionIndex() {
 				s.sessionIndex.Entries[i].LastOpened = t
 			}
 		}
-		saveSessionIndex(s.sessionsDir, s.sessionIndex)
+		_ = saveSessionIndex(s.sessionsDir, s.sessionIndex)
 	}
 }
 
@@ -425,9 +404,9 @@ func (s *YAMLStore) migrateRecentFiles() {
 			}
 		}
 	}
-	saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
+	_ = saveExerciseIndex(s.exercisesDir, s.exerciseIndex)
 	settings.RecentFiles = nil
-	s.SaveSettings(settings)
+	_ = s.SaveSettings(settings)
 }
 
 // upsertExerciseEntry adds or updates an exercise entry in the index.

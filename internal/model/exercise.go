@@ -168,10 +168,11 @@ func (bc *BallCarriers) UnmarshalYAML(value *yaml.Node) error {
 }
 
 // MarshalYAML outputs a single string when len==1, a list otherwise.
+// Returns (nil, nil) for empty carriers, which is the standard YAML omitempty pattern.
 func (bc BallCarriers) MarshalYAML() (interface{}, error) {
 	switch len(bc) {
 	case 0:
-		return nil, nil
+		return nil, nil //nolint:nilnil // standard MarshalYAML pattern to omit empty field
 	case 1:
 		return bc[0], nil
 	default:
@@ -235,7 +236,7 @@ func (r *ActionRef) UnmarshalYAML(value *yaml.Node) error {
 	}
 }
 
-// MarshalYAML implements custom YAML marshalling for ActionRef.
+// MarshalYAML implements custom YAML marshaling for ActionRef.
 func (r ActionRef) MarshalYAML() (interface{}, error) {
 	if r.IsPlayer {
 		return r.PlayerID, nil

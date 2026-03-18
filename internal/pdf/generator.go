@@ -1,7 +1,7 @@
 package pdf
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/go-pdf/fpdf"
 
@@ -14,7 +14,7 @@ type ExerciseLoader func(name string) (*model.Exercise, error)
 // Generate creates a PDF session sheet and writes it to the given path.
 func Generate(session *model.Session, loader ExerciseLoader, outputPath string, layout PageLayout) error {
 	if session == nil {
-		return fmt.Errorf("session is nil")
+		return errors.New("session is nil")
 	}
 
 	blocks := resolveBlocks(session, loader)
@@ -22,8 +22,7 @@ func Generate(session *model.Session, loader ExerciseLoader, outputPath string, 
 	p := newPDF(layout)
 	tr := p.UnicodeTranslatorFromDescriptor("")
 
-	y := renderSession(p, tr, session, blocks, ctx)
-	_ = y
+	renderSession(p, tr, session, blocks, ctx)
 
 	return p.OutputFileAndClose(outputPath)
 }
@@ -31,7 +30,7 @@ func Generate(session *model.Session, loader ExerciseLoader, outputPath string, 
 // GenerateBytes creates a PDF and returns it as bytes.
 func GenerateBytes(session *model.Session, loader ExerciseLoader, layout PageLayout) ([]byte, error) {
 	if session == nil {
-		return nil, fmt.Errorf("session is nil")
+		return nil, errors.New("session is nil")
 	}
 
 	blocks := resolveBlocks(session, loader)
@@ -39,7 +38,7 @@ func GenerateBytes(session *model.Session, loader ExerciseLoader, layout PageLay
 	p := newPDF(layout)
 	tr := p.UnicodeTranslatorFromDescriptor("")
 
-	_ = renderSession(p, tr, session, blocks, ctx)
+	renderSession(p, tr, session, blocks, ctx)
 
 	var buf []byte
 	w := &bytesWriter{data: &buf}
@@ -52,7 +51,7 @@ func GenerateBytes(session *model.Session, loader ExerciseLoader, layout PageLay
 // renderSession renders the full session into the PDF.
 // The flow is identical for portrait and 2-up: layout functions call
 // ctx.nextPage() which handles physical vs virtual page breaks.
-func renderSession(p *fpdf.Fpdf, tr func(string) string, session *model.Session, blocks []exerciseBlock, ctx *layoutContext) float64 {
+func renderSession(p *fpdf.Fpdf, tr func(string) string, session *model.Session, blocks []exerciseBlock, ctx *layoutContext) {
 	// Store session/tr in context so nextPage can redraw headers.
 	ctx.session = session
 	ctx.tr = tr
@@ -79,9 +78,7 @@ func renderSession(p *fpdf.Fpdf, tr func(string) string, session *model.Session,
 	y = layoutSummaryTable(p, tr, y, blocks, ctx)
 
 	// Coach notes and philosophy.
-	y = layoutCoachNotes(p, tr, y, session, ctx)
-
-	return y
+	layoutCoachNotes(p, tr, y, session, ctx)
 }
 
 func newPDF(layout PageLayout) *fpdf.Fpdf {
@@ -98,7 +95,7 @@ func newPDF(layout PageLayout) *fpdf.Fpdf {
 }
 
 func resolveBlocks(session *model.Session, loader ExerciseLoader) []exerciseBlock {
-	var blocks []exerciseBlock
+	blocks := make([]exerciseBlock, 0, len(session.Exercises))
 	for i, entry := range session.Exercises {
 		ex, err := loader(entry.Exercise)
 		if err != nil {

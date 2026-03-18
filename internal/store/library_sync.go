@@ -81,7 +81,7 @@ func SyncLibrary(ctx context.Context, cacheDir, token string) (*LibrarySyncResul
 			return nil, fmt.Errorf("download %s: %w", name, err)
 		}
 
-		if err := os.WriteFile(filepath.Join(cacheDir, name), content, 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(cacheDir, name), content, 0600); err != nil {
 			return nil, fmt.Errorf("write %s: %w", name, err)
 		}
 
@@ -184,5 +184,5 @@ func saveManifest(cacheDir string, m *Manifest) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(cacheDir, manifestFile), data, 0644)
+	return os.WriteFile(filepath.Join(cacheDir, manifestFile), data, 0600)
 }

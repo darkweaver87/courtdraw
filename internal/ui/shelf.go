@@ -2,7 +2,6 @@ package ui
 
 import (
 	"image/color"
-	"runtime"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -50,7 +49,7 @@ const numShelfCategories = 4
 var shelfCellSize fyne.Size
 
 func init() {
-	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+	if isMobile {
 		shelfCellSize = fyne.NewSize(64, 64)
 	} else {
 		shelfCellSize = fyne.NewSize(36, 36)
@@ -308,7 +307,7 @@ func (ms *EditorShelf) selectCategory(cat shelfCategory) {
 	ms.shelfStack.Objects = []fyne.CanvasObject{content}
 	ms.shelfStack.Refresh()
 
-	for i := 0; i < numShelfCategories; i++ {
+	for i := range numShelfCategories {
 		if shelfCategory(i) == cat {
 			ms.tabIndicators[i].FillColor = tabActiveColor
 			ms.tabLabels[i].Color = tabLabelActiveColor

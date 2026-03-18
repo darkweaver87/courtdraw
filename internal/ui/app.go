@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"image/color"
 	"log"
@@ -563,7 +564,7 @@ func (a *App) switchLang(lang string) {
 	if ys, ok := a.store.(*store.YAMLStore); ok {
 		settings, _ := ys.LoadSettings()
 		settings.Language = lang
-		ys.SaveSettings(settings)
+		_ = ys.SaveSettings(settings)
 	}
 }
 
@@ -675,7 +676,7 @@ func (a *App) CheckVersionAtStartup() {
 				showUpdateDialog(a.window, tag, url)
 				a.settings.DismissedVersion = tag
 				if ys, ok := a.store.(*store.YAMLStore); ok {
-					ys.SaveSettings(a.settings)
+					_ = ys.SaveSettings(a.settings)
 				}
 			}
 		})
@@ -762,7 +763,7 @@ func exerciseChecksum(ex *model.Exercise) string {
 		return ""
 	}
 	h := sha256.Sum256(data)
-	return fmt.Sprintf("%x", h[:8])
+	return hex.EncodeToString(h[:8])
 }
 
 // snapshotExerciseSHA stores the current exercise checksum (call after load/save/new).
@@ -770,7 +771,7 @@ func (a *App) snapshotExerciseSHA() {
 	a.exerciseSHA = exerciseChecksum(a.exercise)
 	if a.exercise != nil {
 		data, _ := yaml.Marshal(a.exercise)
-		os.WriteFile("/tmp/courtdraw_snapshot.yaml", data, 0644)
+		_ = os.WriteFile("/tmp/courtdraw_snapshot.yaml", data, 0644) //nolint:gosec // debug snapshot
 	}
 }
 
@@ -1002,7 +1003,9 @@ func (a *App) showOpenDialog() {
 		func() int { return len(items) },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			obj.(*widget.Label).SetText(items[id])
+			if lbl, ok := obj.(*widget.Label); ok {
+				lbl.SetText(items[id])
+			}
 		},
 	)
 	var d dialog.Dialog
@@ -1033,7 +1036,9 @@ func (a *App) showImportDialog() {
 		func() int { return len(items) },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			obj.(*widget.Label).SetText(items[id])
+			if lbl, ok := obj.(*widget.Label); ok {
+				lbl.SetText(items[id])
+			}
 		},
 	)
 	var d dialog.Dialog
@@ -1297,7 +1302,9 @@ func (a *App) showRecentFiles() {
 		func() int { return len(items) },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			obj.(*widget.Label).SetText(items[id])
+			if lbl, ok := obj.(*widget.Label); ok {
+				lbl.SetText(items[id])
+			}
 		},
 	)
 	var d dialog.Dialog
@@ -1405,7 +1412,9 @@ func (a *App) showOpenSessionDialog() {
 		func() int { return len(items) },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			obj.(*widget.Label).SetText(items[id])
+			if lbl, ok := obj.(*widget.Label); ok {
+				lbl.SetText(items[id])
+			}
 		},
 	)
 	var d dialog.Dialog
@@ -1436,7 +1445,9 @@ func (a *App) showRecentSessions() {
 		func() int { return len(items) },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			obj.(*widget.Label).SetText(items[id])
+			if lbl, ok := obj.(*widget.Label); ok {
+				lbl.SetText(items[id])
+			}
 		},
 	)
 	var d dialog.Dialog
@@ -1513,9 +1524,8 @@ func (a *App) refreshMyFilesTab() {
 func (a *App) buildMyFilesData() ([]SessionFileItem, []ExerciseFileItem) {
 	// Collect all exercises referenced by any session.
 	referenced := make(map[string]bool)
-	var sessionItems []SessionFileItem
-
 	sessionNames, _ := a.store.ListSessions()
+	sessionItems := make([]SessionFileItem, 0, len(sessionNames))
 	for _, name := range sessionNames {
 		s, err := a.store.LoadSession(name)
 		if err != nil {
@@ -1534,9 +1544,9 @@ func (a *App) buildMyFilesData() ([]SessionFileItem, []ExerciseFileItem) {
 	}
 
 	// Build exercise list (local only) with orphan flag.
-	var exerciseItems []ExerciseFileItem
 	lang := string(i18n.CurrentLang())
 	localNames, _ := a.store.ListExercises()
+	exerciseItems := make([]ExerciseFileItem, 0, len(localNames))
 	for _, name := range localNames {
 		ex, err := a.store.LoadExercise(name)
 		if err != nil {
@@ -1713,7 +1723,7 @@ func (a *App) generatePDFTo(path string, pageLayout pdf.PageLayout) {
 		return
 	}
 	dir := filepath.Dir(path)
-	os.MkdirAll(dir, 0755)
+	_ = os.MkdirAll(dir, 0755)
 	lang := string(i18n.CurrentLang())
 	loader := func(name string) (*model.Exercise, error) {
 		ex, err := a.loadExerciseAny(name)
@@ -1790,7 +1800,7 @@ func (a *App) contributeExercise(name string) {
 			}
 			a.statusBar.SetStatus(i18n.T("contribute.pr_created"), 0)
 			if prURL != "" {
-				openBrowser(prURL)
+				_ = openBrowser(prURL)
 			}
 		})
 	}()
@@ -1822,7 +1832,7 @@ func (a *App) buildTrainingPicker() fyne.CanvasObject {
 		title string
 		date  string
 	}
-	var infos []sessionInfo
+	infos := make([]sessionInfo, 0, len(sessions))
 	for _, name := range sessions {
 		s, err := ys.LoadSession(name)
 		title := name
@@ -1846,9 +1856,16 @@ func (a *App) buildTrainingPicker() fyne.CanvasObject {
 			return container.NewHBox(title, layout.NewSpacer(), date)
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			row := obj.(*fyne.Container)
-			row.Objects[0].(*widget.Label).SetText(infos[id].title)
-			row.Objects[2].(*widget.Label).SetText(infos[id].date)
+			row, ok := obj.(*fyne.Container)
+			if !ok {
+				return
+			}
+			if lbl, ok := row.Objects[0].(*widget.Label); ok {
+				lbl.SetText(infos[id].title)
+			}
+			if lbl, ok := row.Objects[2].(*widget.Label); ok {
+				lbl.SetText(infos[id].date)
+			}
 		},
 	)
 	list.OnSelected = func(id widget.ListItemID) {
@@ -2117,24 +2134,6 @@ func stripDiacritics(s string) string {
 		}
 	}
 	return b.String()
-}
-
-// cycleLang cycles through supported languages and persists the choice.
-func (a *App) cycleLang() {
-	langs := i18n.SupportedLangs()
-	cur := i18n.CurrentLang()
-	for idx, l := range langs {
-		if l == cur {
-			next := langs[(idx+1)%len(langs)]
-			i18n.SetLang(next)
-			if ys, ok := a.store.(*store.YAMLStore); ok {
-				settings, _ := ys.LoadSettings()
-				settings.Language = string(next)
-				ys.SaveSettings(settings)
-			}
-			return
-		}
-	}
 }
 
 // Suppress unused imports.

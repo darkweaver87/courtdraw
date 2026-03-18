@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"runtime"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -71,7 +69,7 @@ func NewCountdownTimer() *CountdownTimer {
 
 	// +/- buttons to adjust duration.
 	var adjustRow fyne.CanvasObject
-	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+	if isMobile {
 		// Mobile: 2 large icon-only buttons (−/+), step = 1 minute.
 		subBtn := widget.NewButtonWithIcon("", fynetheme.ContentRemoveIcon(), func() {
 			ct.adjustDuration(-60 * time.Second)
@@ -619,7 +617,7 @@ func (p *CoachToolsPanel) BuildWidget() fyne.CanvasObject {
 	contentArea := container.NewStack(spacer, panels[0].content)
 	controlsArea := container.NewStack(panels[0].controls)
 
-	var tabBtns []*widget.Button
+	tabBtns := make([]*widget.Button, 0, len(labels))
 	for i, label := range labels {
 		idx := i
 		btn := widget.NewButton(label, nil)

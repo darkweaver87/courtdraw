@@ -15,7 +15,6 @@ var (
 	colorNeutral   = [3]int{136, 136, 136}  // #888888
 	colorCourtBg   = [3]int{200, 150, 100}   // #c89664 parquet
 	colorCourtLine = [3]int{255, 255, 255}  // #ffffff
-	colorMaxInt    = [3]int{193, 18, 31}    // #c1121f
 	colorWhite     = [3]int{255, 255, 255}
 	colorBlack     = [3]int{0, 0, 0}
 	colorLightBg   = [3]int{241, 250, 238}  // #f1faee
@@ -95,7 +94,7 @@ type layoutContext struct {
 	contentStartY float64
 }
 
-func (ctx *layoutContext) dotRadius() float64 {
+func (ctx *layoutContext) dotRadius() float64 { //nolint:unparam
 	if ctx.mode == LayoutLandscape2Up {
 		return intensityDotR_a5
 	}

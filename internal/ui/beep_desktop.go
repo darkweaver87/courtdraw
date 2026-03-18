@@ -15,7 +15,7 @@ import (
 var (
 	otoCtx     *oto.Context
 	otoOnce    sync.Once
-	otoInitErr error
+	errOtoInit error
 )
 
 func initAudio() {
@@ -26,8 +26,8 @@ func initAudio() {
 			Format:       oto.FormatSignedInt16LE,
 		}
 		var ready chan struct{}
-		otoCtx, ready, otoInitErr = oto.NewContext(op)
-		if otoInitErr == nil {
+		otoCtx, ready, errOtoInit = oto.NewContext(op)
+		if errOtoInit == nil {
 			<-ready
 		}
 	})
@@ -36,7 +36,7 @@ func initAudio() {
 // systemBeep plays a short 200ms sine tone at 880Hz.
 func systemBeep() {
 	initAudio()
-	if otoInitErr != nil || otoCtx == nil {
+	if errOtoInit != nil || otoCtx == nil {
 		return
 	}
 
@@ -49,7 +49,7 @@ func systemBeep() {
 	buf := make([]byte, numSamples*2)
 	fadeLen := sampleRate * 10 / 1000 // 10ms fade
 
-	for i := 0; i < numSamples; i++ {
+	for i := range numSamples {
 		t := float64(i) / float64(sampleRate)
 		env := 1.0
 		if i < fadeLen {
@@ -58,7 +58,7 @@ func systemBeep() {
 			env = float64(numSamples-i) / float64(fadeLen)
 		}
 		sample := int16(env * 0.4 * math.Sin(2*math.Pi*freq*t) * 32767)
-		binary.LittleEndian.PutUint16(buf[i*2:], uint16(sample))
+		binary.LittleEndian.PutUint16(buf[i*2:], uint16(sample)) //nolint:gosec // intentional int16→uint16 for PCM
 	}
 
 	player := otoCtx.NewPlayer(bytes.NewReader(buf))

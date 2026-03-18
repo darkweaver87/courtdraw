@@ -351,13 +351,13 @@ func TestYAMLStore_MigrateRecentFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s1.SaveExercise(testExercise()); err != nil {
+	if err := s1.SaveExercise(testExercise()); err != nil { //nolint:govet // shadow ok in test
 		t.Fatal(err)
 	}
 
 	// Write recent files to settings.
 	settings := &Settings{RecentFiles: []string{"test-drill"}}
-	if err := s1.SaveSettings(settings); err != nil {
+	if err := s1.SaveSettings(settings); err != nil { //nolint:govet // shadow ok in test
 		t.Fatal(err)
 	}
 

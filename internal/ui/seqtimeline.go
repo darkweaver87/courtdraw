@@ -60,7 +60,7 @@ func NewSeqTimeline() *SeqTimeline {
 
 	st.seqBtn = widget.NewButton("", func() {
 		// Tap on label → rename.
-		st.showRenameDialog(st.activeIdx, st.exercise, st.editLang)
+		st.showRenameDialog(st.activeIdx, st.exercise)
 	})
 	st.seqBtn.Importance = widget.HighImportance
 
@@ -161,7 +161,7 @@ func (st *SeqTimeline) resolveLabel(idx int) string {
 }
 
 // showRenameDialog opens an entry dialog to rename a sequence.
-func (st *SeqTimeline) showRenameDialog(idx int, exercise *model.Exercise, editLang string) {
+func (st *SeqTimeline) showRenameDialog(idx int, exercise *model.Exercise) {
 	if st.window == nil || exercise == nil || idx >= len(exercise.Sequences) {
 		return
 	}

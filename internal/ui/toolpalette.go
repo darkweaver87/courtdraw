@@ -16,7 +16,7 @@ import (
 )
 
 // isMobile reports whether the app is running on a mobile platform.
-var isMobile bool
+var isMobile = runtime.GOOS == "android" || runtime.GOOS == "ios"
 
 // toolEntry pairs a TipButton with its i18n key for language refresh.
 type toolEntry struct {
@@ -49,7 +49,6 @@ type ToolPalette struct {
 var toolGridCell fyne.Size
 
 func init() {
-	isMobile = runtime.GOOS == "android" || runtime.GOOS == "ios"
 	if isMobile {
 		toolGridCell = fyne.NewSize(64, 80) // taller to accommodate label below icon
 	} else {
@@ -219,12 +218,6 @@ func (tp *ToolPalette) makeToolWidget(key string, res fyne.Resource, onTap func(
 	tp.tools = append(tp.tools, toolEntry{btn: btn, key: key, label: lbl})
 	tp.allBtns = append(tp.allBtns, btn)
 	return btn, obj
-}
-
-// makeTool creates a TipButton registered for highlight management (backward compat helper).
-func (tp *ToolPalette) makeTool(key string, res fyne.Resource, onTap func()) *TipButton {
-	btn, _ := tp.makeToolWidget(key, res, onTap)
-	return btn
 }
 
 func (tp *ToolPalette) makeHeader(key string) fyne.CanvasObject {

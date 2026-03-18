@@ -114,7 +114,7 @@ func saveExerciseIndex(dir string, idx *ExerciseIndex) error {
 		return err
 	}
 	tmp := filepath.Join(dir, indexFileName+".tmp")
-	if err := os.WriteFile(tmp, data, 0644); err != nil {
+	if err := os.WriteFile(tmp, data, 0600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, filepath.Join(dir, indexFileName))
@@ -127,7 +127,7 @@ func saveSessionIndex(dir string, idx *SessionIndex) error {
 		return err
 	}
 	tmp := filepath.Join(dir, indexFileName+".tmp")
-	if err := os.WriteFile(tmp, data, 0644); err != nil {
+	if err := os.WriteFile(tmp, data, 0600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, filepath.Join(dir, indexFileName))
@@ -160,8 +160,8 @@ func rebuildExerciseIndex(dir string) (*ExerciseIndex, []string) {
 			continue
 		}
 		var ex model.Exercise
-		if err := yaml.Unmarshal(data, &ex); err != nil {
-			parseErrors = append(parseErrors, fmt.Sprintf("%s: %v", name, err))
+		if unmarshalErr := yaml.Unmarshal(data, &ex); unmarshalErr != nil {
+			parseErrors = append(parseErrors, fmt.Sprintf("%s: %v", name, unmarshalErr))
 			continue
 		}
 		info, err := e.Info()
@@ -199,7 +199,7 @@ func rebuildSessionIndex(dir string) *SessionIndex {
 			continue
 		}
 		var ses model.Session
-		if err := yaml.Unmarshal(data, &ses); err != nil {
+		if unmarshalErr := yaml.Unmarshal(data, &ses); unmarshalErr != nil {
 			continue
 		}
 		info, err := e.Info()

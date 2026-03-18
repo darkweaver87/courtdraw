@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -89,7 +90,7 @@ func uploadTmpfiles(ctx context.Context, data []byte, filename string) (*UploadR
 		return nil, fmt.Errorf("tmpfiles: decode: %w", err)
 	}
 	if result.Status != "success" || result.Data.URL == "" {
-		return nil, fmt.Errorf("tmpfiles: unexpected response")
+		return nil, errors.New("tmpfiles: unexpected response")
 	}
 
 	// Convert view URL to direct download URL
@@ -132,7 +133,7 @@ func uploadFileIO(ctx context.Context, data []byte, filename string) (*UploadRes
 		return nil, fmt.Errorf("file.io: decode: %w", err)
 	}
 	if !result.Success || result.Link == "" {
-		return nil, fmt.Errorf("file.io: upload failed")
+		return nil, errors.New("file.io: upload failed")
 	}
 
 	return &UploadResult{URL: result.Link, Provider: "file.io"}, nil

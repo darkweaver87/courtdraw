@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"runtime"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 )
@@ -21,7 +19,7 @@ const mobileThreshold float32 = 600
 // On Android/iOS, always returns LayoutMobile regardless of screen size.
 // On desktop, returns LayoutMobile if width < 600dp, LayoutDesktop otherwise.
 func DetectLayoutMode(size fyne.Size) LayoutMode {
-	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+	if isMobile {
 		return LayoutMobile
 	}
 	if size.Width < mobileThreshold {

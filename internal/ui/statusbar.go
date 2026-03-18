@@ -2,7 +2,6 @@ package ui
 
 import (
 	"image/color"
-	"runtime"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -23,7 +22,7 @@ type StatusBar struct {
 var statusBarHeight float32 = 22
 
 func init() {
-	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+	if isMobile {
 		statusBarHeight = 28
 	}
 }
@@ -32,7 +31,7 @@ func init() {
 func NewStatusBar() *StatusBar {
 	sb := &StatusBar{}
 	sb.label = canvas.NewText("CourtDraw", color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
-	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+	if isMobile {
 		sb.label.TextSize = 13
 	} else {
 		sb.label.TextSize = 11

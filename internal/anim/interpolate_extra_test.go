@@ -79,7 +79,7 @@ func TestInterpolateFrame_TGreaterThan1(t *testing.T) {
 	if len(frame.Players) != 1 {
 		t.Fatalf("expected 1 player, got %d", len(frame.Players))
 	}
-	// t>1 should clamp to to snapshot.
+	// t>1 should clamp to snapshot.
 	if !almostEqual(frame.Players[0].Position[0], 0.9, 0.001) {
 		t.Errorf("expected to position x=0.9, got %f", frame.Players[0].Position[0])
 	}

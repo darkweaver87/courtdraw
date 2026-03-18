@@ -30,13 +30,13 @@ func TestSaveAndLoadSettings_RoundTrip(t *testing.T) {
 	}
 
 	original := &Settings{Language: "fr"}
-	if err := s.SaveSettings(original); err != nil {
+	if err := s.SaveSettings(original); err != nil { //nolint:govet // shadow ok in test
 		t.Fatalf("save settings: %v", err)
 	}
 
 	// Verify the file was created
 	path := filepath.Join(dir, "settings.yaml")
-	if _, err := os.Stat(path); err != nil {
+	if _, err := os.Stat(path); err != nil { //nolint:govet // shadow ok in test
 		t.Fatalf("settings file not created: %v", err)
 	}
 
@@ -59,7 +59,7 @@ func TestLoadSettings_SpecificLanguage(t *testing.T) {
 	// Write a settings file manually
 	data := []byte("language: es\n")
 	path := filepath.Join(dir, "settings.yaml")
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0600); err != nil { //nolint:govet // shadow ok in test
 		t.Fatalf("write settings file: %v", err)
 	}
 

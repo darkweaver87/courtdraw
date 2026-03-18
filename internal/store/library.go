@@ -25,7 +25,7 @@ func NewLibrary(dir string) *Library {
 // The directory is created if it does not exist.
 func NewCachedLibrary(baseDir string) *Library {
 	dir := filepath.Join(baseDir, "library")
-	os.MkdirAll(dir, 0755)
+	_ = os.MkdirAll(dir, 0755)
 	return &Library{dir: dir}
 }
 

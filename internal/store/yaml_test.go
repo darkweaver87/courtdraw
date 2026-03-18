@@ -32,7 +32,7 @@ func TestYAMLStore_SaveAndLoad(t *testing.T) {
 	}
 
 	ex := testExercise()
-	if err := s.SaveExercise(ex); err != nil {
+	if err := s.SaveExercise(ex); err != nil { //nolint:govet // shadow ok in test
 		t.Fatalf("save: %v", err)
 	}
 
@@ -65,7 +65,7 @@ func TestYAMLStore_ListExercises(t *testing.T) {
 	}
 
 	// save one
-	if err := s.SaveExercise(testExercise()); err != nil {
+	if err := s.SaveExercise(testExercise()); err != nil { //nolint:govet // shadow ok in test
 		t.Fatalf("save: %v", err)
 	}
 
@@ -106,7 +106,7 @@ func TestYAMLStore_Sessions(t *testing.T) {
 		},
 	}
 
-	if err := s.SaveSession(ses); err != nil {
+	if err := s.SaveSession(ses); err != nil { //nolint:govet // shadow ok in test
 		t.Fatalf("save session: %v", err)
 	}
 
@@ -166,7 +166,7 @@ func TestLibrary_ListAndLoad(t *testing.T) {
 	// write a file directly
 	ex := testExercise()
 	data := []byte("name: Test Drill\ncourt_type: half_court\ncourt_standard: fiba\nsequences:\n  - label: Setup\n    players:\n      - id: a1\n        role: attacker\n        position: [0.5, 0.5]\n")
-	if err := os.WriteFile(filepath.Join(dir, "test-drill.yaml"), data, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "test-drill.yaml"), data, 0600); err != nil { //nolint:govet // shadow ok in test
 		t.Fatalf("write: %v", err)
 	}
 	_ = ex

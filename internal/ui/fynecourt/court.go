@@ -628,7 +628,7 @@ func (w *CourtWidget) Scrolled(e *fyne.ScrollEvent) {
 
 // --- Interaction handlers ---
 
-func (w *CourtWidget) handlePress(pos court.Point) {
+func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 	state := w.editorState
 	if state == nil {
 		return
@@ -735,7 +735,7 @@ func (w *CourtWidget) handlePress(pos court.Point) {
 			}
 		}
 
-		if state.ActionFrom == nil {
+		if state.ActionFrom == nil { //nolint:nestif
 			if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
 				id := seq.Players[pi].ID
 				if model.RequiresBall(state.ToolActionType) && !seq.BallCarrier.HasBall(id) {

@@ -223,7 +223,7 @@ func findShotTarget(seq *model.Sequence, playerID string) (model.Position, bool)
 
 // interpolateBalls computes animated balls between two sequences.
 func interpolateBalls(fromSeq, toSeq *model.Sequence, fromMap, toMap map[string]*model.Player, t float64) []AnimatedBall {
-	var balls []AnimatedBall
+	balls := make([]AnimatedBall, 0, len(fromSeq.BallCarrier)+len(toSeq.BallCarrier))
 	handled := make(map[string]bool) // to-carriers already accounted for
 
 	playerPos := func(m map[string]*model.Player, id string) model.Position {

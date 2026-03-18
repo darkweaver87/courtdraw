@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -93,7 +94,7 @@ func ExtractBundle(r io.Reader) (*model.Session, map[string]*model.Exercise, err
 	}
 
 	if session == nil {
-		return nil, nil, fmt.Errorf("bundle missing session.yaml")
+		return nil, nil, errors.New("bundle missing session.yaml")
 	}
 	return session, exercises, nil
 }

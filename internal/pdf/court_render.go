@@ -180,7 +180,7 @@ func (cr *courtRenderer) drawArc(cx, cy, r, startDeg, endDeg float64) {
 	endRad := endDeg * math.Pi / 180
 	step := (endRad - startRad) / float64(steps)
 
-	for i := 0; i < steps; i++ {
+	for i := range steps {
 		a1 := startRad + float64(i)*step
 		a2 := a1 + step
 		x1 := cx + r*math.Cos(a1)

@@ -121,7 +121,7 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 			settings.PdfExportDir = strings.TrimSpace(pdfDirEntry.Text)
 
 			if ys != nil {
-				ys.SaveSettings(settings)
+				_ = ys.SaveSettings(settings)
 			}
 
 			langChanged := oldLang != settings.Language

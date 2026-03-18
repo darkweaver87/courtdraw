@@ -309,56 +309,6 @@ func HitTestRotationHandleScaled(vp *Viewport, center Point, rotation float64, p
 	return dist <= vp.Sd(RotationHandleRadius+4)
 }
 
-// drawDirectionArrowAbove draws a small arrow above the head, pointing in the direction of rotation.
-func drawDirectionArrowAbove(img *image.RGBA, vp *Viewport, origin Point, rotation float64, alpha uint8) {
-	rad := rotation * math.Pi / 180
-	cos := float32(math.Cos(rad))
-	sin := float32(math.Sin(rad))
-
-	arrowLen := vp.Sf(8)
-	halfW := vp.Sf(3)
-
-	rotate := func(lx, ly float32) Point {
-		return Point{
-			X: origin.X + lx*cos - ly*sin,
-			Y: origin.Y + lx*sin + ly*cos,
-		}
-	}
-
-	tip := rotate(0, -arrowLen)
-	left := rotate(-halfW, 0)
-	right := rotate(halfW, 0)
-
-	a := uint8(float64(alpha) * 0.7)
-	DrawTriangleFill(img, tip, left, right, color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: a})
-}
-
-// drawDirectionArrow draws a small white semi-transparent triangle inside the
-// player circle, pointing in the direction of rotation.
-func drawDirectionArrow(img *image.RGBA, vp *Viewport, center Point, rotation float64, alpha uint8) {
-	rad := rotation * math.Pi / 180
-	cos := float32(math.Cos(rad))
-	sin := float32(math.Sin(rad))
-
-	r := vp.Sf(PlayerRadius)
-	tipDist := r * 0.75
-	halfW := r * 0.3
-
-	rotate := func(lx, ly float32) Point {
-		return Point{
-			X: center.X + lx*cos - ly*sin,
-			Y: center.Y + lx*sin + ly*cos,
-		}
-	}
-
-	tip := rotate(0, -tipDist)
-	left := rotate(-halfW, tipDist*0.3)
-	right := rotate(halfW, tipDist*0.3)
-
-	a := uint8(float64(alpha) * 0.6)
-	DrawTriangleFill(img, tip, left, right, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: a})
-}
-
 func drawQueue(img *image.RGBA, vp *Viewport, center Point, player *model.Player, col color.NRGBA) {
 	count := player.Count
 	if count > 4 {

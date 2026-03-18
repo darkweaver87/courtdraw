@@ -152,7 +152,7 @@ func NewPropertiesPanel() *PropertiesPanel {
 
 	// Intensity buttons — green / yellow / red.
 	intensityLabels := [3]string{"●", "●●", "●●●"}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		level := i + 1
 		pp.intensityBtns[i] = NewTipButton(nil, "", func() {
 			if pp.exercise == nil {
@@ -452,7 +452,7 @@ func (pp *PropertiesPanel) refreshIntensity() {
 	if pp.exercise == nil {
 		return
 	}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		level := i + 1
 		if int(pp.exercise.Intensity) >= level {
 			pp.intensityBtns[i].OverrideColor = intensityColors[i]

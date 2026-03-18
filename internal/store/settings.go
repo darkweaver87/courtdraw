@@ -54,7 +54,7 @@ func (s *YAMLStore) SaveSettings(settings *Settings) error {
 	baseDir := filepath.Dir(s.exercisesDir)
 	path := filepath.Join(baseDir, "settings.yaml")
 
-	// Encode token as base64 before marshalling.
+	// Encode token as base64 before marshaling.
 	toSave := *settings
 	if toSave.GithubToken != "" {
 		toSave.GithubToken = base64.StdEncoding.EncodeToString([]byte(toSave.GithubToken))

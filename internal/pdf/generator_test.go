@@ -45,7 +45,7 @@ func TestGenerate_BasicSession(t *testing.T) {
 			},
 		},
 	}
-	if err := st.SaveExercise(ex); err != nil {
+	if err := st.SaveExercise(ex); err != nil { //nolint:govet // shadow ok in test
 		t.Fatalf("save exercise: %v", err)
 	}
 
@@ -158,7 +158,7 @@ func TestGenerate_Landscape2Up(t *testing.T) {
 			}},
 		},
 	}
-	if err := st.SaveExercise(ex); err != nil {
+	if err := st.SaveExercise(ex); err != nil { //nolint:govet // shadow ok in test
 		t.Fatalf("save exercise: %v", err)
 	}
 

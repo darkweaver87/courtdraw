@@ -204,7 +204,6 @@ func (mf *MyFilesTab) refreshSessionList() {
 	query := strings.ToLower(mf.sessionSearchEntry.Text)
 	count := 0
 	for _, item := range mf.sessionItems {
-		item := item
 		if query != "" && !strings.Contains(strings.ToLower(item.Title), query) &&
 			!strings.Contains(strings.ToLower(item.Name), query) {
 			continue
@@ -257,7 +256,6 @@ func (mf *MyFilesTab) refreshExerciseList() {
 	query := strings.ToLower(mf.exerciseSearchEntry.Text)
 	count := 0
 	for _, item := range mf.exerciseItems {
-		item := item
 		if mf.filterOrphan && !item.IsOrphan {
 			continue
 		}

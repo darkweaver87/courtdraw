@@ -90,8 +90,8 @@ func TestDrawZigzag(t *testing.T) {
 	DrawZigzag(img, Pt(10, 100), Pt(190, 100), 2, 10, 8, color.NRGBA{R: 255, A: 255})
 	// Should have drawn something.
 	hasPixel := false
-	for x := 0; x < 200; x++ {
-		for y := 0; y < 200; y++ {
+	for x := range 200 {
+		for y := range 200 {
 			if img.RGBAAt(x, y).A > 0 {
 				hasPixel = true
 				break
@@ -122,8 +122,8 @@ func TestDrawFIBACourt_NoPanic(t *testing.T) {
 	DrawFIBACourt(img, model.HalfCourt, &vp, geom)
 	// Verify court was drawn (non-transparent pixels exist).
 	hasPixel := false
-	for y := 0; y < 600; y++ {
-		for x := 0; x < 800; x++ {
+	for y := range 600 {
+		for x := range 800 {
 			if img.RGBAAt(x, y).A > 0 {
 				hasPixel = true
 				break

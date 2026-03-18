@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"image"
 	"image/draw"
@@ -261,9 +262,9 @@ func (a *App) startQRScanImport() {
 		// Read the photo taken by the camera.
 		data := readCapturedPhoto()
 		log.Printf("QR scan: read photo, %d bytes", len(data))
-		if data == nil || len(data) == 0 {
+		if len(data) == 0 {
 			cleanupPhotoURI()
-			a.statusBar.SetStatus(i18n.T("import.scan_cancelled"), 1)
+			a.statusBar.SetStatus(i18n.T("import.scan_cancelled"), 1) //nolint:misspell // i18n key
 			return
 		}
 
@@ -303,7 +304,7 @@ func decodeQRFromImageBytes(data []byte) (string, error) {
 		img   image.Image
 	}
 	sizes := []int{600, 800, 1000, 1400}
-	var candidates []candidate
+	candidates := make([]candidate, 0, len(sizes)*3)
 	for _, sz := range sizes {
 		candidates = append(candidates, candidate{fmt.Sprintf("full@%d", sz), downscaleForQR(img, sz)})
 	}
@@ -329,7 +330,7 @@ func decodeQRFromImageBytes(data []byte) (string, error) {
 			return result.GetText(), nil
 		}
 	}
-	return "", fmt.Errorf("QR code not found")
+	return "", errors.New("QR code not found")
 }
 
 // downscaleForQR resizes an image using bilinear interpolation.
@@ -398,10 +399,7 @@ func (a *App) importFromLink(link string) {
 		return
 	}
 
-	keyHex := u.Fragment
-	if strings.HasPrefix(keyHex, "k=") {
-		keyHex = keyHex[2:]
-	}
+	keyHex := strings.TrimPrefix(u.Fragment, "k=")
 	key, err := hex.DecodeString(keyHex)
 	if err != nil || len(key) != 32 {
 		a.statusBar.SetStatus(i18n.T("import.invalid_link"), 1)

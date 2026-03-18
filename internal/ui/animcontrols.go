@@ -135,7 +135,7 @@ func (ac *AnimControls) refreshSeqDots(current, total int) {
 	ac.seqDots.RemoveAll()
 	dotActive := color.NRGBA{R: 0x29, G: 0x6d, B: 0xd4, A: 0xff}
 	dotInactive := color.NRGBA{R: 0x66, G: 0x66, B: 0x66, A: 0xff}
-	for i := 0; i < total; i++ {
+	for i := range total {
 		c := dotInactive
 		if i == current {
 			c = dotActive
