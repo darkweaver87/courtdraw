@@ -206,18 +206,40 @@ Goal: make the mobile experience feel native and the desktop editor cleaner. Cou
 
 Deliverable: court-centric layout on mobile with instant tool access, cleaner desktop editor.
 
-## Phase 15b — Action Timeline ⚡ P1
+## Phase 15b — Action Timeline & Arrow Rework ⚡ P1
 
-Goal: define the order of actions within a single sequence, enabling complex plays without creating many sequences.
+Goal: define the order of actions within a single sequence, and rework arrow rendering for consistency and expressiveness.
+
+### A — Action Steps
 
 93. `step` field on Action — new optional `int` field (default 1, backward-compatible). Actions with the same step play simultaneously, different steps play sequentially within the sequence
-94. Data model update — `internal/model/action.go`: add `Step int` field, YAML tag `step,omitempty`. Validation: step >= 1. Existing exercises without step default to step=1 (all simultaneous, current behavior)
-95. Animation engine update — `internal/anim/`: within a sequence, group actions by step. Interpolate step 1 actions first, then step 2, etc. Each step gets an equal share of the sequence's animation duration
-96. UI: step indicator — in Draw mode, each action arrow displays a small circled number (①②③) at its midpoint showing its step. Default new actions get step = max_existing_step + 1 (sequential by default)
-97. UI: step editing — select an action, change its step in the properties panel (number input or +/− buttons). Or drag actions in a timeline strip to reorder steps
-98. UI: timeline strip (optional, v2) — a horizontal strip below the court showing steps as columns, with action icons in each column. Drag actions between columns to change step order
+94. Data model update — add `Step int` field to `Action`, YAML tag `step,omitempty`. Validation: step >= 1. Existing exercises without step default to step=1 (all simultaneous, current behavior). Add `MaxStep(seq)` helper
+95. Animation engine update — within a sequence, group actions by step. Each step gets an equal share of the sequence's animation duration. Player position interpolation stays linear (step-aware player movement deferred)
+96. UI: step badge — each action arrow displays a small circled number at its midpoint showing its step (only when maxStep > 1). Default new actions get step = max_existing_step + 1 (sequential by default)
+97. UI: step editing — select an action, change its step in the shelf props via +/− buttons
+98. PDF: step badges — same circled numbers on PDF arrows
+99. UI: timeline strip (optional, v2) — a horizontal strip below the court showing steps as columns. Defer
 
-Deliverable: coaches express "A passes to B, then B drives to the basket" within a single sequence instead of creating two.
+### B — Consistent Zigzag
+
+100. Zigzag segment length — replace fixed segment count (8) with fixed segment length (~12px scaled). Long arrows get more zigzag segments instead of stretched ones. Update `DrawZigzag`, all callers, and PDF renderer
+
+### C — Curved Paths / Waypoints
+
+101. `waypoints` field on Action — new optional `[]Position` field (YAML `waypoints,omitempty`). Absent = straight line (current behavior). Single waypoint = quadratic Bézier curve. Multiple = chained curves
+102. Curved drawing — `PathPoints()` generates points along the Bézier path. New `DrawCurvedLine`, `DrawCurvedDashedLine`, `DrawCurvedZigzag` functions. Arrowhead follows curve tangent at endpoint
+103. Waypoint drag interaction — drag the midpoint of an existing action arrow to create a waypoint and curve it. Drag existing waypoints to adjust. Small circle handles on selected action's waypoints
+104. Progressive curved drawing — `DrawActionWithProgress` traces along curved path proportionally
+105. Hit testing for curved arrows — `HitTestAction` tests distance to curved path segments, not just straight from→to
+106. PDF curved paths — port curved drawing functions to PDF renderer
+107. Branching / aiguillage — multiple actions from the same player at the same step = simultaneous options (forked arrows). No dedicated data structure needed, existing model supports it
+
+### D — Arrow Visual Polish
+
+108. Arrowhead review — adjust sizes proportional to line width, ensure tangent-aligned heads for curved paths
+109. Line consistency audit — normalize thickness, dash patterns across all action types
+
+Deliverable: coaches express "A passes to B, then B drives to the basket" within a single sequence, with curved arrows and consistent visuals.
 
 ## Phase 16 — Visual Polish & Feedback ⚡ P1
 
