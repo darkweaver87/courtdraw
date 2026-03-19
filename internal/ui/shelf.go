@@ -617,13 +617,17 @@ func (ms *EditorShelf) buildPropsLayout(_ *model.Exercise, state *editor.EditorS
 		}
 		calloutMinW := fyne.NewSize(120, ms.propsCalloutSel.MinSize().Height)
 		posMinW := fyne.NewSize(55, ms.propsPosXEntry.MinSize().Height)
+		xLabel := canvas.NewText("X", color.NRGBA{R: 0x99, G: 0x99, B: 0x99, A: 0xff})
+		xLabel.TextSize = 11
+		yLabel := canvas.NewText("Y", color.NRGBA{R: 0x99, G: 0x99, B: 0x99, A: 0xff})
+		yLabel.TextSize = 11
 		fields := container.New(newFlowLayout(4, 4),
 			container.NewGridWrap(labelMinW, ms.propsLabelE),
 			ms.propsRoleSel,
 			ms.propsBallChk,
 			container.NewGridWrap(calloutMinW, ms.propsCalloutSel),
-			container.NewGridWrap(posMinW, ms.propsPosXEntry),
-			container.NewGridWrap(posMinW, ms.propsPosYEntry),
+			container.NewHBox(xLabel, container.NewGridWrap(posMinW, ms.propsPosXEntry)),
+			container.NewHBox(yLabel, container.NewGridWrap(posMinW, ms.propsPosYEntry)),
 		)
 		delWrap := container.NewGridWrap(shelfCellSize, ms.propsDeleteBtn)
 		leftCol := container.NewVBox(ms.propsTitle, fields, container.NewHBox(delWrap))
