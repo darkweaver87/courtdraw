@@ -88,9 +88,11 @@ type App struct {
 	scanPending bool
 
 	// Empty state overlay.
-	emptyState  *fyne.Container
-	emptyTitle  *canvas.Text
-	emptySub    *canvas.Text
+	emptyState      *fyne.Container
+	emptyTitle      *canvas.Text
+	emptySub        *canvas.Text
+	emptyNewBtn     *widget.Button
+	emptyRecentList *fyne.Container
 
 }
 
@@ -311,7 +313,19 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	a.emptySub = canvas.NewText(i18n.T(i18n.KeyEmptyStateSubtitle), color.NRGBA{R: 0x88, G: 0x88, B: 0x88, A: 0xff})
 	a.emptySub.TextSize = 14
 	a.emptySub.Alignment = fyne.TextAlignCenter
-	a.emptyState = container.NewCenter(container.NewVBox(a.emptyTitle, a.emptySub))
+	a.emptyNewBtn = widget.NewButton(i18n.T(i18n.KeyTooltipNew), func() {
+		a.handleFileAction(FileActionNew)
+	})
+	a.emptyNewBtn.Importance = widget.HighImportance
+	a.emptyRecentList = container.NewVBox()
+	a.refreshEmptyRecent()
+	emptyContent := container.NewVBox(
+		a.emptyTitle,
+		a.emptySub,
+		container.NewCenter(a.emptyNewBtn),
+		a.emptyRecentList,
+	)
+	a.emptyState = container.NewCenter(emptyContent)
 
 	// Hide seq bar initially (no exercise loaded).
 	seqBar.Hide()
@@ -558,6 +572,8 @@ func (a *App) switchLang(lang string) {
 		a.emptyTitle.Refresh()
 		a.emptySub.Text = i18n.T(i18n.KeyEmptyStateSubtitle)
 		a.emptySub.Refresh()
+		a.emptyNewBtn.SetText(i18n.T(i18n.KeyTooltipNew))
+		a.refreshEmptyRecent()
 	}
 	// Refresh mode label text for current mode.
 	if a.modeLabel != nil {
@@ -734,6 +750,7 @@ func (a *App) SetExercise(ex *model.Exercise) {
 			a.emptyState.Hide()
 			a.seqTimeline.Widget().Show()
 		} else {
+			a.refreshEmptyRecent()
 			a.emptyState.Show()
 			a.seqTimeline.Widget().Hide()
 		}
@@ -1320,6 +1337,33 @@ func splitTags(s string) []string {
 		}
 	}
 	return tags
+}
+
+// refreshEmptyRecent populates the recent exercises list on the empty state screen.
+func (a *App) refreshEmptyRecent() {
+	if a.emptyRecentList == nil {
+		return
+	}
+	a.emptyRecentList.RemoveAll()
+	ys, ok := a.store.(*store.YAMLStore)
+	if !ok {
+		return
+	}
+	recent := ys.RecentFiles(5)
+	if len(recent) == 0 {
+		return
+	}
+	header := canvas.NewText(i18n.T(i18n.KeyTooltipRecent), color.NRGBA{R: 0x99, G: 0x99, B: 0x99, A: 0xff})
+	header.TextSize = 13
+	header.Alignment = fyne.TextAlignCenter
+	a.emptyRecentList.Add(header)
+	for _, name := range recent {
+		n := name
+		btn := widget.NewButton(n, func() {
+			a.openExercise(n)
+		})
+		a.emptyRecentList.Add(container.NewCenter(btn))
+	}
 }
 
 func (a *App) showRecentFiles() {
