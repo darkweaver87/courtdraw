@@ -136,10 +136,13 @@ Animation plays directly on the court canvas. Elements smoothly move from their 
 
 | Gesture | Action |
 |---|---|
-| Tap/click element | Select → show properties in right panel |
+| Tap/click element | Select → show properties in right panel (pulsing ring on selected element) |
+| Hover over element | Blue highlight outline on hovered element |
 | Drag element | Move to new position on court |
 | Drag from tool palette to court | Create new element at drop position |
 | Select action tool, then click player A then player B | Create action between A and B |
+| Action tool active, hover over player | Green glow on valid action targets |
+| Action tool active, move mouse after selecting source | Ghost arrow follows cursor from source player, snaps to nearest player within 30dp |
 | Long press / right-click element | Context menu: delete, duplicate, change role |
 | Pinch / scroll wheel | Zoom |
 | Two-finger pan / middle-click drag | Pan the view |

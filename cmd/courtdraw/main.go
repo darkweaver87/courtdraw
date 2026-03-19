@@ -56,8 +56,8 @@ func main() {
 		a.Quit()
 	})
 
-	// Initialize exercise and session after UI is built (court widget exists).
-	application.NewExercise()
+	// Initialize session after UI is built (court widget exists).
+	// Exercise is NOT auto-created so the empty state is visible at startup.
 	application.NewSession()
 	application.SyncLibraryIfEmpty()
 	application.CheckVersionAtStartup()

@@ -31,7 +31,9 @@ func DrawAccessory(img *image.RGBA, vp *Viewport, acc *model.Accessory, selected
 	center := vp.RelToPixel(acc.Position)
 
 	if selected {
-		DrawCircleOutline(img, center, vp.S(AccessoryConeSize+6), vp.S(2), HighlightColor)
+		alpha := uint8(pulseAlpha() * 255)
+		pulseColor := color.NRGBA{R: HighlightColor.R, G: HighlightColor.G, B: HighlightColor.B, A: alpha}
+		DrawCircleOutline(img, center, vp.S(AccessoryConeSize+6), vp.S(2), pulseColor)
 	}
 
 	switch acc.Type {

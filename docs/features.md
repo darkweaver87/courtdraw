@@ -89,10 +89,13 @@ Validation errors are displayed in the **status bar** below the court.
 
 ## Status Bar
 
-- Displays temporary messages (errors, info) below the court canvas
+- Displays temporary messages (errors, info, success, warning) below the court canvas
 - Auto-dismisses after 3 seconds
-- Error messages: dark red background
-- Info messages: dark grey background
+- Message levels with color coding:
+  - **Error** (level 1): dark red background
+  - **Success** (level 2): green background
+  - **Warning** (level 3): orange background
+  - **Info** (level 0): dark grey background
 
 ## Accessories (MVP)
 
@@ -169,6 +172,38 @@ Icons are PNG or SVG files in `assets/icons/`. They can be replaced for custom s
 - The `i18n` field in YAML exercise files provides translations per language
 - When opening, importing, or resolving exercises, the `Localized(lang)` method is applied
 - Community exercises with French translations display correctly when the app is set to French
+
+## Visual Feedback
+
+### Selection Pulse
+
+- Selected elements display a pulsing ring animation
+- Uses a wall-clock sine wave cycling alpha between 0.3 and 1.0
+- Provides clear visual indication of the currently selected element
+
+### Hover Highlights
+
+- Court widget implements `desktop.Hoverable` for hover detection
+- `HoveredElement` tracked in EditorState
+- Hovered elements show a blue highlight outline
+- During action creation, valid target players show a green glow to indicate they can receive the action
+
+### Ghost Arrow (Action Preview)
+
+- When creating an action (e.g., pass, sprint), a semi-transparent arrow is drawn from the source player to the current mouse position via `DrawActionPreview()`
+- `PreviewMousePos` in EditorState tracks the current pointer position
+- The ghost arrow provides immediate visual feedback about the action being created
+
+### Magnetic Snap
+
+- During action creation, the ghost arrow snaps to the nearest player within 30dp
+- Reduces the precision needed to target a player, especially useful on mobile
+
+### Empty State
+
+- When no exercise is loaded, the court area shows a centered text overlay with a title and subtitle
+- When the session list is empty, a similar placeholder is displayed
+- i18n keys: `empty.title`, `empty.subtitle`, `empty.session`
 
 ## Dropdown Selectors
 

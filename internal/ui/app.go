@@ -88,7 +88,10 @@ type App struct {
 	scanPending bool
 
 	// Empty state overlay.
-	emptyState *fyne.Container
+	emptyState  *fyne.Container
+	emptyTitle  *canvas.Text
+	emptySub    *canvas.Text
+
 }
 
 // NewApp creates a new App instance.
@@ -272,7 +275,14 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 
 	// Edition mode: shelf + tab bar (bottom).
 	a.editorShelf = NewEditorShelf(&a.editorState, a.toolPalette)
-	a.editorShelf.OnToolChanged = func() { a.refreshEditor() }
+	a.editorShelf.OnToolChanged = func() {
+		if a.editorState.DeleteRequested {
+			a.editorState.DeleteRequested = false
+			a.court.DeleteSelected()
+		}
+		a.court.Refresh()
+		a.refreshEditor()
+	}
 	editionBottom := a.editorShelf.Widget()
 
 	// Animation mode: playback controls only.
@@ -295,13 +305,16 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	seqBar := a.seqTimeline.Widget()
 
 	// Empty state overlay (shown when no exercise is loaded).
-	emptyLine1 := canvas.NewText(i18n.T(i18n.KeyEmptyStateTitle), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
-	emptyLine1.TextSize = 18
-	emptyLine1.Alignment = fyne.TextAlignCenter
-	emptyLine2 := canvas.NewText(i18n.T(i18n.KeyEmptyStateSubtitle), color.NRGBA{R: 0x88, G: 0x88, B: 0x88, A: 0xff})
-	emptyLine2.TextSize = 14
-	emptyLine2.Alignment = fyne.TextAlignCenter
-	a.emptyState = container.NewCenter(container.NewVBox(emptyLine1, emptyLine2))
+	a.emptyTitle = canvas.NewText(i18n.T(i18n.KeyEmptyStateTitle), color.NRGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 0xff})
+	a.emptyTitle.TextSize = 18
+	a.emptyTitle.Alignment = fyne.TextAlignCenter
+	a.emptySub = canvas.NewText(i18n.T(i18n.KeyEmptyStateSubtitle), color.NRGBA{R: 0x88, G: 0x88, B: 0x88, A: 0xff})
+	a.emptySub.TextSize = 14
+	a.emptySub.Alignment = fyne.TextAlignCenter
+	a.emptyState = container.NewCenter(container.NewVBox(a.emptyTitle, a.emptySub))
+
+	// Hide seq bar initially (no exercise loaded).
+	seqBar.Hide()
 
 	// Court area with seq bar above.
 	courtWithSeq := container.NewBorder(seqBar, nil, nil, nil, container.NewStack(a.court, a.emptyState))
@@ -524,21 +537,27 @@ func (a *App) switchLang(lang string) {
 	a.instrPanel.RefreshLanguage()
 	a.sessionTab.RefreshLanguage()
 	a.myFilesTab.RefreshLanguage()
+	// Update shelf labels before refreshEditor so props rebuild picks up new language.
+	if a.editorShelf != nil {
+		a.editorShelf.RefreshLanguage()
+	}
 	// Now refresh editor (calls propsPanel.Update which uses new options).
 	a.propsPanel.SyncFromExercise()
 	a.instrPanel.ForceResync()
 	a.refreshEditor()
 	a.updateLangBtnStyles()
-	// Update tab labels to reflect new UI language.
-	// Tab labels are no longer needed — mode selector handles navigation.
-	if a.editorShelf != nil {
-		a.editorShelf.RefreshLanguage()
-	}
 	if a.moreBtn != nil {
 		a.moreBtn.SetTooltip(i18n.T(i18n.KeyTooltipMore))
 	}
 	if a.langBtn != nil {
 		a.langBtn.SetTooltip(i18n.T(i18n.KeyLangTooltip))
+	}
+	// Refresh empty state texts.
+	if a.emptyTitle != nil {
+		a.emptyTitle.Text = i18n.T(i18n.KeyEmptyStateTitle)
+		a.emptyTitle.Refresh()
+		a.emptySub.Text = i18n.T(i18n.KeyEmptyStateSubtitle)
+		a.emptySub.Refresh()
 	}
 	// Refresh mode label text for current mode.
 	if a.modeLabel != nil {
@@ -606,6 +625,9 @@ func (a *App) refreshEditor() {
 	if a.playback != nil {
 		a.animControls.SetPlayback(a.playback, len(a.exercise.Sequences))
 	}
+
+	// Update shelf element props.
+	a.editorShelf.UpdateElementProps(a.exercise, &a.editorState, seqIdx)
 
 	// Forward editor state status to the status bar.
 	if a.editorState.StatusMsg != "" {
@@ -710,8 +732,10 @@ func (a *App) SetExercise(ex *model.Exercise) {
 	if a.emptyState != nil {
 		if ex != nil {
 			a.emptyState.Hide()
+			a.seqTimeline.Widget().Show()
 		} else {
 			a.emptyState.Show()
+			a.seqTimeline.Widget().Hide()
 		}
 	}
 	if ex != nil {
@@ -947,7 +971,7 @@ func (a *App) saveExercise() {
 	if ys, ok := a.store.(*store.YAMLStore); ok {
 		fileName = filepath.Join(ys.ExercisesDir(), fileName)
 	}
-	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSaved, fileName), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSaved, fileName), StatusSuccess)
 	a.updateWindowTitle()
 }
 
@@ -1004,7 +1028,7 @@ func (a *App) doSaveAs(newName string) {
 	if ys, ok := a.store.(*store.YAMLStore); ok {
 		fileName = filepath.Join(ys.ExercisesDir(), fileName)
 	}
-	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSaved, fileName), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSaved, fileName), StatusSuccess)
 	a.updateWindowTitle()
 	a.refreshEditor()
 }
@@ -1088,7 +1112,7 @@ func (a *App) importExercise(name string) {
 	a.sessionNeedsRefresh = true
 	a.refreshSessionTab()
 	a.recordRecentFile(store.ToKebab(ex.Name))
-	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusImported, ex.Name), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusImported, ex.Name), StatusSuccess)
 }
 
 func (a *App) recordRecentFile(name string) {
@@ -1505,7 +1529,7 @@ func (a *App) saveSession() {
 			ys.RecordRecentSession(name)
 		}
 	}
-	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSaved, s.Title), 0)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusSaved, s.Title), StatusSuccess)
 }
 
 func (a *App) deleteSession(name string) {
@@ -1750,9 +1774,11 @@ func (a *App) generatePDFTo(path string, pageLayout pdf.PageLayout) {
 	}
 	if err := pdf.Generate(s, loader, path, pageLayout); err != nil {
 		log.Printf("generate PDF: %v", err)
+		a.statusBar.SetStatus(i18n.T(i18n.KeyStatusPdfError), 1)
 		return
 	}
 	log.Printf("PDF generated: %s", path)
+	a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusPdfGenerated, filepath.Base(path)), StatusSuccess)
 }
 
 func (a *App) updateExerciseFromRemote(name string) {

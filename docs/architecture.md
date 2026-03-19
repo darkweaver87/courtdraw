@@ -94,16 +94,16 @@ courtdraw/
 │   │   ├── editor/
 │   │   │   └── state.go             # Editor state (tool, selection, drag, modified)
 │   │   ├── fynecourt/
-│   │   │   └── court.go             # Court widget (canvas.Raster + mouse/touch)
+│   │   │   └── court.go             # Court widget (canvas.Raster + mouse/touch/hover)
 │   │   ├── theme/
 │   │   │   └── theme.go             # Fyne theme (dark palette)
 │   │   └── icon/
 │   │       └── icons.go             # Embedded PNG icons as fyne.Resource
 │   ├── court/                       # Court rendering (framework-agnostic)
 │   │   ├── draw.go                  # Drawing primitives (line, circle, arc, text)
-│   │   ├── draw_players.go          # Player rendering (circle, label, ball, queue)
+│   │   ├── draw_players.go          # Player rendering (circle, label, ball, queue, selection pulse)
 │   │   ├── draw_accessories.go      # Accessory rendering (cone, ladder, chair)
-│   │   ├── draw_arrows.go           # Action arrow rendering (solid, dashed, zigzag)
+│   │   ├── draw_arrows.go           # Action arrow rendering (solid, dashed, zigzag) + DrawActionPreview()
 │   │   ├── fiba.go                  # FIBA court markings
 │   │   ├── nba.go                   # NBA court markings
 │   │   ├── geometry.go              # Coordinate mapping (relative ↔ pixel), apron, element scaling

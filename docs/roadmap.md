@@ -223,12 +223,13 @@ Deliverable: coaches express "A passes to B, then B drives to the basket" within
 
 Goal: match modern app standards with smooth interactions and clear visual feedback.
 
-97. Hover/tap feedback — highlight player circle (glow outline) when pointer/finger is over a valid drop target during action creation, pulsing ring on selected element
-98. Action snap preview — when creating an action (e.g., pass), show a ghost arrow following the cursor/finger from source player to current position, snap to nearest player with magnetic effect (within 30dp)
+97. ✅ Hover/tap feedback — highlight player circle (glow outline) when pointer/finger is over a valid drop target during action creation, pulsing ring on selected element. Court widget implements `desktop.Hoverable`, `HoveredElement` in EditorState, blue highlight on hover, green glow on action targets
+98. ✅ Action snap preview — when creating an action (e.g., pass), show a ghost arrow following the cursor/finger from source player to current position via `DrawActionPreview()`, snap to nearest player with magnetic effect (within 30dp). `PreviewMousePos` in EditorState
 99. Transition animations — smooth fade when switching sequences (cross-dissolve on court canvas), slide-up for properties panel on mobile
 100. Court theme refinement — subtle wood grain texture on court background (embedded PNG tile), anti-aliased court lines, shadow under players for depth
-101. Empty state illustrations — when no exercise is loaded or session is empty, show a helpful illustration with "Create your first exercise" / "Add exercises to your session" call-to-action
-102. Status bar improvements — animated slide-in/out for notifications, color-coded by type (success=green, warning=orange, error=red)
+101. ✅ Empty state — centered text overlay when no exercise loaded (`empty.title`/`empty.subtitle`), session empty state (`empty.session`), i18n-ready
+102. ✅ Status bar improvements — auto-dismiss after 3s, color-coded levels: success (green, level=2), warning (orange, level=3), error (red, level=1), info (grey, level=0)
+103. ✅ Court widget refactoring — `drawSequence` split into `drawHoverHighlights`, `drawActionPreview`, `magneticSnap`, `drawSelectionOverlays` to keep cyclomatic complexity under 30
 
 Deliverable: the app feels responsive and polished, with clear visual cues at every interaction.
 

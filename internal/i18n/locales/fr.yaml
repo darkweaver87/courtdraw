@@ -194,10 +194,15 @@ status.player_added: "Joueur ajouté : %s"
 status.action_added: "Action ajoutée : %s"
 status.accessory_added: "Accessoire ajouté : %s"
 status.element_deleted: "Élément supprimé"
+status.player_deleted: "Joueur supprimé : %s"
+status.accessory_deleted: "Accessoire supprimé : %s"
+status.action_deleted: "Action supprimée : %s"
 status.exercise_added: "Exercice ajouté : %s"
 status.exercise_removed: "Exercice retiré : %s"
 status.requires_ball: "Le joueur doit être en possession du ballon"
 status.pass_requires_player: "La cible de la passe doit être un joueur"
+status.pdf_generated: "PDF généré : %s"
+status.pdf_error: "Échec de la génération du PDF"
 
 # Préférences
 tooltip.preferences: "Préférences"
@@ -345,5 +350,5 @@ status.session_deleted: "Séance supprimée : %s"
 
 # État vide
 empty.title: "Créez votre premier exercice"
-empty.subtitle: "Appuyez sur Nouveau pour commencer"
+empty.subtitle: "Menu ≡ > Nouveau"
 empty.session: "Ajoutez des exercices depuis la bibliothèque"

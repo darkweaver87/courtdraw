@@ -151,6 +151,7 @@ func LoadExercise(path string) (*Exercise, error) {
 - No global state — pass dependencies explicitly (constructor injection)
 - Errors are returned, not panicked — `panic` only for truly unrecoverable programmer errors
 - No `init()` functions — explicit initialization only
+- **Cyclomatic complexity** — keep functions under 30 (enforced by golangci-lint). Split large drawing/rendering functions into focused helpers (e.g., `drawHoverHighlights`, `drawActionPreview`, `drawSelectionOverlays`)
 
 ### Coordinate System
 
@@ -190,7 +191,7 @@ type Position struct {
 - **`canvas.Raster`**: For custom drawing into `image.RGBA` (court widget)
 - **`widget.BaseWidget`**: Extend for custom interactive widgets
 - **Thread safety**: Use `fyne.Do()` for UI updates from goroutines
-- **Interactions**: Implement `fyne.Tappable`, `fyne.Draggable`, `desktop.Mouseable` as needed
+- **Interactions**: Implement `fyne.Tappable`, `fyne.Draggable`, `desktop.Mouseable`, `desktop.Hoverable` as needed
 - **Dialogs**: Use `dialog.NewCustom` with `widget.List` for file pickers
 - **Icons**: Embed PNGs via `go:embed` + `fyne.NewStaticResource()`
 

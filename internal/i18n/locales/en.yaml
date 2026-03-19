@@ -194,10 +194,15 @@ status.player_added: "Player added: %s"
 status.action_added: "Action added: %s"
 status.accessory_added: "Accessory added: %s"
 status.element_deleted: "Element deleted"
+status.player_deleted: "Player deleted: %s"
+status.accessory_deleted: "Accessory deleted: %s"
+status.action_deleted: "Action deleted: %s"
 status.exercise_added: "Exercise added: %s"
 status.exercise_removed: "Exercise removed: %s"
 status.requires_ball: "Player must have the ball"
 status.pass_requires_player: "Pass target must be a player"
+status.pdf_generated: "PDF generated: %s"
+status.pdf_error: "PDF generation failed"
 
 # Preferences
 tooltip.preferences: "Preferences"
@@ -345,5 +350,5 @@ status.session_deleted: "Session deleted: %s"
 
 # Empty state
 empty.title: "Create your first exercise"
-empty.subtitle: "Tap New to start"
+empty.subtitle: "Menu ≡ > New"
 empty.session: "Add exercises from the library"

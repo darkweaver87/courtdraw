@@ -422,19 +422,32 @@ func HitTestAccessory(vp *Viewport, seq *model.Sequence, pos Point) int {
 	return -1
 }
 
-// HitTestAction checks if pos is near the midpoint of an action line.
+// HitTestAction checks if pos is near any point along an action line.
 func HitTestAction(vp *Viewport, seq *model.Sequence, pos Point) int {
-	hitThreshold := vp.Sd(12)
+	hitThreshold := vp.Sd(16)
 	for i := len(seq.Actions) - 1; i >= 0; i-- {
 		from := ResolveRef(vp, seq.Actions[i].From, seq.Players)
 		to := ResolveRef(vp, seq.Actions[i].To, seq.Players)
-		mid := Pt((from.X+to.X)/2, (from.Y+to.Y)/2)
-		dx := pos.X - mid.X
-		dy := pos.Y - mid.Y
-		dist := math.Sqrt(float64(dx*dx + dy*dy))
-		if dist <= hitThreshold {
+		if distToSegment(pos, from, to) <= hitThreshold {
 			return i
 		}
 	}
 	return -1
+}
+
+// distToSegment returns the shortest distance from point p to the line segment a-b.
+func distToSegment(p, a, b Point) float64 {
+	dx := float64(b.X - a.X)
+	dy := float64(b.Y - a.Y)
+	lenSq := dx*dx + dy*dy
+	if lenSq == 0 {
+		// Degenerate segment (a == b).
+		return math.Sqrt(float64((p.X-a.X)*(p.X-a.X) + (p.Y-a.Y)*(p.Y-a.Y)))
+	}
+	// Project p onto the line, clamped to [0,1].
+	t := (float64(p.X-a.X)*dx + float64(p.Y-a.Y)*dy) / lenSq
+	t = max(0, min(1, t))
+	projX := float64(a.X) + t*dx
+	projY := float64(a.Y) + t*dy
+	return math.Sqrt((float64(p.X)-projX)*(float64(p.X)-projX) + (float64(p.Y)-projY)*(float64(p.Y)-projY))
 }

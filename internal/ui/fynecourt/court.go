@@ -547,6 +547,44 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 	}
 }
 
+func actionLabel(at model.ActionType) string {
+	switch at {
+	case model.ActionPass:
+		return i18n.T(i18n.KeyToolActionPass)
+	case model.ActionDribble:
+		return i18n.T(i18n.KeyToolActionDribble)
+	case model.ActionSprint:
+		return i18n.T(i18n.KeyToolActionSprint)
+	case model.ActionShotLayup, model.ActionShotPushup, model.ActionShotJump:
+		return i18n.T(i18n.KeyToolActionShot)
+	case model.ActionScreen:
+		return i18n.T(i18n.KeyToolActionScreen)
+	case model.ActionCut:
+		return i18n.T(i18n.KeyToolActionCut)
+	case model.ActionCloseOut:
+		return i18n.T(i18n.KeyToolActionCloseOut)
+	case model.ActionContest:
+		return i18n.T(i18n.KeyToolActionContest)
+	case model.ActionReverse:
+		return i18n.T(i18n.KeyToolActionReverse)
+	default:
+		return string(at)
+	}
+}
+
+func accessoryLabel(at model.AccessoryType) string {
+	switch at {
+	case model.AccessoryCone:
+		return i18n.T(i18n.KeyToolAccessoryCone)
+	case model.AccessoryAgilityLadder:
+		return i18n.T(i18n.KeyToolAccessoryLadder)
+	case model.AccessoryChair:
+		return i18n.T(i18n.KeyToolAccessoryChair)
+	default:
+		return string(at)
+	}
+}
+
 func resolvePlayerLabel(p *model.Player) string {
 	label := p.Label
 	if label == "" || label == model.RoleLabel(p.Role) {
@@ -923,6 +961,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 					return
 				}
 				state.ActionFrom = &id
+				return
 			}
 		}
 
@@ -935,6 +974,8 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 					return
 				}
 				state.ActionFrom = &id
+				w.Refresh()
+				w.notifyChanged()
 			}
 		} else {
 			toRef := model.ActionRef{}
@@ -962,7 +1003,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 			}
 			state.ActionFrom = nil
 			state.MarkModified()
-			state.SetStatus(i18n.Tf(i18n.KeyStatusActionAdded, string(action.Type)), 0)
+			state.SetStatus(i18n.Tf(i18n.KeyStatusActionAdded, actionLabel(action.Type)), 0)
 			w.Refresh()
 			w.notifyChanged()
 		}
@@ -979,7 +1020,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 		idx := len(seq.Accessories) - 1
 		state.Select(editor.SelectAccessory, idx, w.seqIndex)
 		state.MarkModified()
-		state.SetStatus(i18n.Tf(i18n.KeyStatusAccessoryAdded, string(acc.Type)), 0)
+		state.SetStatus(i18n.Tf(i18n.KeyStatusAccessoryAdded, accessoryLabel(acc.Type)), 0)
 		w.Refresh()
 		w.notifyChanged()
 
@@ -1125,28 +1166,35 @@ func (w *CourtWidget) DeleteSelected() {
 	if seq == nil {
 		return
 	}
+	var statusMsg string
 	switch sel.Kind {
 	case editor.SelectPlayer:
 		if sel.Index < len(seq.Players) {
+			label := seq.Players[sel.Index].Label
 			playerID := seq.Players[sel.Index].ID
 			seq.Players = append(seq.Players[:sel.Index], seq.Players[sel.Index+1:]...)
 			removeActionsForPlayer(seq, playerID)
 			seq.BallCarrier.RemoveBall(playerID)
+			statusMsg = i18n.Tf(i18n.KeyStatusPlayerDeleted, label)
 		}
 	case editor.SelectAccessory:
 		if sel.Index < len(seq.Accessories) {
+			label := accessoryLabel(seq.Accessories[sel.Index].Type)
 			seq.Accessories = append(seq.Accessories[:sel.Index], seq.Accessories[sel.Index+1:]...)
+			statusMsg = i18n.Tf(i18n.KeyStatusAccessoryDeleted, label)
 		}
 	case editor.SelectAction:
 		if sel.Index < len(seq.Actions) {
+			label := actionLabel(seq.Actions[sel.Index].Type)
 			seq.Actions = append(seq.Actions[:sel.Index], seq.Actions[sel.Index+1:]...)
+			statusMsg = i18n.Tf(i18n.KeyStatusActionDeleted, label)
 		}
 	default:
 		return
 	}
 	state.Deselect()
 	state.MarkModified()
-	state.SetStatus(i18n.T(i18n.KeyStatusElementDeleted), 0)
+	state.SetStatus(statusMsg, 0)
 	w.Refresh()
 	w.notifyChanged()
 }
