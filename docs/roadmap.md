@@ -208,38 +208,49 @@ Deliverable: court-centric layout on mobile with instant tool access, cleaner de
 
 ## Phase 15b — Action Timeline & Arrow Rework ⚡ P1
 
-Goal: define the order of actions within a single sequence, and rework arrow rendering for consistency and expressiveness.
+Goal: define the order of actions within a single sequence with step-aware player movement, and rework arrow rendering for consistency and expressiveness. Inspired by HoopsGeek's interaction model — actions drive player movement, not just visual arrows.
 
-### A — Action Steps
+### A — Action Steps (done)
 
-93. `step` field on Action — new optional `int` field (default 1, backward-compatible). Actions with the same step play simultaneously, different steps play sequentially within the sequence
-94. Data model update — add `Step int` field to `Action`, YAML tag `step,omitempty`. Validation: step >= 1. Existing exercises without step default to step=1 (all simultaneous, current behavior). Add `MaxStep(seq)` helper
-95. Animation engine update — within a sequence, group actions by step. Each step gets an equal share of the sequence's animation duration. Player position interpolation stays linear (step-aware player movement deferred)
-96. UI: step badge — each action arrow displays a small circled number at its midpoint showing its step (only when maxStep > 1). Default new actions get step = max_existing_step + 1 (sequential by default)
-97. UI: step editing — select an action, change its step in the shelf props via +/− buttons
-98. PDF: step badges — same circled numbers on PDF arrows
-99. UI: timeline strip (optional, v2) — a horizontal strip below the court showing steps as columns. Defer
+93. ✅ `step` field on Action — `Step int`, YAML `step,omitempty`, default 1, backward-compatible. `EffectiveStep()` + `MaxStep(seq)` helpers
+94. ✅ Animation engine — intra-sequence step animation (phase 2 in playback). Each step gets equal share of duration
+95. ✅ Step badges — circled numbers at action midpoints when maxStep > 1
+96. ✅ Step editing — +/− buttons in shelf props. Default new actions get step = max + 1
+97. ✅ Action endpoint drag — drag action destination to reposition
 
-### B — Consistent Zigzag
+### B — Step-Aware Player Movement
 
-100. Zigzag segment length — replace fixed segment count (8) with fixed segment length (~12px scaled). Long arrows get more zigzag segments instead of stretched ones. Update `DrawZigzag`, all callers, and PDF renderer
+98. `IsMovementAction()` helper — dribble, sprint, cut, reverse, close-out return true. Pass, screen, shots return false
+99. `ComputePlayerPositions(seq, step, progress)` — cumulative player positions: base position + all completed movement actions from prior steps + current step interpolation
+100. `stepFrame()` update — players move to their action `To` destination during their step's window. Ball follows passes. Inter-sequence transition uses final cumulative positions as starting point
+101. Ball carrier per step — pass at step N transfers ball to receiver after step N completes
 
-### C — Curved Paths / Waypoints
+### C — Action Buttons from Player
 
-101. `waypoints` field on Action — new optional `[]Position` field (YAML `waypoints,omitempty`). Absent = straight line (current behavior). Single waypoint = quadratic Bézier curve. Multiple = chained curves
-102. Curved drawing — `PathPoints()` generates points along the Bézier path. New `DrawCurvedLine`, `DrawCurvedDashedLine`, `DrawCurvedZigzag` functions. Arrowhead follows curve tangent at endpoint
-103. Waypoint drag interaction — drag the midpoint of an existing action arrow to create a waypoint and curve it. Drag existing waypoints to adjust. Small circle handles on selected action's waypoints
-104. Progressive curved drawing — `DrawActionWithProgress` traces along curved path proportionally
-105. Hit testing for curved arrows — `HitTestAction` tests distance to curved path segments, not just straight from→to
-106. PDF curved paths — port curved drawing functions to PDF renderer
-107. Branching / aiguillage — multiple actions from the same player at the same step = simultaneous options (forked arrows). No dedicated data structure needed, existing model supports it
+102. Contextual action buttons — when a player is selected in the shelf, show Dribble/Pass/Cut/Screen/Shot buttons directly in the props area. One tap selects action type with ActionFrom pre-filled
 
-### D — Arrow Visual Polish
+### D — Action Timeline Panel
 
-108. Arrowhead review — adjust sizes proportional to line width, ensure tangent-aligned heads for curved paths
-109. Line consistency audit — normalize thickness, dash patterns across all action types
+103. Action Timeline widget — in Animation mode, reorderable list of actions grouped by step: "Écran par AF", "Dribble par MJ"... Tap to select, drag or +/− to reorder steps
+104. Mode integration — Animation mode shelf shows timeline instead of editing tools
 
-Deliverable: coaches express "A passes to B, then B drives to the basket" within a single sequence, with curved arrows and consistent visuals.
+### E — Curved Paths / Waypoints
+
+105. `waypoints` field on Action — `[]Position`, YAML `waypoints,omitempty`. Single waypoint = quadratic Bézier. Multiple = chained curves
+106. Curved drawing — `PathPoints()`, `DrawCurvedLine`, `DrawCurvedDashedLine`, `DrawCurvedZigzag`. Arrowhead follows curve tangent
+107. Waypoint interaction — drag action midpoint to create waypoint. Drag existing waypoints to adjust. Circle handles on selection
+108. Progressive curved drawing + hit testing on curved paths
+109. PDF curved paths + movement along curves in animation
+110. Branching / aiguillage — multiple actions from same player at same step = simultaneous forked arrows
+
+### F — Arrow Visual Polish
+
+111. Zigzag consistency — fixed segment length (~12px) instead of fixed count (8). Long arrows get more segments
+112. Arrowhead proportional to line width, tangent-aligned for curves
+113. Line consistency audit — normalize thickness, dash patterns
+114. PDF step badges + visual parity with screen renderer
+
+Deliverable: coaches build a full pick-and-roll in a single sequence — players move along their action paths step by step, with curved arrows and consistent visuals.
 
 ## Phase 16 — Visual Polish & Feedback ⚡ P1
 

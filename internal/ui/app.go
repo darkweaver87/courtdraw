@@ -2193,6 +2193,17 @@ func (a *App) syncLibrary() {
 	}()
 }
 
+// RebuildIndexAtStartup rebuilds the exercise index and reports parse errors.
+func (a *App) RebuildIndexAtStartup() {
+	ys, ok := a.store.(*store.YAMLStore)
+	if !ok {
+		return
+	}
+	if errs := ys.RebuildExerciseIndex(); len(errs) > 0 {
+		a.statusBar.SetStatus(i18n.Tf(i18n.KeyStatusIndexParseErrors, len(errs), strings.Join(errs, "; ")), StatusWarning)
+	}
+}
+
 // SyncLibraryIfEmpty triggers a sync if the cache has no exercises.
 func (a *App) SyncLibraryIfEmpty() {
 	if a.library == nil {

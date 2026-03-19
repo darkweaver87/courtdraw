@@ -184,11 +184,27 @@ func InterpolateFrame(fromSeq, toSeq *model.Sequence, t float64) AnimatedFrame {
 		}
 	}
 
-	// Actions: progressive drawing from the destination sequence.
+	// Actions: progressive drawing grouped by step.
+	maxStep := model.MaxStep(toSeq)
 	for i := range toSeq.Actions {
+		step := toSeq.Actions[i].EffectiveStep()
+		var progress float64
+		if maxStep <= 1 {
+			progress = t
+		} else {
+			stepStart := float64(step-1) / float64(maxStep)
+			stepEnd := float64(step) / float64(maxStep)
+			if t <= stepStart {
+				progress = 0
+			} else if t >= stepEnd {
+				progress = 1
+			} else {
+				progress = (t - stepStart) / (stepEnd - stepStart)
+			}
+		}
 		frame.Actions = append(frame.Actions, AnimatedAction{
 			Action:   toSeq.Actions[i],
-			Progress: t,
+			Progress: progress,
 		})
 	}
 

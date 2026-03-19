@@ -95,11 +95,12 @@ type CourtWidget struct {
 	pressHandled bool
 
 	// Pointer state.
-	pressed       bool
-	dragPlayerIdx int
-	dragAccIdx    int
-	dragActive    bool
-	dragRotating  bool
+	pressed          bool
+	dragPlayerIdx    int
+	dragAccIdx       int
+	dragActionEndIdx int // action whose To endpoint is being dragged (-1 = none)
+	dragActive       bool
+	dragRotating     bool
 
 	// Zoom indicator overlay.
 	zoomLabel *canvas.Text
@@ -126,9 +127,10 @@ var _ fyne.Focusable = (*CourtWidget)(nil)
 // NewCourtWidget creates a new court widget.
 func NewCourtWidget() *CourtWidget {
 	w := &CourtWidget{
-		dragPlayerIdx: -1,
-		dragAccIdx:    -1,
-		zoomLevel:     1.0,
+		dragPlayerIdx:    -1,
+		dragAccIdx:       -1,
+		dragActionEndIdx: -1,
+		zoomLevel:        1.0,
 	}
 	w.ExtendBaseWidget(w)
 	w.raster = canvas.NewRaster(w.draw)
@@ -359,11 +361,18 @@ func (w *CourtWidget) drawSequence(img *image.RGBA, face font.Face, seq *model.S
 	}
 
 	// Actions.
+	maxStep := model.MaxStep(seq)
 	for i := range seq.Actions {
 		if selElem != nil && selElem.Kind == editor.SelectAction && selElem.Index == i && selElem.SeqIndex == w.seqIndex {
 			court.DrawActionHighlight(img, &w.viewport, &seq.Actions[i], seq.Players)
 		}
 		court.DrawAction(img, &w.viewport, &seq.Actions[i], seq.Players)
+	}
+	// Step badges (only when multiple steps exist).
+	if maxStep > 1 {
+		for i := range seq.Actions {
+			court.DrawStepBadge(img, &w.viewport, &seq.Actions[i], seq.Players, face)
+		}
 	}
 
 	// Players.
@@ -870,6 +879,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 	w.dragActive = false
 	w.dragPlayerIdx = -1
 	w.dragAccIdx = -1
+	w.dragActionEndIdx = -1
 	w.dragRotating = false
 	w.dragPanning = false
 
@@ -904,6 +914,9 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 		}
 		if actIdx := court.HitTestAction(&w.viewport, seq, pos); actIdx >= 0 {
 			state.Select(editor.SelectAction, actIdx, w.seqIndex)
+			w.dragActionEndIdx = actIdx
+			w.dragActive = true
+			state.IsDragging = true
 			w.Refresh()
 			w.notifyChanged()
 			return
@@ -993,6 +1006,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 				Type: state.ToolActionType,
 				From: model.ActionRef{IsPlayer: true, PlayerID: *state.ActionFrom},
 				To:   toRef,
+				Step: model.MaxStep(seq) + 1,
 			}
 			seq.Actions = append(seq.Actions, action)
 			if state.ToolActionType == model.ActionPass && toRef.IsPlayer {
@@ -1137,6 +1151,26 @@ func (w *CourtWidget) handleDrag(pos court.Point) {
 		state.MarkModified()
 		w.Refresh()
 	}
+	if w.dragActionEndIdx >= 0 && w.dragActionEndIdx < len(seq.Actions) {
+		w.dragActionEndpoint(seq, pos, relPos, state)
+	}
+}
+
+func (w *CourtWidget) dragActionEndpoint(seq *model.Sequence, pos court.Point, relPos model.Position, state *editor.EditorState) {
+	act := &seq.Actions[w.dragActionEndIdx]
+	pi := court.HitTestPlayer(&w.viewport, seq, pos)
+	if pi >= 0 {
+		act.To.IsPlayer = true
+		act.To.PlayerID = seq.Players[pi].ID
+		act.To.Position = model.Position{}
+	} else {
+		act.To.IsPlayer = false
+		act.To.PlayerID = ""
+		act.To.Position = relPos
+	}
+	state.MarkModified()
+	w.Refresh()
+	w.notifyChanged()
 }
 
 func (w *CourtWidget) handleRelease() {
@@ -1147,6 +1181,7 @@ func (w *CourtWidget) handleRelease() {
 	w.dragActive = false
 	w.dragPlayerIdx = -1
 	w.dragAccIdx = -1
+	w.dragActionEndIdx = -1
 	w.dragRotating = false
 	w.dragPanning = false
 	w.Refresh()

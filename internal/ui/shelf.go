@@ -656,9 +656,34 @@ func (ms *EditorShelf) buildPropsLayout(_ *model.Exercise, state *editor.EditorS
 			return
 		}
 		act := &seq.Actions[sel.Index]
-		ms.propsTitle.Text = actionDisplayLabel(act.Type)
+		step := act.EffectiveStep()
+		ms.propsTitle.Text = fmt.Sprintf("%s — %s %d", actionDisplayLabel(act.Type), i18n.T(i18n.KeyPropsStep), step)
+
+		stepLabel := canvas.NewText(fmt.Sprintf("%s %d", i18n.T(i18n.KeyPropsStep), step), color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
+		stepLabel.TextSize = 12
+		minusBtn := NewTipButton(fynetheme.ContentRemoveIcon(), "", func() {
+			if sel.Index < len(seq.Actions) && seq.Actions[sel.Index].EffectiveStep() > 1 {
+				seq.Actions[sel.Index].Step = seq.Actions[sel.Index].EffectiveStep() - 1
+				state.MarkModified()
+				ms.propsSyncedSel = nil // force rebuild
+				if ms.OnToolChanged != nil {
+					ms.OnToolChanged()
+				}
+			}
+		})
+		plusBtn := NewTipButton(fynetheme.ContentAddIcon(), "", func() {
+			if sel.Index < len(seq.Actions) {
+				seq.Actions[sel.Index].Step = seq.Actions[sel.Index].EffectiveStep() + 1
+				state.MarkModified()
+				ms.propsSyncedSel = nil // force rebuild
+				if ms.OnToolChanged != nil {
+					ms.OnToolChanged()
+				}
+			}
+		})
+		stepRow := container.NewHBox(stepLabel, minusBtn, plusBtn)
 		delWrap := container.NewGridWrap(shelfCellSize, ms.propsDeleteBtn)
-		ms.propsContent.Add(container.NewVBox(ms.propsTitle, container.NewHBox(delWrap)))
+		ms.propsContent.Add(container.NewVBox(ms.propsTitle, stepRow, container.NewHBox(delWrap)))
 	}
 }
 

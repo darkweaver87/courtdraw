@@ -18,6 +18,9 @@ const (
 // TransitionDuration is the base duration for animating between two sequences.
 const TransitionDuration = 2 * time.Second
 
+// StepDuration is the base duration per action step within a sequence.
+const StepDuration = 1 * time.Second
+
 // PauseDuration is the pause at each keyframe before transitioning.
 const PauseDuration = 1 * time.Second
 
@@ -184,6 +187,62 @@ func (p *Playback) IsAnimating() bool {
 	return p.state == StatePlaying
 }
 
+// stepFrame creates a frame for intra-sequence step animation.
+// t is 0.0–1.0 over the total step animation duration.
+func (p *Playback) stepFrame(seq *model.Sequence, t float64) AnimatedFrame {
+	frame := AnimatedFrame{}
+	// Players/accessories are static — just snapshot them.
+	for i := range seq.Players {
+		frame.Players = append(frame.Players, AnimatedPlayer{
+			Player:  seq.Players[i],
+			Opacity: 1.0,
+		})
+	}
+	for i := range seq.Accessories {
+		frame.Accessories = append(frame.Accessories, AnimatedAccessory{
+			Accessory: seq.Accessories[i],
+			Opacity:   1.0,
+		})
+	}
+	// Balls.
+	for _, id := range seq.BallCarrier {
+		for i := range seq.Players {
+			if seq.Players[i].ID == id {
+				frame.Balls = append(frame.Balls, AnimatedBall{
+					CarrierID: id,
+					Pos:       seq.Players[i].Position,
+					Opacity:   1.0,
+				})
+				break
+			}
+		}
+	}
+	// Actions: progressive drawing based on step.
+	maxStep := model.MaxStep(seq)
+	for i := range seq.Actions {
+		step := seq.Actions[i].EffectiveStep()
+		var progress float64
+		if maxStep <= 1 {
+			progress = t
+		} else {
+			stepStart := float64(step-1) / float64(maxStep)
+			stepEnd := float64(step) / float64(maxStep)
+			if t <= stepStart {
+				progress = 0
+			} else if t >= stepEnd {
+				progress = 1
+			} else {
+				progress = (t - stepStart) / (stepEnd - stepStart)
+			}
+		}
+		frame.Actions = append(frame.Actions, AnimatedAction{
+			Action:   seq.Actions[i],
+			Progress: progress,
+		})
+	}
+	return frame
+}
+
 // Update advances the animation by the time since the last call.
 // Returns the current AnimatedFrame and whether a redraw is needed.
 func (p *Playback) Update() (AnimatedFrame, bool) {
@@ -212,24 +271,49 @@ func (p *Playback) Update() (AnimatedFrame, bool) {
 	switch p.phase {
 	case 0: // pausing at keyframe
 		if p.elapsed >= PauseDuration {
+			p.elapsed -= PauseDuration
+			// If this sequence has multiple steps, animate them first.
+			maxStep := model.MaxStep(&seq[p.seqIndex])
+			if maxStep > 1 {
+				p.phase = 2 // intra-sequence step animation
+				return p.stepFrame(&seq[p.seqIndex], 0), true
+			}
+			// No steps to animate — proceed to transition or stop.
 			if p.seqIndex >= lastIdx {
 				if p.loop {
-					// Loop back to start.
 					p.seqIndex = 0
 					p.phase = 0
-					p.elapsed -= PauseDuration
 					return snapshotFrame(&seq[0]), true
 				}
-				// Reached the end: stop.
 				p.state = StateStopped
 				return snapshotFrame(&seq[p.seqIndex]), false
 			}
 			p.phase = 1
-			p.elapsed -= PauseDuration
 		}
 		return snapshotFrame(&seq[p.seqIndex]), true
 
-	case 1: // transitioning
+	case 2: // intra-sequence step animation
+		maxStep := model.MaxStep(&seq[p.seqIndex])
+		stepAnimDuration := time.Duration(maxStep) * StepDuration
+		t := float64(p.elapsed) / float64(stepAnimDuration)
+		if t >= 1.0 {
+			p.elapsed -= stepAnimDuration
+			// Steps done — transition to next sequence or stop.
+			if p.seqIndex >= lastIdx {
+				if p.loop {
+					p.seqIndex = 0
+					p.phase = 0
+					return snapshotFrame(&seq[0]), true
+				}
+				p.state = StateStopped
+				return snapshotFrame(&seq[p.seqIndex]), false
+			}
+			p.phase = 1
+			return snapshotFrame(&seq[p.seqIndex]), true
+		}
+		return p.stepFrame(&seq[p.seqIndex], t), true
+
+	case 1: // transitioning to next sequence
 		t := float64(p.elapsed) / float64(TransitionDuration)
 		if t >= 1.0 {
 			// Transition complete: advance to next sequence.

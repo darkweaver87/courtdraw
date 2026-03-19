@@ -131,6 +131,7 @@ const (
 	KeyPropsPosition = "props.position"
 	KeyPropsRole = "props.role"
 	KeyPropsRotation = "props.rotation"
+	KeyPropsStep = "props.step"
 	KeyPropsStandard = "props.standard"
 	KeyPropsTags = "props.tags"
 	KeyPropsTo = "props.to"

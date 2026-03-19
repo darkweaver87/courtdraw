@@ -56,6 +56,9 @@ func main() {
 		a.Quit()
 	})
 
+	// Rebuild exercise index at startup to detect externally added/modified files.
+	application.RebuildIndexAtStartup()
+
 	// Initialize session after UI is built (court widget exists).
 	// Exercise is NOT auto-created so the empty state is visible at startup.
 	application.NewSession()

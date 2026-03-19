@@ -190,10 +190,31 @@ type Player struct {
 }
 
 // Action represents a movement or event between elements.
+// Action is a movement or interaction between elements.
 type Action struct {
 	Type ActionType `yaml:"type"`
 	From ActionRef  `yaml:"from"`
 	To   ActionRef  `yaml:"to"`
+	Step int        `yaml:"step,omitempty"` // step order within sequence (1-based, 0 treated as 1)
+}
+
+// EffectiveStep returns the step number, treating 0 as 1.
+func (a *Action) EffectiveStep() int {
+	if a.Step <= 0 {
+		return 1
+	}
+	return a.Step
+}
+
+// MaxStep returns the highest step number among actions in a sequence.
+func MaxStep(seq *Sequence) int {
+	m := 0
+	for i := range seq.Actions {
+		if s := seq.Actions[i].EffectiveStep(); s > m {
+			m = s
+		}
+	}
+	return m
 }
 
 // ActionRef can be either a player ID (string) or a position ([x,y]).

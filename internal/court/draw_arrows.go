@@ -3,9 +3,15 @@ package court
 import (
 	"image"
 	"image/color"
+	"strconv"
+
+	"golang.org/x/image/font"
 
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
+
+// StepBadgeRadius is the base radius of the step number circle.
+const StepBadgeRadius = 8
 
 // Action visual constants (base sizes at 1x zoom).
 const (
@@ -180,6 +186,22 @@ func DrawActionPreview(img *image.RGBA, vp *Viewport, from, to Point, actionType
 	default:
 		DrawLine(img, from, to, lw, col)
 		DrawArrowhead(img, from, to, ah, col)
+	}
+}
+
+// DrawStepBadge draws a circled step number at the midpoint of an action arrow.
+func DrawStepBadge(img *image.RGBA, vp *Viewport, action *model.Action, players []model.Player, face font.Face) {
+	step := action.EffectiveStep()
+	from := ResolveRef(vp, action.From, players)
+	to := ResolveRef(vp, action.To, players)
+	mid := Pt((from.X+to.X)/2, (from.Y+to.Y)/2)
+	r := vp.S(StepBadgeRadius)
+	// White filled circle with action-colored text.
+	DrawCircleFill(img, mid, r, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xdd})
+	DrawCircleOutline(img, mid, r, vp.S(1.0), color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0x66})
+	if face != nil {
+		col := ActionColor(action.Type)
+		DrawText(img, strconv.Itoa(step), mid, face, col)
 	}
 }
 
