@@ -148,14 +148,12 @@ func (ms *EditorShelf) build() {
 		btn := ms.addBtn(playerIcons[i], playerKeys[i], func() {
 			ms.state.SetPlayerTool(r)
 			ms.syncHighlights()
-			ms.collapse()
 		})
 		playerGrid.Add(btn)
 	}
 	queueBtn := ms.addBtn(icon.PlayerQueue, i18n.KeyToolPlayerQueue, func() {
 		ms.state.SetQueueTool()
 		ms.syncHighlights()
-		ms.collapse()
 	})
 	playerGrid.Add(queueBtn)
 	ms.playerContent = playerGrid
@@ -196,7 +194,6 @@ func (ms *EditorShelf) build() {
 				}
 			}
 			ms.syncHighlights()
-			ms.collapse()
 		})
 		actionGrid.Add(btn)
 	}
@@ -214,7 +211,6 @@ func (ms *EditorShelf) build() {
 		btn := ms.addBtn(accIcons[i], accKeys[i], func() {
 			ms.state.SetAccessoryTool(accType)
 			ms.syncHighlights()
-			ms.collapse()
 		})
 		accGrid.Add(btn)
 	}
@@ -375,9 +371,12 @@ func (ms *EditorShelf) selectCategory(cat shelfCategory) {
 		ms.syncHighlights()
 	}
 	ms.refreshShelfContent()
+	ms.updateTabIndicators()
+}
 
+func (ms *EditorShelf) updateTabIndicators() {
 	for i := range numShelfCategories {
-		if shelfCategory(i) == cat {
+		if shelfCategory(i) == ms.active {
 			ms.tabIndicators[i].FillColor = tabActiveColor
 			ms.tabLabels[i].Color = tabLabelActiveColor
 		} else {
@@ -523,6 +522,13 @@ func (ms *EditorShelf) UpdateElementProps(exercise *model.Exercise, state *edito
 		}
 		return
 	}
+
+	// Auto-switch to tools tab and expand shelf when element is selected.
+	if ms.active != shelfTools {
+		ms.active = shelfTools
+		ms.updateTabIndicators()
+	}
+	ms.expand()
 
 	seq := &exercise.Sequences[seqIdx]
 

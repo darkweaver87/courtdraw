@@ -191,56 +191,145 @@ func (p *Playback) IsAnimating() bool {
 // t is 0.0–1.0 over the total step animation duration.
 func (p *Playback) stepFrame(seq *model.Sequence, t float64) AnimatedFrame {
 	frame := AnimatedFrame{}
-	// Players/accessories are static — just snapshot them.
+	maxStep := model.MaxStep(seq)
+
+	// Compute cumulative player positions based on completed movement actions.
+	positions := computeStepPositions(seq, maxStep, t)
+
+	// Players at their computed positions.
 	for i := range seq.Players {
+		player := seq.Players[i]
+		if pos, ok := positions[player.ID]; ok {
+			player.Position = pos
+		}
 		frame.Players = append(frame.Players, AnimatedPlayer{
-			Player:  seq.Players[i],
+			Player:  player,
 			Opacity: 1.0,
 		})
 	}
+
+	// Accessories (static).
 	for i := range seq.Accessories {
 		frame.Accessories = append(frame.Accessories, AnimatedAccessory{
 			Accessory: seq.Accessories[i],
 			Opacity:   1.0,
 		})
 	}
-	// Balls.
+
+	// Ball positions: follow carriers, interpolate during passes.
+	frame.Balls = computeStepBalls(seq, maxStep, t, positions)
+
+	// Actions: progressive drawing based on step.
+	for i := range seq.Actions {
+		frame.Actions = append(frame.Actions, AnimatedAction{
+			Action:   seq.Actions[i],
+			Progress: stepProgress(seq.Actions[i].EffectiveStep(), maxStep, t),
+		})
+	}
+	return frame
+}
+
+// stepProgress returns the drawing progress (0–1) for an action at the given step.
+func stepProgress(step, maxStep int, t float64) float64 {
+	if maxStep <= 1 {
+		return t
+	}
+	stepStart := float64(step-1) / float64(maxStep)
+	stepEnd := float64(step) / float64(maxStep)
+	if t <= stepStart {
+		return 0
+	}
+	if t >= stepEnd {
+		return 1
+	}
+	return (t - stepStart) / (stepEnd - stepStart)
+}
+
+// computeStepPositions computes player positions accounting for all movement actions up to time t.
+func computeStepPositions(seq *model.Sequence, maxStep int, t float64) map[string]model.Position {
+	positions := make(map[string]model.Position, len(seq.Players))
+	for i := range seq.Players {
+		positions[seq.Players[i].ID] = seq.Players[i].Position
+	}
+
+	for i := range seq.Actions {
+		act := &seq.Actions[i]
+		if !model.IsMovementAction(act.Type) || !act.From.IsPlayer {
+			continue
+		}
+		pid := act.From.PlayerID
+		progress := stepProgress(act.EffectiveStep(), maxStep, t)
+		if progress <= 0 {
+			continue
+		}
+		// Resolve destination position.
+		dest := resolveActionDest(act, positions)
+		// Current position of this player (may have been moved by a prior step).
+		from := positions[pid]
+		positions[pid] = InterpolatePosition(from, dest, progress)
+	}
+	return positions
+}
+
+// computeStepBalls computes ball positions during step animation, interpolating during passes.
+func computeStepBalls(seq *model.Sequence, maxStep int, t float64, positions map[string]model.Position) []AnimatedBall {
+	// Start with initial carriers.
+	type ballState struct {
+		carrierID string
+		pos       model.Position
+	}
+	balls := make([]ballState, 0, len(seq.BallCarrier))
 	for _, id := range seq.BallCarrier {
-		for i := range seq.Players {
-			if seq.Players[i].ID == id {
-				frame.Balls = append(frame.Balls, AnimatedBall{
-					CarrierID: id,
-					Pos:       seq.Players[i].Position,
-					Opacity:   1.0,
-				})
+		if pos, ok := positions[id]; ok {
+			balls = append(balls, ballState{carrierID: id, pos: pos})
+		}
+	}
+
+	// Apply passes step by step.
+	for i := range seq.Actions {
+		act := &seq.Actions[i]
+		if act.Type != model.ActionPass || !act.From.IsPlayer || !act.To.IsPlayer {
+			continue
+		}
+		progress := stepProgress(act.EffectiveStep(), maxStep, t)
+		if progress <= 0 {
+			continue
+		}
+		fromID := act.From.PlayerID
+		toID := act.To.PlayerID
+		fromPos := positions[fromID]
+		toPos := positions[toID]
+		for j := range balls {
+			if balls[j].carrierID == fromID {
+				if progress >= 1.0 {
+					// Pass completed — ball at receiver.
+					balls[j].carrierID = toID
+					balls[j].pos = toPos
+				} else {
+					// Pass in flight — interpolate.
+					balls[j].pos = InterpolatePosition(fromPos, toPos, progress)
+				}
 				break
 			}
 		}
 	}
-	// Actions: progressive drawing based on step.
-	maxStep := model.MaxStep(seq)
-	for i := range seq.Actions {
-		step := seq.Actions[i].EffectiveStep()
-		var progress float64
-		if maxStep <= 1 {
-			progress = t
-		} else {
-			stepStart := float64(step-1) / float64(maxStep)
-			stepEnd := float64(step) / float64(maxStep)
-			if t <= stepStart {
-				progress = 0
-			} else if t >= stepEnd {
-				progress = 1
-			} else {
-				progress = (t - stepStart) / (stepEnd - stepStart)
-			}
-		}
-		frame.Actions = append(frame.Actions, AnimatedAction{
-			Action:   seq.Actions[i],
-			Progress: progress,
-		})
+
+	result := make([]AnimatedBall, len(balls))
+	for i, b := range balls {
+		result[i] = AnimatedBall{CarrierID: b.carrierID, Pos: b.pos, Opacity: 1.0}
 	}
-	return frame
+	return result
+}
+
+// resolveActionDest returns the destination position for an action,
+// using the player position map for player-targeted actions.
+func resolveActionDest(act *model.Action, positions map[string]model.Position) model.Position {
+	if act.To.IsPlayer {
+		if pos, ok := positions[act.To.PlayerID]; ok {
+			return pos
+		}
+	}
+	return act.To.Position
 }
 
 // Update advances the animation by the time since the last call.

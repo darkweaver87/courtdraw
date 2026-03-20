@@ -439,10 +439,6 @@ func (w *CourtWidget) drawActionPreview(img *image.RGBA, seq *model.Sequence, se
 		}
 	}
 
-	if sel.PreviewMousePos == nil {
-		return
-	}
-
 	// Resolve source player position.
 	var fromPos court.Point
 	for i := range seq.Players {
@@ -450,6 +446,19 @@ func (w *CourtWidget) drawActionPreview(img *image.RGBA, seq *model.Sequence, se
 			fromPos = w.viewport.RelToPixel(seq.Players[i].Position)
 			break
 		}
+	}
+
+	// For shots, always show ghost arrow to basket with target circle.
+	if model.IsShot(sel.ToolActionType) && w.geom != nil {
+		basketPos := court.BasketRelativePosition(w.geom, w.exercise.CourtType)
+		basketPx := w.viewport.RelToPixel(basketPos)
+		court.DrawActionTargetHighlight(img, &w.viewport, basketPx)
+		court.DrawActionPreview(img, &w.viewport, fromPos, basketPx, sel.ToolActionType, 0.5)
+		return
+	}
+
+	if sel.PreviewMousePos == nil {
+		return
 	}
 	toPos := *sel.PreviewMousePos
 
@@ -461,7 +470,7 @@ func (w *CourtWidget) drawActionPreview(img *image.RGBA, seq *model.Sequence, se
 
 // magneticSnap finds the nearest player within 30dp and snaps the arrow endpoint to it.
 func (w *CourtWidget) magneticSnap(img *image.RGBA, seq *model.Sequence, sel *editor.EditorState, pos court.Point) court.Point {
-	snapDist := w.viewport.Sd(30)
+	snapDist := w.viewport.Sd(court.MagneticSnapDist)
 	snapIdx := -1
 	bestDist := snapDist
 	for i := range seq.Players {
@@ -502,6 +511,22 @@ func (w *CourtWidget) drawSelectionOverlays(img *image.RGBA, seq *model.Sequence
 			a := &seq.Accessories[selElem.Index]
 			center := w.viewport.RelToPixel(a.Position)
 			court.DrawRotationHandle(img, &w.viewport, center, a.Rotation)
+		}
+	case editor.SelectAction:
+		// Show basket target highlight when dragging a shot near the basket.
+		if selElem.Index < len(seq.Actions) && w.geom != nil {
+			act := &seq.Actions[selElem.Index]
+			if model.IsShot(act.Type) {
+				basketPos := court.BasketRelativePosition(w.geom, w.exercise.CourtType)
+				basketPx := w.viewport.RelToPixel(basketPos)
+				toPx := w.viewport.RelToPixel(act.To.Position)
+				dx := float64(toPx.X - basketPx.X)
+				dy := float64(toPx.Y - basketPx.Y)
+				if math.Sqrt(dx*dx+dy*dy) < 2 {
+					// Snapped to basket — show green target.
+					court.DrawActionTargetHighlight(img, &w.viewport, basketPx)
+				}
+			}
 		}
 	}
 }
@@ -883,52 +908,23 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 	w.dragRotating = false
 	w.dragPanning = false
 
+	// Universal hit test: select and drag elements regardless of active tool.
+	// Skip when action tool is waiting for a target click (ActionFrom already set).
+	if state.ActiveTool != editor.ToolAction || state.ActionFrom == nil {
+		if w.trySelectElement(seq, state, pos) {
+			return
+		}
+	}
+
+	// No element hit — handle tool-specific creation or panning.
 	switch state.ActiveTool {
 	case editor.ToolNone, editor.ToolSelect:
-		// Check rotation handle first.
-		if w.hitTestRotationHandle(seq, state, pos) {
-			w.dragRotating = true
-			w.dragActive = true
-			state.IsRotating = true
-			w.Refresh()
-			return
-		}
-
-		if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
-			state.Select(editor.SelectPlayer, pi, w.seqIndex)
-			w.dragPlayerIdx = pi
-			w.dragActive = true
-			state.IsDragging = true
-			w.Refresh()
-			w.notifyChanged()
-			return
-		}
-		if ai := court.HitTestAccessory(&w.viewport, seq, pos); ai >= 0 {
-			state.Select(editor.SelectAccessory, ai, w.seqIndex)
-			w.dragAccIdx = ai
-			w.dragActive = true
-			state.IsDragging = true
-			w.Refresh()
-			w.notifyChanged()
-			return
-		}
-		if actIdx := court.HitTestAction(&w.viewport, seq, pos); actIdx >= 0 {
-			state.Select(editor.SelectAction, actIdx, w.seqIndex)
-			w.dragActionEndIdx = actIdx
-			w.dragActive = true
-			state.IsDragging = true
-			w.Refresh()
-			w.notifyChanged()
-			return
-		}
-
-		// If zoomed in and no element hit, start panning.
+		// If zoomed in, start panning.
 		if w.zoomLevel > 1.01 {
 			w.dragPanning = true
 			w.dragActive = true
 			return
 		}
-
 		state.Deselect()
 		w.Refresh()
 		w.notifyChanged()
@@ -992,15 +988,26 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 			}
 		} else {
 			toRef := model.ActionRef{}
-			if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
-				toRef.IsPlayer = true
-				toRef.PlayerID = seq.Players[pi].ID
-			} else if state.ToolActionType == model.ActionPass {
-				state.SetStatus(i18n.T(i18n.KeyStatusPassRequiresPlayer), 1)
-				w.notifyChanged()
-				return
-			} else {
-				toRef.Position = court.ClampPosition(&w.viewport,w.viewport.PixelToRel(pos))
+			switch {
+			case model.IsShot(state.ToolActionType) && w.geom != nil:
+				// Shots snap to the basket.
+				toRef.Position = court.BasketRelativePosition(w.geom, w.exercise.CourtType)
+			case state.ToolActionType == model.ActionPass:
+				if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
+					toRef.IsPlayer = true
+					toRef.PlayerID = seq.Players[pi].ID
+				} else {
+					state.SetStatus(i18n.T(i18n.KeyStatusPassRequiresPlayer), 1)
+					w.notifyChanged()
+					return
+				}
+			default:
+				if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
+					toRef.IsPlayer = true
+					toRef.PlayerID = seq.Players[pi].ID
+				} else {
+					toRef.Position = court.ClampPosition(&w.viewport, w.viewport.PixelToRel(pos))
+				}
 			}
 			action := model.Action{
 				Type: state.ToolActionType,
@@ -1142,7 +1149,25 @@ func (w *CourtWidget) handleDrag(pos court.Point) {
 	relPos := court.ClampPosition(&w.viewport,w.viewport.PixelToRel(pos))
 
 	if w.dragPlayerIdx >= 0 && w.dragPlayerIdx < len(seq.Players) {
+		oldPos := seq.Players[w.dragPlayerIdx].Position
+		dx := relPos[0] - oldPos[0]
+		dy := relPos[1] - oldPos[1]
 		seq.Players[w.dragPlayerIdx].Position = relPos
+		// Move position-based action endpoints attached to this player.
+		// Shots stay fixed (aimantées au panier).
+		pid := seq.Players[w.dragPlayerIdx].ID
+		for i := range seq.Actions {
+			a := &seq.Actions[i]
+			if a.From.IsPlayer && a.From.PlayerID == pid && !a.To.IsPlayer {
+				switch a.Type {
+				case model.ActionShotLayup, model.ActionShotPushup, model.ActionShotJump:
+					// Shot destination stays at the basket.
+				default:
+					a.To.Position[0] += dx
+					a.To.Position[1] += dy
+				}
+			}
+		}
 		state.MarkModified()
 		w.Refresh()
 	}
@@ -1156,8 +1181,68 @@ func (w *CourtWidget) handleDrag(pos court.Point) {
 	}
 }
 
+// trySelectElement checks if the press hits a player, accessory, or action and starts drag.
+func (w *CourtWidget) trySelectElement(seq *model.Sequence, state *editor.EditorState, pos court.Point) bool {
+	if w.hitTestRotationHandle(seq, state, pos) {
+		w.dragRotating = true
+		w.dragActive = true
+		state.IsRotating = true
+		w.Refresh()
+		return true
+	}
+	if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
+		state.Select(editor.SelectPlayer, pi, w.seqIndex)
+		w.dragPlayerIdx = pi
+		w.dragActive = true
+		state.IsDragging = true
+		w.Refresh()
+		w.notifyChanged()
+		return true
+	}
+	if ai := court.HitTestAccessory(&w.viewport, seq, pos); ai >= 0 {
+		state.Select(editor.SelectAccessory, ai, w.seqIndex)
+		w.dragAccIdx = ai
+		w.dragActive = true
+		state.IsDragging = true
+		w.Refresh()
+		w.notifyChanged()
+		return true
+	}
+	if actIdx := court.HitTestAction(&w.viewport, seq, pos); actIdx >= 0 {
+		state.Select(editor.SelectAction, actIdx, w.seqIndex)
+		w.dragActionEndIdx = actIdx
+		w.dragActive = true
+		state.IsDragging = true
+		w.Refresh()
+		w.notifyChanged()
+		return true
+	}
+	return false
+}
+
 func (w *CourtWidget) dragActionEndpoint(seq *model.Sequence, pos court.Point, relPos model.Position, state *editor.EditorState) {
 	act := &seq.Actions[w.dragActionEndIdx]
+	// Shots snap to the basket when within 30dp.
+	if model.IsShot(act.Type) && w.geom != nil {
+		basketPos := court.BasketRelativePosition(w.geom, w.exercise.CourtType)
+		basketPx := w.viewport.RelToPixel(basketPos)
+		dx := float64(pos.X - basketPx.X)
+		dy := float64(pos.Y - basketPx.Y)
+		dist := math.Sqrt(dx*dx + dy*dy)
+		if dist <= w.viewport.Sd(court.MagneticSnapDist) {
+			act.To.IsPlayer = false
+			act.To.PlayerID = ""
+			act.To.Position = basketPos
+		} else {
+			act.To.IsPlayer = false
+			act.To.PlayerID = ""
+			act.To.Position = relPos
+		}
+		state.MarkModified()
+		w.Refresh()
+		w.notifyChanged()
+		return
+	}
 	pi := court.HitTestPlayer(&w.viewport, seq, pos)
 	if pi >= 0 {
 		act.To.IsPlayer = true

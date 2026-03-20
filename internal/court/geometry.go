@@ -10,6 +10,9 @@ import (
 // ApronMeters is the width of the run-off area around the court (FIBA standard: 2m).
 const ApronMeters = 2.0
 
+// MagneticSnapDist is the base distance in dp for magnetic snapping (players, basket, waypoints).
+const MagneticSnapDist = 30
+
 // Point is a 2D coordinate in pixel space.
 type Point struct {
 	X, Y float32
@@ -112,6 +115,16 @@ func courtDimensions(geom *CourtGeometry, courtType model.CourtType) (float64, f
 		h = geom.Length / 2
 	}
 	return w, h
+}
+
+// BasketRelativePosition returns the basket center in relative [0,1] coordinates.
+// X is always 0.5 (center). Y depends on court type and standard.
+func BasketRelativePosition(geom *CourtGeometry, courtType model.CourtType) model.Position {
+	_, courtH := courtDimensions(geom, courtType)
+	if courtH <= 0 {
+		return model.Position{0.5, 0.0}
+	}
+	return model.Position{0.5, geom.BasketOffset / courtH}
 }
 
 // ShoulderWidthMeters is the average human shoulder width (0.45m).

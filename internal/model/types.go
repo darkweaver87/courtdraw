@@ -56,6 +56,26 @@ const (
 	ActionReverse    ActionType = "reverse"
 )
 
+// IsShot returns true if the action type is a shot.
+func IsShot(at ActionType) bool {
+	switch at {
+	case ActionShotLayup, ActionShotPushup, ActionShotJump:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsMovementAction returns true if the action type physically moves the source player.
+func IsMovementAction(at ActionType) bool {
+	switch at {
+	case ActionDribble, ActionSprint, ActionCut, ActionReverse, ActionCloseOut:
+		return true
+	default:
+		return false
+	}
+}
+
 // AccessoryType defines the type of court accessory.
 type AccessoryType string
 

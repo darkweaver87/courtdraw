@@ -98,10 +98,18 @@ func InterpolateFrame(fromSeq, toSeq *model.Sequence, t float64) AnimatedFrame {
 
 	frame := AnimatedFrame{}
 
-	// Build lookup maps by player ID.
+	// Compute final positions after all steps in fromSeq (for step-aware movement).
+	finalPositions := computeStepPositions(fromSeq, model.MaxStep(fromSeq), 1.0)
+
+	// Build lookup maps by player ID, using final step positions.
 	fromMap := make(map[string]*model.Player, len(fromSeq.Players))
 	for i := range fromSeq.Players {
-		fromMap[fromSeq.Players[i].ID] = &fromSeq.Players[i]
+		p := fromSeq.Players[i]
+		if pos, ok := finalPositions[p.ID]; ok {
+			p.Position = pos
+		}
+		pCopy := p
+		fromMap[pCopy.ID] = &pCopy
 	}
 	toMap := make(map[string]*model.Player, len(toSeq.Players))
 	for i := range toSeq.Players {
