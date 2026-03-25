@@ -32,6 +32,7 @@ type AnimatedBall struct {
 	CarrierID string
 	Pos       model.Position
 	Opacity   float64
+	InFlight  bool // true when ball is in the air (pass/shot in progress)
 }
 
 // AnimatedFrame holds the interpolated state between two sequences.

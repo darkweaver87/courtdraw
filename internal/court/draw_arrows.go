@@ -3,6 +3,7 @@ package court
 import (
 	"image"
 	"image/color"
+	"math"
 	"strconv"
 
 	"golang.org/x/image/font"
@@ -53,56 +54,71 @@ func ActionColor(at model.ActionType) color.NRGBA {
 	}
 }
 
+// ResolveWaypoints converts model waypoints to pixel-space Points.
+func ResolveWaypoints(vp *Viewport, waypoints []model.Position) []Point {
+	pts := make([]Point, len(waypoints))
+	for i, wp := range waypoints {
+		pts[i] = vp.RelToPixel(wp)
+	}
+	return pts
+}
+
 // DrawAction draws an action (arrow/movement) between elements.
 func DrawAction(img *image.RGBA, vp *Viewport, action *model.Action, players []model.Player) {
 	from := ResolveRef(vp, action.From, players)
 	to := ResolveRef(vp, action.To, players)
-
+	col := ActionColor(action.Type)
 	lw := vp.S(ArrowLineWidth)
 	ah := vp.S(ArrowHeadSize)
+
+	if len(action.Waypoints) > 0 {
+		wps := ResolveWaypoints(vp, action.Waypoints)
+		pts := BezierPath(from, to, wps, 16)
+		drawActionPath(img, vp, action.Type, pts, lw, ah, col)
+		return
+	}
+
 	za := vp.S(ZigzagAmplitude)
 	dl := vp.S(DashLen)
 	gl := vp.S(GapLen)
 
 	switch action.Type {
 	case model.ActionPass:
-		DrawDashedLine(img, from, to, lw, dl, gl, ColorPass)
-		DrawArrowhead(img, from, to, ah, ColorPass)
-
+		DrawDashedLine(img, from, to, lw, dl, gl, col)
+		DrawArrowhead(img, from, to, ah, col)
 	case model.ActionDribble:
-		DrawZigzag(img, from, to, lw, za, ZigzagSegments, ColorDribble)
-		DrawArrowhead(img, from, to, ah, ColorDribble)
-
-	case model.ActionSprint:
-		DrawLine(img, from, to, lw, ColorSprint)
-		DrawArrowhead(img, from, to, ah, ColorSprint)
-
-	case model.ActionCloseOut:
-		DrawLine(img, from, to, lw, ColorCloseOut)
-		DrawArrowhead(img, from, to, ah, ColorCloseOut)
-
-	case model.ActionCut:
-		DrawLine(img, from, to, lw, ColorCut)
-		DrawArrowhead(img, from, to, ah, ColorCut)
-
+		DrawZigzag(img, from, to, lw, za, ZigzagSegments, col)
+		DrawArrowhead(img, from, to, ah, col)
 	case model.ActionScreen:
-		DrawLine(img, from, to, lw*3, ColorScreen)
-
-	case model.ActionShotLayup, model.ActionShotPushup, model.ActionShotJump:
-		DrawLine(img, from, to, lw, ColorSprint)
-		DrawArrowhead(img, from, to, ah, ColorSprint)
-
+		DrawLine(img, from, to, lw*3, col)
 	case model.ActionContest:
-		DrawDashedLine(img, from, to, lw, dl, gl, ColorCloseOut)
-		DrawArrowhead(img, from, to, ah, ColorCloseOut)
-
-	case model.ActionReverse:
-		DrawLine(img, from, to, lw, ColorSprint)
-		DrawArrowhead(img, from, to, ah, ColorSprint)
-
+		DrawDashedLine(img, from, to, lw, dl, gl, col)
+		DrawArrowhead(img, from, to, ah, col)
 	default:
-		DrawLine(img, from, to, lw, ColorDefault)
-		DrawArrowhead(img, from, to, ah, ColorDefault)
+		DrawLine(img, from, to, lw, col)
+		DrawArrowhead(img, from, to, ah, col)
+	}
+}
+
+// drawActionPath draws an action along a curved polyline path.
+func drawActionPath(img *image.RGBA, vp *Viewport, actionType model.ActionType, pts []Point, lw, ah float32, col color.NRGBA) {
+	za := vp.S(ZigzagAmplitude)
+	dl := vp.S(DashLen)
+	gl := vp.S(GapLen)
+	zsl := vp.S(12) // zigzag segment length
+
+	switch actionType {
+	case model.ActionPass, model.ActionContest:
+		DrawDashedPolyline(img, pts, lw, dl, gl, col)
+		DrawArrowheadAtEnd(img, pts, ah, col)
+	case model.ActionDribble:
+		DrawZigzagPolyline(img, pts, lw, za, zsl, col)
+		DrawArrowheadAtEnd(img, pts, ah, col)
+	case model.ActionScreen:
+		DrawPolyline(img, pts, lw*3, col)
+	default:
+		DrawPolyline(img, pts, lw, col)
+		DrawArrowheadAtEnd(img, pts, ah, col)
 	}
 }
 
@@ -118,18 +134,24 @@ func DrawActionWithProgress(img *image.RGBA, vp *Viewport, action *model.Action,
 
 	from := ResolveRef(vp, action.From, players)
 	to := ResolveRef(vp, action.To, players)
-	partialTo := Pt(
-		from.X+(to.X-from.X)*float32(progress),
-		from.Y+(to.Y-from.Y)*float32(progress),
-	)
-
+	col := ActionColor(action.Type)
 	lw := vp.S(ArrowLineWidth)
 	ah := vp.S(ArrowHeadSize)
+
+	if len(action.Waypoints) > 0 {
+		wps := ResolveWaypoints(vp, action.Waypoints)
+		fullPts := BezierPath(from, to, wps, 16)
+		// Truncate polyline to progress fraction.
+		pts := truncatePolyline(fullPts, progress)
+		drawActionPath(img, vp, action.Type, pts, lw, ah, col)
+		return
+	}
+
+	partialTo := Pt(from.X+(to.X-from.X)*float32(progress), from.Y+(to.Y-from.Y)*float32(progress))
 	za := vp.S(ZigzagAmplitude)
 	dl := vp.S(DashLen)
 	gl := vp.S(GapLen)
 
-	col := ActionColor(action.Type)
 	switch action.Type {
 	case model.ActionPass, model.ActionContest:
 		DrawDashedLine(img, from, partialTo, lw, dl, gl, col)
@@ -149,6 +171,33 @@ func DrawActionWithProgress(img *image.RGBA, vp *Viewport, action *model.Action,
 			DrawArrowhead(img, from, partialTo, ah, col)
 		}
 	}
+}
+
+// truncatePolyline returns points up to a given fraction (0–1) of the total length.
+func truncatePolyline(pts []Point, frac float64) []Point {
+	if frac >= 1 || len(pts) < 2 {
+		return pts
+	}
+	total := PolylineLength(pts)
+	target := total * frac
+	walked := 0.0
+	result := []Point{pts[0]}
+	for i := 1; i < len(pts); i++ {
+		dx := float64(pts[i].X - pts[i-1].X)
+		dy := float64(pts[i].Y - pts[i-1].Y)
+		segLen := math.Sqrt(dx*dx + dy*dy)
+		if walked+segLen >= target {
+			t := (target - walked) / segLen
+			result = append(result, Pt(
+				pts[i-1].X+float32(t*dx),
+				pts[i-1].Y+float32(t*dy),
+			))
+			return result
+		}
+		result = append(result, pts[i])
+		walked += segLen
+	}
+	return result
 }
 
 // DrawActionHighlight draws a wide semi-transparent yellow line behind an action.

@@ -362,12 +362,14 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 			bottomStack.Refresh()
 			courtSection.Show()
 			seqBar.Show()
+			a.court.SetReadOnly(false)
 			a.modeLabel.Text = i18n.T(i18n.KeyModeEdition)
 		case ModeAnimation:
 			bottomStack.Objects = []fyne.CanvasObject{animBottom}
 			bottomStack.Refresh()
 			courtSection.Show()
 			seqBar.Show()
+			a.court.SetReadOnly(true)
 			a.modeLabel.Text = i18n.T(i18n.KeyModeAnimation)
 		case ModeNotes:
 			notesContent.Objects = []fyne.CanvasObject{a.buildNotesView()}

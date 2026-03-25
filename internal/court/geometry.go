@@ -13,6 +13,9 @@ const ApronMeters = 2.0
 // MagneticSnapDist is the base distance in dp for magnetic snapping (players, basket, waypoints).
 const MagneticSnapDist = 30
 
+// ActionHitThreshold is the base distance in dp for clicking on an action arrow.
+const ActionHitThreshold = 16
+
 // MinPlayerSpacing is the minimum distance between two players in relative coordinates.
 // Prevents players from overlapping visually (e.g., during screen actions).
 const MinPlayerSpacing = 0.04

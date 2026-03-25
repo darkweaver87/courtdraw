@@ -461,3 +461,196 @@ func addCornerArc(r *vector.Rasterizer, cx, cy, radius float32, startAngle, endA
 		r.LineTo(x, y)
 	}
 }
+
+// DistToPolyline returns the shortest distance from point p to any segment of the polyline.
+func DistToPolyline(p Point, pts []Point) float64 {
+	if len(pts) < 2 {
+		return math.MaxFloat64
+	}
+	best := math.MaxFloat64
+	for i := 1; i < len(pts); i++ {
+		d := DistToSegment(p, pts[i-1], pts[i])
+		if d < best {
+			best = d
+		}
+	}
+	return best
+}
+
+// --- Curved path utilities ---
+
+// BezierPath generates a polyline from→waypoints→to using quadratic Bézier curves.
+// Each waypoint acts as a control point for a quadratic Bézier segment.
+// numSegments is the number of line segments per curve section.
+func BezierPath(from, to Point, waypoints []Point, numSegments int) []Point {
+	if len(waypoints) == 0 {
+		return []Point{from, to}
+	}
+	if numSegments < 4 {
+		numSegments = 16
+	}
+
+	points := []Point{from}
+	// Chain quadratic Bézier: from→wp1→mid1, mid1→wp2→mid2, ..., midN→to
+	anchors := make([]Point, 0, len(waypoints)+2)
+	anchors = append(anchors, from)
+	anchors = append(anchors, waypoints...)
+	anchors = append(anchors, to)
+
+	for i := range len(anchors) - 2 {
+		p0 := anchors[i]
+		ctrl := anchors[i+1]
+		var p2 Point
+		if i+2 < len(anchors)-1 {
+			// Midpoint between this control and next control.
+			p2 = Pt((ctrl.X+anchors[i+2].X)/2, (ctrl.Y+anchors[i+2].Y)/2)
+		} else {
+			p2 = anchors[i+2]
+		}
+		for j := 1; j <= numSegments; j++ {
+			t := float32(j) / float32(numSegments)
+			// Quadratic Bézier: B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
+			u := 1 - t
+			x := u*u*p0.X + 2*u*t*ctrl.X + t*t*p2.X
+			y := u*u*p0.Y + 2*u*t*ctrl.Y + t*t*p2.Y
+			points = append(points, Pt(x, y))
+		}
+	}
+	return points
+}
+
+// PolylineLength computes the total length of a polyline.
+func PolylineLength(pts []Point) float64 {
+	total := 0.0
+	for i := 1; i < len(pts); i++ {
+		dx := float64(pts[i].X - pts[i-1].X)
+		dy := float64(pts[i].Y - pts[i-1].Y)
+		total += math.Sqrt(dx*dx + dy*dy)
+	}
+	return total
+}
+
+// PolylinePointAt returns the point at a given fraction (0–1) along the polyline.
+func PolylinePointAt(pts []Point, frac float64) Point {
+	if len(pts) < 2 || frac <= 0 {
+		return pts[0]
+	}
+	if frac >= 1 {
+		return pts[len(pts)-1]
+	}
+	total := PolylineLength(pts)
+	target := total * frac
+	walked := 0.0
+	for i := 1; i < len(pts); i++ {
+		dx := float64(pts[i].X - pts[i-1].X)
+		dy := float64(pts[i].Y - pts[i-1].Y)
+		segLen := math.Sqrt(dx*dx + dy*dy)
+		if walked+segLen >= target {
+			t := (target - walked) / segLen
+			return Pt(
+				pts[i-1].X+float32(t)*float32(dx),
+				pts[i-1].Y+float32(t)*float32(dy),
+			)
+		}
+		walked += segLen
+	}
+	return pts[len(pts)-1]
+}
+
+// DrawPolyline draws a series of connected line segments.
+func DrawPolyline(img *image.RGBA, pts []Point, width float32, col color.NRGBA) {
+	for i := 1; i < len(pts); i++ {
+		DrawLine(img, pts[i-1], pts[i], width, col)
+	}
+}
+
+// DrawDashedPolyline draws a dashed line following a polyline path.
+func DrawDashedPolyline(img *image.RGBA, pts []Point, width, dashLen, gapLen float32, col color.NRGBA) {
+	if len(pts) < 2 {
+		return
+	}
+	drawing := true
+	remaining := dashLen
+	for i := 1; i < len(pts); i++ {
+		from := pts[i-1]
+		to := pts[i]
+		dx := to.X - from.X
+		dy := to.Y - from.Y
+		segLen := float32(math.Sqrt(float64(dx*dx + dy*dy)))
+		if segLen < 0.1 {
+			continue
+		}
+		ux := dx / segLen
+		uy := dy / segLen
+		pos := float32(0)
+		for pos < segLen {
+			chunk := remaining
+			if pos+chunk > segLen {
+				chunk = segLen - pos
+			}
+			if drawing {
+				p1 := Pt(from.X+ux*pos, from.Y+uy*pos)
+				p2 := Pt(from.X+ux*(pos+chunk), from.Y+uy*(pos+chunk))
+				DrawLine(img, p1, p2, width, col)
+			}
+			pos += chunk
+			remaining -= chunk
+			if remaining <= 0 {
+				drawing = !drawing
+				if drawing {
+					remaining = dashLen
+				} else {
+					remaining = gapLen
+				}
+			}
+		}
+	}
+}
+
+// DrawZigzagPolyline draws a zigzag line following a polyline path.
+func DrawZigzagPolyline(img *image.RGBA, pts []Point, width, amplitude float32, segmentLen float32, col color.NRGBA) {
+	if len(pts) < 2 {
+		return
+	}
+	total := float32(PolylineLength(pts))
+	if total < 1 {
+		return
+	}
+	segments := max(2, int(total/segmentLen))
+	prev := pts[0]
+	for i := 1; i <= segments; i++ {
+		t := float64(i) / float64(segments)
+		mid := PolylinePointAt(pts, t)
+		// Compute perpendicular at this point.
+		var nx, ny float32
+		if i < len(pts) {
+			near := PolylinePointAt(pts, t-0.01)
+			dx := mid.X - near.X
+			dy := mid.Y - near.Y
+			d := float32(math.Sqrt(float64(dx*dx + dy*dy)))
+			if d > 0.01 {
+				nx = -dy / d
+				ny = dx / d
+			}
+		}
+		sign := float32(1)
+		if i%2 == 0 {
+			sign = -1
+		}
+		pt := Pt(mid.X+nx*amplitude*sign, mid.Y+ny*amplitude*sign)
+		DrawLine(img, prev, pt, width, col)
+		prev = pt
+	}
+	DrawLine(img, prev, pts[len(pts)-1], width, col)
+}
+
+// DrawArrowheadAtEnd draws an arrowhead at the end of a polyline, tangent-aligned.
+func DrawArrowheadAtEnd(img *image.RGBA, pts []Point, size float32, col color.NRGBA) {
+	if len(pts) < 2 {
+		return
+	}
+	tip := pts[len(pts)-1]
+	// Use the last segment for direction.
+	from := pts[len(pts)-2]
+	DrawArrowhead(img, from, tip, size, col)
+}

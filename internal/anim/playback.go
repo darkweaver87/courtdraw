@@ -275,9 +275,13 @@ func ComputeStepPositions(seq *model.Sequence, maxStep int, t float64) map[strin
 		if progress >= 1.0 {
 			dest = avoidOverlapPositions(dest, pid, positions)
 		}
-		// Current position of this player (may have been moved by a prior step).
+		// Interpolate position — follow waypoints if present.
 		from := positions[pid]
-		positions[pid] = InterpolatePosition(from, dest, progress)
+		if len(act.Waypoints) > 0 && progress < 1.0 {
+			positions[pid] = interpolateAlongWaypoints(from, dest, act.Waypoints, progress)
+		} else {
+			positions[pid] = InterpolatePosition(from, dest, progress)
+		}
 	}
 	return positions
 }
@@ -358,7 +362,7 @@ func computeStepBalls(seq *model.Sequence, maxStep int, t float64, positions map
 
 	result := make([]AnimatedBall, len(balls))
 	for i, b := range balls {
-		result[i] = AnimatedBall{CarrierID: b.carrierID, Pos: b.pos, Opacity: 1.0}
+		result[i] = AnimatedBall{CarrierID: b.carrierID, Pos: b.pos, Opacity: 1.0, InFlight: b.inFlight}
 	}
 	return result
 }
@@ -366,6 +370,7 @@ func computeStepBalls(seq *model.Sequence, maxStep int, t float64, positions map
 type ballState struct {
 	carrierID string
 	pos       model.Position
+	inFlight  bool
 }
 
 func applyPassToBalls(balls []ballState, act *model.Action, progress float64, positions map[string]model.Position) {
@@ -376,8 +381,13 @@ func applyPassToBalls(balls []ballState, act *model.Action, progress float64, po
 			if progress >= 1.0 {
 				balls[j].carrierID = act.To.PlayerID
 				balls[j].pos = toPos
+				balls[j].inFlight = false
+			} else if len(act.Waypoints) > 0 {
+				balls[j].pos = interpolateAlongWaypoints(fromPos, toPos, act.Waypoints, progress)
+				balls[j].inFlight = true
 			} else {
 				balls[j].pos = InterpolatePosition(fromPos, toPos, progress)
+				balls[j].inFlight = true
 			}
 			break
 		}
@@ -388,13 +398,71 @@ func applyShotToBalls(balls []ballState, act *model.Action, progress float64, po
 	fromPos := positions[act.From.PlayerID]
 	for j := range balls {
 		if balls[j].carrierID == act.From.PlayerID {
-			balls[j].pos = InterpolatePosition(fromPos, act.To.Position, progress)
+			balls[j].inFlight = true
+			if len(act.Waypoints) > 0 && progress < 1.0 {
+				balls[j].pos = interpolateAlongWaypoints(fromPos, act.To.Position, act.Waypoints, progress)
+			} else {
+				balls[j].pos = InterpolatePosition(fromPos, act.To.Position, progress)
+			}
 			if progress >= 1.0 {
 				balls[j].carrierID = ""
 			}
 			break
 		}
 	}
+}
+
+// interpolateAlongWaypoints follows a Bézier curve defined by waypoints.
+func interpolateAlongWaypoints(from, to model.Position, waypoints []model.Position, t float64) model.Position {
+	// Build anchors: from → waypoints → to
+	anchors := make([]model.Position, 0, len(waypoints)+2)
+	anchors = append(anchors, from)
+	anchors = append(anchors, waypoints...)
+	anchors = append(anchors, to)
+
+	// Generate path points.
+	numSegs := 32
+	pts := make([]model.Position, 0, numSegs+1)
+	pts = append(pts, from)
+	for i := range len(anchors) - 2 {
+		p0 := anchors[i]
+		ctrl := anchors[i+1]
+		var p2 model.Position
+		if i+2 < len(anchors)-1 {
+			p2 = model.Position{(ctrl[0] + anchors[i+2][0]) / 2, (ctrl[1] + anchors[i+2][1]) / 2}
+		} else {
+			p2 = anchors[i+2]
+		}
+		segsPerSection := max(4, numSegs/(len(anchors)-1))
+		for j := 1; j <= segsPerSection; j++ {
+			s := float64(j) / float64(segsPerSection)
+			u := 1 - s
+			x := u*u*p0[0] + 2*u*s*ctrl[0] + s*s*p2[0]
+			y := u*u*p0[1] + 2*u*s*ctrl[1] + s*s*p2[1]
+			pts = append(pts, model.Position{x, y})
+		}
+	}
+
+	// Walk along the path to find position at fraction t.
+	totalLen := 0.0
+	for i := 1; i < len(pts); i++ {
+		dx := pts[i][0] - pts[i-1][0]
+		dy := pts[i][1] - pts[i-1][1]
+		totalLen += math.Sqrt(dx*dx + dy*dy)
+	}
+	target := totalLen * t
+	walked := 0.0
+	for i := 1; i < len(pts); i++ {
+		dx := pts[i][0] - pts[i-1][0]
+		dy := pts[i][1] - pts[i-1][1]
+		segLen := math.Sqrt(dx*dx + dy*dy)
+		if walked+segLen >= target {
+			frac := (target - walked) / segLen
+			return model.Position{pts[i-1][0] + frac*dx, pts[i-1][1] + frac*dy}
+		}
+		walked += segLen
+	}
+	return to
 }
 
 // avoidOverlapPositions adjusts a position so it doesn't overlap with other players.

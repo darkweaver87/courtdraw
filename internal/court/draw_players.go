@@ -424,19 +424,19 @@ func HitTestAccessory(vp *Viewport, seq *model.Sequence, pos Point) int {
 
 // HitTestAction checks if pos is near any point along an action line.
 func HitTestAction(vp *Viewport, seq *model.Sequence, pos Point) int {
-	hitThreshold := vp.Sd(16)
+	hitThreshold := vp.Sd(ActionHitThreshold)
 	for i := len(seq.Actions) - 1; i >= 0; i-- {
 		from := ResolveRef(vp, seq.Actions[i].From, seq.Players)
 		to := ResolveRef(vp, seq.Actions[i].To, seq.Players)
-		if distToSegment(pos, from, to) <= hitThreshold {
+		if DistToSegment(pos, from, to) <= hitThreshold {
 			return i
 		}
 	}
 	return -1
 }
 
-// distToSegment returns the shortest distance from point p to the line segment a-b.
-func distToSegment(p, a, b Point) float64 {
+// DistToSegment returns the shortest distance from point p to the line segment a-b.
+func DistToSegment(p, a, b Point) float64 {
 	dx := float64(b.X - a.X)
 	dy := float64(b.Y - a.Y)
 	lenSq := dx*dx + dy*dy

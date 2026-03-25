@@ -99,10 +99,11 @@ type CourtWidget struct {
 	pressed          bool
 	dragPlayerIdx    int
 	dragAccIdx       int
-	dragActionEndIdx int // action whose To endpoint is being dragged (-1 = none)
-	dragPlayerStep   int // step of the ghost being dragged (0 = base position, -1 = final/current)
-	selectedStep     int // step of the selected ghost (-1 = final, 0 = base, >0 = intermediate)
-	dragActive       bool
+	dragActionEndIdx  int // action whose To endpoint is being dragged (-1 = none)
+	dragWaypointIdx   int // waypoint being dragged (-1 = endpoint, -2 = creating new)
+	dragPlayerStep    int // step of the ghost being dragged (0 = base position, -1 = final/current)
+	selectedStep      int // step of the selected ghost (-1 = final, 0 = base, >0 = intermediate)
+	dragActive        bool
 	dragRotating     bool
 
 	// Zoom indicator overlay.
@@ -111,6 +112,7 @@ type CourtWidget struct {
 	// Animation ticker.
 	animStop chan struct{}
 	animMu   sync.Mutex
+	readOnly bool // true when editing is blocked (animation mode, training mode)
 
 	// Selection pulse ticker — runs at ~15fps when an element is selected.
 	pulseStop chan struct{}
@@ -179,6 +181,11 @@ func (w *CourtWidget) Viewport() *court.Viewport {
 // SetEditorState sets the editor state for interactive editing.
 func (w *CourtWidget) SetEditorState(state *editor.EditorState) {
 	w.editorState = state
+}
+
+// SetReadOnly blocks or allows editing on the court (used in animation/training modes).
+func (w *CourtWidget) SetReadOnly(on bool) {
+	w.readOnly = on
 }
 
 // SetPlayback sets the playback engine for animation.
@@ -591,9 +598,25 @@ func (w *CourtWidget) drawSelectionOverlays(img *image.RGBA, seq *model.Sequence
 				dx := float64(toPx.X - basketPx.X)
 				dy := float64(toPx.Y - basketPx.Y)
 				if math.Sqrt(dx*dx+dy*dy) < 2 {
-					// Snapped to basket — show green target.
 					court.DrawActionTargetHighlight(img, &w.viewport, basketPx)
 				}
+			}
+			// Draw waypoint handles (blue circles) on selected action (edit mode only).
+			if !w.readOnly {
+				for _, wp := range act.Waypoints {
+					center := w.viewport.RelToPixel(wp)
+					court.DrawCircleFill(img, center, w.viewport.S(5), color.NRGBA{R: 0x44, G: 0x88, B: 0xff, A: 0xcc})
+					court.DrawCircleOutline(img, center, w.viewport.S(5), w.viewport.S(1), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xcc})
+				}
+			}
+			// If no waypoints, show a draggable midpoint handle (edit mode only).
+			if !w.readOnly && len(act.Waypoints) == 0 {
+				maxStep := model.MaxStep(seq)
+				playersAtStep := stepPlayers(seq, maxStep, act.EffectiveStep())
+				from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
+				to := court.ResolveRef(&w.viewport, act.To, playersAtStep)
+				mid := court.Pt((from.X+to.X)/2, (from.Y+to.Y)/2)
+				court.DrawCircleFill(img, mid, w.viewport.S(4), color.NRGBA{R: 0x44, G: 0x88, B: 0xff, A: 0x88})
 			}
 		}
 	}
@@ -641,7 +664,7 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 		}
 	}
 
-	// Balls — position at carrier's hand, not center.
+	// Balls — position at carrier's hand (or in-flight position).
 	playerByID := make(map[string]*model.Player, len(frame.Players))
 	for i := range frame.Players {
 		playerByID[frame.Players[i].ID] = &frame.Players[i].Player
@@ -649,11 +672,13 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 	for _, b := range frame.Balls {
 		if b.Opacity > 0 {
 			ballPixel := vp.RelToPixel(b.Pos)
-			// Compute hand offset using carrier's rotation and role.
-			if p, ok := playerByID[b.CarrierID]; ok {
-				tmp := *p
-				tmp.Position = b.Pos
-				ballPixel = court.BallPosForPlayer(vp, ballPixel, &tmp)
+			// Apply hand offset only when ball is in a player's hands (not in flight).
+			if !b.InFlight {
+				if p, ok := playerByID[b.CarrierID]; ok {
+					tmp := *p
+					tmp.Position = b.Pos
+					ballPixel = court.BallPosForPlayer(vp, ballPixel, &tmp)
+				}
 			}
 			court.DrawBallWithOpacity(img, vp, ballPixel, b.Opacity)
 		}
@@ -829,6 +854,9 @@ func (w *CourtWidget) MouseIn(_ *desktop.MouseEvent) {}
 
 // MouseMoved implements desktop.Hoverable.
 func (w *CourtWidget) MouseMoved(e *desktop.MouseEvent) {
+	if w.readOnly || w.animMode {
+		return
+	}
 	state := w.editorState
 	if state == nil {
 		return
@@ -1000,6 +1028,10 @@ func (w *CourtWidget) Scrolled(e *fyne.ScrollEvent) {
 // --- Interaction handlers ---
 
 func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
+	// Block edits in read-only mode (animation, training).
+	if w.readOnly || w.animMode {
+		return
+	}
 	state := w.editorState
 	if state == nil {
 		return
@@ -1297,8 +1329,68 @@ func (w *CourtWidget) handleDrag(pos court.Point) {
 		w.Refresh()
 	}
 	if w.dragActionEndIdx >= 0 && w.dragActionEndIdx < len(seq.Actions) {
-		w.dragActionEndpoint(seq, pos, relPos, state)
+		if w.dragWaypointIdx >= 0 {
+			// Dragging an existing waypoint.
+			seq.Actions[w.dragActionEndIdx].Waypoints[w.dragWaypointIdx] = relPos
+			state.MarkModified()
+			w.Refresh()
+		} else {
+			w.dragActionEndpoint(seq, pos, relPos, state)
+		}
 	}
+}
+
+// hitTestActionStepAware tests if pos hits any action using step-specific player positions.
+func (w *CourtWidget) hitTestActionStepAware(seq *model.Sequence, pos court.Point) int {
+	maxStep := model.MaxStep(seq)
+	hitThreshold := w.viewport.Sd(court.ActionHitThreshold)
+	for i := len(seq.Actions) - 1; i >= 0; i-- {
+		act := &seq.Actions[i]
+		playersAtStep := stepPlayers(seq, maxStep, act.EffectiveStep())
+		from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
+		to := court.ResolveRef(&w.viewport, act.To, playersAtStep)
+		if len(act.Waypoints) > 0 {
+			wps := court.ResolveWaypoints(&w.viewport, act.Waypoints)
+			pts := court.BezierPath(from, to, wps, 16)
+			if court.DistToPolyline(pos, pts) <= hitThreshold {
+				return i
+			}
+		} else {
+			if court.DistToSegment(pos, from, to) <= hitThreshold {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// hitTestWaypoint checks if pos hits a waypoint handle or the midpoint of the action.
+// Returns waypoint index (>=0), -1 for midpoint (create new), or -2 for no hit.
+func (w *CourtWidget) hitTestWaypoint(act *model.Action, seq *model.Sequence, pos court.Point) int {
+	hitR := w.viewport.Sd(8)
+	// Check existing waypoints.
+	for i, wp := range act.Waypoints {
+		center := w.viewport.RelToPixel(wp)
+		dx := float64(pos.X - center.X)
+		dy := float64(pos.Y - center.Y)
+		if math.Sqrt(dx*dx+dy*dy) <= hitR {
+			return i
+		}
+	}
+	// Check midpoint handle (only if no waypoints).
+	if len(act.Waypoints) == 0 {
+		maxStep := model.MaxStep(seq)
+		playersAtStep := stepPlayers(seq, maxStep, act.EffectiveStep())
+		from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
+		to := court.ResolveRef(&w.viewport, act.To, playersAtStep)
+		mid := court.Pt((from.X+to.X)/2, (from.Y+to.Y)/2)
+		dx := float64(pos.X - mid.X)
+		dy := float64(pos.Y - mid.Y)
+		if math.Sqrt(dx*dx+dy*dy) <= hitR {
+			return -1
+		}
+	}
+	return -2
 }
 
 // hitTestGhostPlayer checks if pos hits a ghost player (initial or intermediate step position).
@@ -1409,10 +1501,35 @@ func (w *CourtWidget) trySelectElement(seq *model.Sequence, state *editor.Editor
 		w.notifyChanged()
 		return true
 	}
-	if actIdx := court.HitTestAction(&w.viewport, finalSeq, pos); actIdx >= 0 {
+	// Check waypoint handles on currently selected action first.
+	if selElem := state.SelectedElement; selElem != nil && selElem.Kind == editor.SelectAction && selElem.Index < len(seq.Actions) {
+		act := &seq.Actions[selElem.Index]
+		wpIdx := w.hitTestWaypoint(act, seq, pos)
+		if wpIdx >= -1 { // -1 = midpoint (create new), >= 0 = existing waypoint
+			w.dragActionEndIdx = selElem.Index
+			w.dragWaypointIdx = wpIdx
+			w.dragActive = true
+			state.IsDragging = true
+			if wpIdx == -1 {
+				// Create waypoint at midpoint.
+				maxStep := model.MaxStep(seq)
+				playersAtStep := stepPlayers(seq, maxStep, act.EffectiveStep())
+				from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
+				to := court.ResolveRef(&w.viewport, act.To, playersAtStep)
+				mid := w.viewport.PixelToRel(court.Pt((from.X+to.X)/2, (from.Y+to.Y)/2))
+				act.Waypoints = append(act.Waypoints, mid)
+				w.dragWaypointIdx = len(act.Waypoints) - 1
+				state.MarkModified()
+			}
+			w.Refresh()
+			return true
+		}
+	}
+	if actIdx := w.hitTestActionStepAware(seq, pos); actIdx >= 0 {
 		state.SetTool(editor.ToolSelect)
 		state.Select(editor.SelectAction, actIdx, w.seqIndex)
 		w.dragActionEndIdx = actIdx
+		w.dragWaypointIdx = -2 // endpoint drag
 		w.dragActive = true
 		state.IsDragging = true
 		w.Refresh()

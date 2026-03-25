@@ -190,13 +190,13 @@ type Player struct {
 	Direction string      `yaml:"direction,omitempty"` // queue direction
 }
 
-// Action represents a movement or event between elements.
 // Action is a movement or interaction between elements.
 type Action struct {
-	Type ActionType `yaml:"type"`
-	From ActionRef  `yaml:"from"`
-	To   ActionRef  `yaml:"to"`
-	Step int        `yaml:"step,omitempty"` // step order within sequence (1-based, 0 treated as 1)
+	Type      ActionType `yaml:"type"`
+	From      ActionRef  `yaml:"from"`
+	To        ActionRef  `yaml:"to"`
+	Step      int        `yaml:"step,omitempty"`      // step order within sequence (1-based, 0 treated as 1)
+	Waypoints []Position `yaml:"waypoints,omitempty"` // intermediate curve control points
 }
 
 // EffectiveStep returns the step number, treating 0 as 1.
