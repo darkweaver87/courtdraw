@@ -25,6 +25,9 @@ type SeqTimeline struct {
 	addBtn    *widget.Button
 	deleteBtn *widget.Button
 	settingsBtn *widget.Button
+	zoomInBtn   *widget.Button
+	zoomOutBtn  *widget.Button
+	zoomResetBtn *widget.Button
 	activeIdx int
 	numSeqs   int
 
@@ -37,6 +40,9 @@ type SeqTimeline struct {
 	OnDeleteSeq  func(int)
 	OnSeqRenamed func(idx int, newLabel string)
 	OnSettings   func() // opens exercise settings dialog
+	OnZoomIn     func()
+	OnZoomOut    func()
+	OnZoomReset  func()
 	window       fyne.Window
 }
 
@@ -85,8 +91,27 @@ func NewSeqTimeline() *SeqTimeline {
 	})
 	st.settingsBtn.Importance = widget.LowImportance
 
+	st.zoomOutBtn = widget.NewButtonWithIcon("", theme.ZoomOutIcon(), func() {
+		if st.OnZoomOut != nil {
+			st.OnZoomOut()
+		}
+	})
+	st.zoomOutBtn.Importance = widget.LowImportance
+	st.zoomResetBtn = widget.NewButtonWithIcon("", theme.ZoomFitIcon(), func() {
+		if st.OnZoomReset != nil {
+			st.OnZoomReset()
+		}
+	})
+	st.zoomResetBtn.Importance = widget.LowImportance
+	st.zoomInBtn = widget.NewButtonWithIcon("", theme.ZoomInIcon(), func() {
+		if st.OnZoomIn != nil {
+			st.OnZoomIn()
+		}
+	})
+	st.zoomInBtn.Importance = widget.LowImportance
+
 	bg := canvas.NewRectangle(color.NRGBA{R: 0x2a, G: 0x2a, B: 0x2a, A: 0xff})
-	bar := container.NewHBox(st.prevBtn, st.seqBtn, st.nextBtn, st.addBtn, st.deleteBtn, layout.NewSpacer(), st.settingsBtn)
+	bar := container.NewHBox(st.prevBtn, st.seqBtn, st.nextBtn, st.addBtn, st.deleteBtn, layout.NewSpacer(), st.zoomOutBtn, st.zoomResetBtn, st.zoomInBtn, st.settingsBtn)
 	st.box = container.NewStack(bg, bar)
 	return st
 }

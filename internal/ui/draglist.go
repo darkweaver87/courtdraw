@@ -79,13 +79,19 @@ func (dl *DragList) rebuildRows() {
 	dl.box.Refresh()
 }
 
-// Widget returns the scrollable container.
+// Widget returns the scrollable container (or raw box in MinimalMode).
 func (dl *DragList) Widget() fyne.CanvasObject {
+	if dl.MinimalMode {
+		return dl.box
+	}
 	return dl.scroll
 }
 
-// CreateRenderer returns a simple renderer wrapping the scroll container.
+// CreateRenderer returns a simple renderer wrapping the content.
 func (dl *DragList) CreateRenderer() fyne.WidgetRenderer {
+	if dl.MinimalMode {
+		return widget.NewSimpleRenderer(dl.box)
+	}
 	return widget.NewSimpleRenderer(dl.scroll)
 }
 

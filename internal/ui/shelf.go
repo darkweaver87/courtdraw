@@ -64,12 +64,20 @@ func init() {
 // EditorShelf — bottom shelf + tab bar for Draw mode
 // ---------------------------------------------------------------------------
 
+// ZoomController is implemented by the court widget for zoom operations.
+type ZoomController interface {
+	ZoomIn()
+	ZoomOut()
+	ResetZoom()
+}
+
 // EditorShelf provides the bottom tool shelf + category tab bar.
 type EditorShelf struct {
 	state    *editor.EditorState
 	palette  *ToolPalette
 	exercise *model.Exercise
 	seqIdx   int
+	zoomer   ZoomController
 	active   shelfCategory
 	allBtns  []*TipButton
 
@@ -465,6 +473,11 @@ func (ms *EditorShelf) Widget() fyne.CanvasObject {
 	tabBar := container.NewStack(tabBg, container.NewPadded(tabGrid))
 
 	return container.NewVBox(ms.shelfOuter, tabBar)
+}
+
+// SetZoomController sets the zoom controller (court widget).
+func (ms *EditorShelf) SetZoomController(z ZoomController) {
+	ms.zoomer = z
 }
 
 // RefreshLanguage updates tab labels.

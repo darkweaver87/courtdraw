@@ -175,6 +175,9 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	a.seqTimeline.OnSettings = func() {
 		a.showExerciseSettingsDialog()
 	}
+	a.seqTimeline.OnZoomIn = func() { a.court.ZoomIn() }
+	a.seqTimeline.OnZoomOut = func() { a.court.ZoomOut() }
+	a.seqTimeline.OnZoomReset = func() { a.court.ResetZoom() }
 
 	a.instrPanel = NewInstructionsPanel()
 	a.instrPanel.OnModified = func() {
@@ -284,6 +287,7 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 
 	// Edition mode: shelf + tab bar (bottom).
 	a.editorShelf = NewEditorShelf(&a.editorState, a.toolPalette)
+	a.editorShelf.SetZoomController(a.court)
 	a.editorShelf.OnToolChanged = func() {
 		if a.editorState.DeleteRequested {
 			a.editorState.DeleteRequested = false
@@ -343,7 +347,7 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	timelinePanel := container.NewStack(timelineBg, container.NewPadded(timelineWidget))
 	timelinePanel.Hide()
 
-	// Court area with seq bar above + collapsible timeline on the right.
+	// Court area with seq bar above, timeline on right.
 	courtWithSeq := container.NewBorder(seqBar, nil, nil, timelinePanel, container.NewStack(a.court, a.emptyState))
 
 	// Bottom area: swapped between edition shelf and animation controls.
