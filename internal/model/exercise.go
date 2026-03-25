@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 )
@@ -204,6 +205,34 @@ func (a *Action) EffectiveStep() int {
 		return 1
 	}
 	return a.Step
+}
+
+// ReorderSteps compacts step numbers to remove gaps after deletion.
+// e.g., steps [1, 3, 4] become [1, 2, 3].
+func ReorderSteps(seq *Sequence) {
+	if len(seq.Actions) == 0 {
+		return
+	}
+	// Collect unique steps in order.
+	seen := make(map[int]bool)
+	var steps []int
+	for i := range seq.Actions {
+		s := seq.Actions[i].EffectiveStep()
+		if !seen[s] {
+			seen[s] = true
+			steps = append(steps, s)
+		}
+	}
+	sort.Ints(steps)
+	// Build mapping old → new.
+	mapping := make(map[int]int, len(steps))
+	for i, s := range steps {
+		mapping[s] = i + 1
+	}
+	// Apply.
+	for i := range seq.Actions {
+		seq.Actions[i].Step = mapping[seq.Actions[i].EffectiveStep()]
+	}
 }
 
 // MaxStep returns the highest step number among actions in a sequence.

@@ -1,8 +1,10 @@
 package anim
 
 import (
+	"math"
 	"time"
 
+	"github.com/darkweaver87/courtdraw/internal/court"
 	"github.com/darkweaver87/courtdraw/internal/model"
 )
 
@@ -194,7 +196,7 @@ func (p *Playback) stepFrame(seq *model.Sequence, t float64) AnimatedFrame {
 	maxStep := model.MaxStep(seq)
 
 	// Compute cumulative player positions based on completed movement actions.
-	positions := computeStepPositions(seq, maxStep, t)
+	positions := ComputeStepPositions(seq, maxStep, t)
 
 	// Players at their computed positions.
 	for i := range seq.Players {
@@ -220,10 +222,15 @@ func (p *Playback) stepFrame(seq *model.Sequence, t float64) AnimatedFrame {
 	frame.Balls = computeStepBalls(seq, maxStep, t, positions)
 
 	// Actions: progressive drawing based on step.
+	// Movement actions disappear after their step completes (player has moved).
 	for i := range seq.Actions {
+		progress := stepProgress(seq.Actions[i].EffectiveStep(), maxStep, t)
+		if progress >= 1.0 && model.IsMovementAction(seq.Actions[i].Type) {
+			continue // movement done — arrow no longer needed
+		}
 		frame.Actions = append(frame.Actions, AnimatedAction{
 			Action:   seq.Actions[i],
-			Progress: stepProgress(seq.Actions[i].EffectiveStep(), maxStep, t),
+			Progress: progress,
 		})
 	}
 	return frame
@@ -245,8 +252,8 @@ func stepProgress(step, maxStep int, t float64) float64 {
 	return (t - stepStart) / (stepEnd - stepStart)
 }
 
-// computeStepPositions computes player positions accounting for all movement actions up to time t.
-func computeStepPositions(seq *model.Sequence, maxStep int, t float64) map[string]model.Position {
+// ComputeStepPositions computes player positions accounting for all movement actions up to time t.
+func ComputeStepPositions(seq *model.Sequence, maxStep int, t float64) map[string]model.Position {
 	positions := make(map[string]model.Position, len(seq.Players))
 	for i := range seq.Players {
 		positions[seq.Players[i].ID] = seq.Players[i].Position
@@ -264,6 +271,10 @@ func computeStepPositions(seq *model.Sequence, maxStep int, t float64) map[strin
 		}
 		// Resolve destination position.
 		dest := resolveActionDest(act, positions)
+		// Avoid overlap with other players at the destination.
+		if progress >= 1.0 {
+			dest = avoidOverlapPositions(dest, pid, positions)
+		}
 		// Current position of this player (may have been moved by a prior step).
 		from := positions[pid]
 		positions[pid] = InterpolatePosition(from, dest, progress)
@@ -271,13 +282,57 @@ func computeStepPositions(seq *model.Sequence, maxStep int, t float64) map[strin
 	return positions
 }
 
+// BallState represents a ball's carrier and position after all steps.
+type BallState struct {
+	CarrierID string         // empty if shot (ball is at ShotPos)
+	ShotPos   model.Position // non-zero if ball was shot
+	IsShot    bool
+}
+
+// ComputeFinalBallState returns ball states after all steps are completed.
+func ComputeFinalBallState(seq *model.Sequence) []BallState {
+	states := make([]BallState, len(seq.BallCarrier))
+	for i, id := range seq.BallCarrier {
+		states[i] = BallState{CarrierID: id}
+	}
+	for i := range seq.Actions {
+		act := &seq.Actions[i]
+		if act.Type == model.ActionPass && act.From.IsPlayer && act.To.IsPlayer {
+			for j := range states {
+				if states[j].CarrierID == act.From.PlayerID && !states[j].IsShot {
+					states[j].CarrierID = act.To.PlayerID
+					break
+				}
+			}
+		} else if model.IsShot(act.Type) && act.From.IsPlayer {
+			for j := range states {
+				if states[j].CarrierID == act.From.PlayerID && !states[j].IsShot {
+					states[j].IsShot = true
+					states[j].ShotPos = act.To.Position
+					states[j].CarrierID = ""
+					break
+				}
+			}
+		}
+	}
+	return states
+}
+
+// ComputeFinalBallCarriers returns ball carrier IDs after all steps are completed.
+func ComputeFinalBallCarriers(seq *model.Sequence) []string {
+	states := ComputeFinalBallState(seq)
+	var carriers []string
+	for _, s := range states {
+		if !s.IsShot && s.CarrierID != "" {
+			carriers = append(carriers, s.CarrierID)
+		}
+	}
+	return carriers
+}
+
 // computeStepBalls computes ball positions during step animation, interpolating during passes.
 func computeStepBalls(seq *model.Sequence, maxStep int, t float64, positions map[string]model.Position) []AnimatedBall {
 	// Start with initial carriers.
-	type ballState struct {
-		carrierID string
-		pos       model.Position
-	}
 	balls := make([]ballState, 0, len(seq.BallCarrier))
 	for _, id := range seq.BallCarrier {
 		if pos, ok := positions[id]; ok {
@@ -285,32 +340,19 @@ func computeStepBalls(seq *model.Sequence, maxStep int, t float64, positions map
 		}
 	}
 
-	// Apply passes step by step.
+	// Apply passes and shots step by step.
 	for i := range seq.Actions {
 		act := &seq.Actions[i]
-		if act.Type != model.ActionPass || !act.From.IsPlayer || !act.To.IsPlayer {
-			continue
-		}
 		progress := stepProgress(act.EffectiveStep(), maxStep, t)
 		if progress <= 0 {
 			continue
 		}
-		fromID := act.From.PlayerID
-		toID := act.To.PlayerID
-		fromPos := positions[fromID]
-		toPos := positions[toID]
-		for j := range balls {
-			if balls[j].carrierID == fromID {
-				if progress >= 1.0 {
-					// Pass completed — ball at receiver.
-					balls[j].carrierID = toID
-					balls[j].pos = toPos
-				} else {
-					// Pass in flight — interpolate.
-					balls[j].pos = InterpolatePosition(fromPos, toPos, progress)
-				}
-				break
-			}
+
+		switch {
+		case act.Type == model.ActionPass && act.From.IsPlayer && act.To.IsPlayer:
+			applyPassToBalls(balls, act, progress, positions)
+		case model.IsShot(act.Type) && act.From.IsPlayer:
+			applyShotToBalls(balls, act, progress, positions)
 		}
 	}
 
@@ -319,6 +361,60 @@ func computeStepBalls(seq *model.Sequence, maxStep int, t float64, positions map
 		result[i] = AnimatedBall{CarrierID: b.carrierID, Pos: b.pos, Opacity: 1.0}
 	}
 	return result
+}
+
+type ballState struct {
+	carrierID string
+	pos       model.Position
+}
+
+func applyPassToBalls(balls []ballState, act *model.Action, progress float64, positions map[string]model.Position) {
+	fromPos := positions[act.From.PlayerID]
+	toPos := positions[act.To.PlayerID]
+	for j := range balls {
+		if balls[j].carrierID == act.From.PlayerID {
+			if progress >= 1.0 {
+				balls[j].carrierID = act.To.PlayerID
+				balls[j].pos = toPos
+			} else {
+				balls[j].pos = InterpolatePosition(fromPos, toPos, progress)
+			}
+			break
+		}
+	}
+}
+
+func applyShotToBalls(balls []ballState, act *model.Action, progress float64, positions map[string]model.Position) {
+	fromPos := positions[act.From.PlayerID]
+	for j := range balls {
+		if balls[j].carrierID == act.From.PlayerID {
+			balls[j].pos = InterpolatePosition(fromPos, act.To.Position, progress)
+			if progress >= 1.0 {
+				balls[j].carrierID = ""
+			}
+			break
+		}
+	}
+}
+
+// avoidOverlapPositions adjusts a position so it doesn't overlap with other players.
+func avoidOverlapPositions(pos model.Position, selfID string, positions map[string]model.Position) model.Position {
+	for id, p := range positions {
+		if id == selfID {
+			continue
+		}
+		dx := pos[0] - p[0]
+		dy := pos[1] - p[1]
+		dist := math.Sqrt(dx*dx + dy*dy)
+		if dist < court.MinPlayerSpacing && dist > 0.001 {
+			scale := court.MinPlayerSpacing / dist
+			pos[0] = p[0] + dx*scale
+			pos[1] = p[1] + dy*scale
+		} else if dist <= 0.001 {
+			pos[0] += court.MinPlayerSpacing
+		}
+	}
+	return pos
 }
 
 // resolveActionDest returns the destination position for an action,

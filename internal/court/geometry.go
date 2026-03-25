@@ -13,6 +13,10 @@ const ApronMeters = 2.0
 // MagneticSnapDist is the base distance in dp for magnetic snapping (players, basket, waypoints).
 const MagneticSnapDist = 30
 
+// MinPlayerSpacing is the minimum distance between two players in relative coordinates.
+// Prevents players from overlapping visually (e.g., during screen actions).
+const MinPlayerSpacing = 0.04
+
 // Point is a 2D coordinate in pixel space.
 type Point struct {
 	X, Y float32
@@ -125,6 +129,29 @@ func BasketRelativePosition(geom *CourtGeometry, courtType model.CourtType) mode
 		return model.Position{0.5, 0.0}
 	}
 	return model.Position{0.5, geom.BasketOffset / courtH}
+}
+
+// AvoidOverlap adjusts a position so it doesn't overlap with any other player.
+// If pos is within MinPlayerSpacing of another player, it's pushed away to sit adjacent.
+func AvoidOverlap(pos model.Position, playerID string, players []model.Player) model.Position {
+	for _, p := range players {
+		if p.ID == playerID {
+			continue
+		}
+		dx := pos[0] - p.Position[0]
+		dy := pos[1] - p.Position[1]
+		dist := math.Sqrt(dx*dx + dy*dy)
+		if dist < MinPlayerSpacing && dist > 0.001 {
+			// Push away along the vector from other player to this position.
+			scale := MinPlayerSpacing / dist
+			pos[0] = p.Position[0] + dx*scale
+			pos[1] = p.Position[1] + dy*scale
+		} else if dist <= 0.001 {
+			// Same position — offset to the right.
+			pos[0] += MinPlayerSpacing
+		}
+	}
+	return pos
 }
 
 // ShoulderWidthMeters is the average human shoulder width (0.45m).

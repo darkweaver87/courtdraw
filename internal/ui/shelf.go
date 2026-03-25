@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"slices"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -10,6 +11,7 @@ import (
 	fynetheme "fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/darkweaver87/courtdraw/internal/anim"
 	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/model"
 	"github.com/darkweaver87/courtdraw/internal/ui/editor"
@@ -146,7 +148,11 @@ func (ms *EditorShelf) build() {
 	for i, role := range playerRoles {
 		r := role
 		btn := ms.addBtn(playerIcons[i], playerKeys[i], func() {
-			ms.state.SetPlayerTool(r)
+			if ms.state.ActiveTool == editor.ToolPlayer && ms.state.ToolRole == r && !ms.state.ToolQueue {
+				ms.state.SetTool(editor.ToolSelect)
+			} else {
+				ms.state.SetPlayerTool(r)
+			}
 			ms.syncHighlights()
 		})
 		playerGrid.Add(btn)
@@ -178,6 +184,12 @@ func (ms *EditorShelf) build() {
 	for i, at := range actionTypes {
 		actionType := at
 		btn := ms.addBtn(actionIcons[i], actionKeys[i], func() {
+			// Toggle off if same tool re-clicked.
+			if ms.state.ActiveTool == editor.ToolAction && ms.state.ToolActionType == actionType {
+				ms.state.SetTool(editor.ToolSelect)
+				ms.syncHighlights()
+				return
+			}
 			ms.state.SetActionTool(actionType)
 			// If a player is already selected, use it as action source immediately.
 			if sel := ms.state.SelectedElement; sel != nil && sel.Kind == editor.SelectPlayer {
@@ -185,7 +197,9 @@ func (ms *EditorShelf) build() {
 					seq := &ms.exercise.Sequences[sel.SeqIndex]
 					if sel.Index < len(seq.Players) {
 						id := seq.Players[sel.Index].ID
-						if model.RequiresBall(actionType) && !seq.BallCarrier.HasBall(id) {
+						finalCarriers := anim.ComputeFinalBallCarriers(seq)
+						hasBall := slices.Contains(finalCarriers, id)
+						if model.RequiresBall(actionType) && !hasBall {
 							ms.state.SetStatus(i18n.T(i18n.KeyStatusRequiresBall), 1)
 						} else {
 							ms.state.ActionFrom = &id
@@ -366,10 +380,8 @@ func (ms *EditorShelf) selectCategory(cat shelfCategory) {
 	}
 	ms.active = cat
 	ms.expand()
-	if cat == shelfTools {
-		ms.state.SetTool(editor.ToolSelect)
-		ms.syncHighlights()
-	}
+	// Cancel active action creation (clear ActionFrom) when switching tabs.
+	ms.state.ActionFrom = nil
 	ms.refreshShelfContent()
 	ms.updateTabIndicators()
 }
@@ -523,19 +535,25 @@ func (ms *EditorShelf) UpdateElementProps(exercise *model.Exercise, state *edito
 		return
 	}
 
-	// Auto-switch to tools tab and expand shelf when element is selected.
-	if ms.active != shelfTools {
-		ms.active = shelfTools
-		ms.updateTabIndicators()
+	// Auto-switch to tools tab only when selecting an existing element (not creating).
+	isSelecting := ms.state.ActiveTool == editor.ToolSelect || ms.state.ActiveTool == editor.ToolNone
+	if isSelecting {
+		if ms.active != shelfTools {
+			ms.active = shelfTools
+			ms.updateTabIndicators()
+		}
+		ms.expand()
 	}
-	ms.expand()
 
 	seq := &exercise.Sequences[seqIdx]
 
-	// Check if the selection changed — if not, just sync values in place (no layout rebuild).
+	// Check if the selection changed — if not, just sync values and ensure shelf shows props.
 	sameSelection := ms.propsSyncedSel != nil && *ms.propsSyncedSel == *sel
 	if sameSelection {
 		ms.syncPropsValues(seq, sel)
+		if isSelecting {
+			ms.refreshShelfContent()
+		}
 		return
 	}
 

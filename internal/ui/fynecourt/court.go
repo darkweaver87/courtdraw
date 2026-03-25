@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"slices"
 	"sync"
 	"time"
 
@@ -99,6 +100,8 @@ type CourtWidget struct {
 	dragPlayerIdx    int
 	dragAccIdx       int
 	dragActionEndIdx int // action whose To endpoint is being dragged (-1 = none)
+	dragPlayerStep   int // step of the ghost being dragged (0 = base position, -1 = final/current)
+	selectedStep     int // step of the selected ghost (-1 = final, 0 = base, >0 = intermediate)
 	dragActive       bool
 	dragRotating     bool
 
@@ -360,34 +363,36 @@ func (w *CourtWidget) drawSequence(img *image.RGBA, face font.Face, seq *model.S
 		court.DrawAccessory(img, &w.viewport, &seq.Accessories[i], selected)
 	}
 
-	// Actions.
+	// Actions — draw with cumulative positions so chained actions connect properly.
 	maxStep := model.MaxStep(seq)
 	for i := range seq.Actions {
+		step := seq.Actions[i].EffectiveStep()
+		playersAtStep := stepPlayers(seq, maxStep, step)
 		if selElem != nil && selElem.Kind == editor.SelectAction && selElem.Index == i && selElem.SeqIndex == w.seqIndex {
-			court.DrawActionHighlight(img, &w.viewport, &seq.Actions[i], seq.Players)
+			court.DrawActionHighlight(img, &w.viewport, &seq.Actions[i], playersAtStep)
 		}
-		court.DrawAction(img, &w.viewport, &seq.Actions[i], seq.Players)
+		court.DrawAction(img, &w.viewport, &seq.Actions[i], playersAtStep)
 	}
 	// Step badges (only when multiple steps exist).
 	if maxStep > 1 {
 		for i := range seq.Actions {
-			court.DrawStepBadge(img, &w.viewport, &seq.Actions[i], seq.Players, face)
+			step := seq.Actions[i].EffectiveStep()
+			court.DrawStepBadge(img, &w.viewport, &seq.Actions[i], stepPlayers(seq, maxStep, step), face)
 		}
 	}
 
-	// Players.
-	for i := range seq.Players {
-		selected := selElem != nil && selElem.Kind == editor.SelectPlayer && selElem.Index == i && selElem.SeqIndex == w.seqIndex
-		hasBall := seq.BallCarrier.HasBall(seq.Players[i].ID)
-		label := resolvePlayerLabel(&seq.Players[i])
-		court.DrawPlayerWithLabel(img, &w.viewport, &seq.Players[i], label, face, selected, hasBall)
-	}
+	// Ghost players at initial and intermediate positions.
+	finalPlayers := stepPlayers(seq, maxStep, maxStep+1)
+	w.drawGhostPlayers(img, seq, maxStep, finalPlayers, selElem)
+
+	// Players and balls at final cumulative positions.
+	w.drawPlayersAndBalls(img, face, seq, finalPlayers, selElem)
 
 	// Callouts.
-	for i := range seq.Players {
-		if seq.Players[i].Callout != "" {
-			calloutText := i18n.T("callout." + string(seq.Players[i].Callout))
-			court.DrawCallout(img, &w.viewport, &seq.Players[i], calloutText, face, 0xff)
+	for i := range finalPlayers {
+		if finalPlayers[i].Callout != "" {
+			calloutText := i18n.T("callout." + string(finalPlayers[i].Callout))
+			court.DrawCallout(img, &w.viewport, &finalPlayers[i], calloutText, face, 0xff)
 		}
 	}
 
@@ -395,6 +400,64 @@ func (w *CourtWidget) drawSequence(img *image.RGBA, face font.Face, seq *model.S
 	w.drawHoverHighlights(img, seq, sel, selElem, hovElem)
 	w.drawActionPreview(img, seq, sel)
 	w.drawSelectionOverlays(img, seq, selElem)
+}
+
+// drawGhostPlayers draws ghost players at initial and intermediate step positions.
+func (w *CourtWidget) drawGhostPlayers(img *image.RGBA, seq *model.Sequence, maxStep int, finalPlayers []model.Player, selElem *editor.Selection) {
+	// Initial position ghosts.
+	for i := range seq.Players {
+		if seq.Players[i].Position != finalPlayers[i].Position {
+			isGhostSel := selElem != nil && selElem.Kind == editor.SelectPlayer && selElem.Index == i && selElem.SeqIndex == w.seqIndex && w.selectedStep == 0
+			if isGhostSel {
+				court.DrawPlayerWithLabel(img, &w.viewport, &seq.Players[i], "", nil, true, false)
+			} else {
+				court.DrawPlayerWithOpacity(img, &w.viewport, &seq.Players[i], "", nil, 0.2, false)
+			}
+		}
+	}
+	// Intermediate step ghosts.
+	if maxStep > 1 {
+		for step := 2; step <= maxStep; step++ {
+			ghostPlayers := stepPlayers(seq, maxStep, step)
+			for i := range ghostPlayers {
+				if ghostPlayers[i].Position != seq.Players[i].Position &&
+					ghostPlayers[i].Position != finalPlayers[i].Position {
+					isGhostSel := selElem != nil && selElem.Kind == editor.SelectPlayer && selElem.Index == i && selElem.SeqIndex == w.seqIndex && w.selectedStep == step-1
+					if isGhostSel {
+						court.DrawPlayerWithLabel(img, &w.viewport, &ghostPlayers[i], "", nil, true, false)
+					} else {
+						court.DrawPlayerWithOpacity(img, &w.viewport, &ghostPlayers[i], "", nil, 0.2, false)
+					}
+				}
+			}
+		}
+	}
+}
+
+// drawPlayersAndBalls renders players at final positions with balls (accounting for passes and shots).
+func (w *CourtWidget) drawPlayersAndBalls(img *image.RGBA, face font.Face, seq *model.Sequence, finalPlayers []model.Player, selElem *editor.Selection) {
+	ballStates := anim.ComputeFinalBallState(seq)
+	finalCarriers := make([]string, 0)
+	for _, bs := range ballStates {
+		if !bs.IsShot && bs.CarrierID != "" {
+			finalCarriers = append(finalCarriers, bs.CarrierID)
+		}
+	}
+	for i := range finalPlayers {
+		isSelected := selElem != nil && selElem.Kind == editor.SelectPlayer && selElem.Index == i && selElem.SeqIndex == w.seqIndex
+		// Selection ring on final player only if selectedStep is final (-1).
+		selected := isSelected && w.selectedStep == -1
+		hasBall := slices.Contains(finalCarriers, finalPlayers[i].ID)
+		label := resolvePlayerLabel(&finalPlayers[i])
+		court.DrawPlayerWithLabel(img, &w.viewport, &finalPlayers[i], label, face, selected, hasBall)
+	}
+	// Ball at basket after shot.
+	for _, bs := range ballStates {
+		if bs.IsShot {
+			ballPx := w.viewport.RelToPixel(bs.ShotPos)
+			court.DrawBallScaled(img, &w.viewport, ballPx)
+		}
+	}
 }
 
 // drawHoverHighlights renders hover feedback for the element under the cursor.
@@ -430,21 +493,26 @@ func (w *CourtWidget) drawActionPreview(img *image.RGBA, seq *model.Sequence, se
 		return
 	}
 
-	// Action-from indicator ring.
-	for i := range seq.Players {
-		if seq.Players[i].ID == *sel.ActionFrom {
-			center := w.viewport.RelToPixel(seq.Players[i].Position)
-			court.DrawCircleOutline(img, center, court.PlayerRadius+6, 2, court.ColorPass)
-			break
-		}
-	}
+	// Use cumulative positions so the preview starts from the player's current step position.
+	maxStep := model.MaxStep(seq)
+	positions := anim.ComputeStepPositions(seq, maxStep, 1.0)
 
-	// Resolve source player position.
+	// Action-from indicator ring at cumulative position.
 	var fromPos court.Point
-	for i := range seq.Players {
-		if seq.Players[i].ID == *sel.ActionFrom {
-			fromPos = w.viewport.RelToPixel(seq.Players[i].Position)
-			break
+	if pos, ok := positions[*sel.ActionFrom]; ok {
+		fromPos = w.viewport.RelToPixel(pos)
+	}
+	court.DrawCircleOutline(img, fromPos, court.PlayerRadius+6, 2, court.ColorPass)
+
+	// For passes, show subtle highlight on all valid target players.
+	if sel.ToolActionType == model.ActionPass {
+		for i := range seq.Players {
+			if seq.Players[i].ID == *sel.ActionFrom {
+				continue
+			}
+			targetPos := positions[seq.Players[i].ID]
+			center := w.viewport.RelToPixel(targetPos)
+			court.DrawHoverHighlight(img, &w.viewport, center)
 		}
 	}
 
@@ -538,13 +606,24 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 		court.DrawAccessoryWithOpacity(img, vp, &frame.Accessories[i].Accessory, frame.Accessories[i].Opacity)
 	}
 
-	// Actions with progress.
-	players := make([]model.Player, len(frame.Players))
-	for i := range frame.Players {
-		players[i] = frame.Players[i].Player
+	// Actions with progress — use step-aware positions so arrows stay anchored.
+	seq := w.currentSequence()
+	maxStep := 0
+	if seq != nil {
+		maxStep = model.MaxStep(seq)
 	}
 	for i := range frame.Actions {
-		court.DrawActionWithProgress(img, vp, &frame.Actions[i].Action, players, frame.Actions[i].Progress)
+		act := &frame.Actions[i]
+		var actionPlayers []model.Player
+		if seq != nil && maxStep > 0 {
+			actionPlayers = stepPlayers(seq, maxStep, act.EffectiveStep())
+		} else {
+			actionPlayers = make([]model.Player, len(frame.Players))
+			for j := range frame.Players {
+				actionPlayers[j] = frame.Players[j].Player
+			}
+		}
+		court.DrawActionWithProgress(img, vp, &act.Action, actionPlayers, act.Progress)
 	}
 
 	// Players with opacity.
@@ -619,6 +698,26 @@ func accessoryLabel(at model.AccessoryType) string {
 	}
 }
 
+// stepPlayers returns a copy of players with cumulative positions at the START of the given step.
+// This ensures that actions at step N draw from positions after steps 1..N-1 completed.
+func stepPlayers(seq *model.Sequence, maxStep, step int) []model.Player {
+	if maxStep <= 0 {
+		return seq.Players
+	}
+	// Compute positions with all steps before this one fully completed (progress=1)
+	// and this step at progress=0.
+	t := float64(step-1) / float64(maxStep)
+	positions := anim.ComputeStepPositions(seq, maxStep, t)
+	players := make([]model.Player, len(seq.Players))
+	for i := range seq.Players {
+		players[i] = seq.Players[i]
+		if pos, ok := positions[players[i].ID]; ok {
+			players[i].Position = pos
+		}
+	}
+	return players
+}
+
 func resolvePlayerLabel(p *model.Player) string {
 	label := p.Label
 	if label == "" || label == model.RoleLabel(p.Role) {
@@ -686,6 +785,15 @@ func (w *CourtWidget) DragEnd() {
 
 // MouseDown handles desktop press events (more precise than Tapped).
 func (w *CourtWidget) MouseDown(e *desktop.MouseEvent) {
+	if e.Button == desktop.MouseButtonSecondary {
+		// Right-click: cancel action chain (keep current tool).
+		if w.editorState != nil && w.editorState.ActionFrom != nil {
+			w.editorState.ActionFrom = nil
+			w.Refresh()
+			w.notifyChanged()
+		}
+		return
+	}
 	if e.Button != desktop.MouseButtonPrimary {
 		return
 	}
@@ -909,8 +1017,21 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 	w.dragPanning = false
 
 	// Universal hit test: select and drag elements regardless of active tool.
-	// Skip when action tool is waiting for a target click (ActionFrom already set).
-	if state.ActiveTool != editor.ToolAction || state.ActionFrom == nil {
+	if state.ActiveTool == editor.ToolAction && state.ActionFrom != nil {
+		// In action targeting mode: clicking the source player cancels and selects it.
+		finalSeq := w.seqWithFinalPositions(seq)
+		if pi := court.HitTestPlayer(&w.viewport, finalSeq, pos); pi >= 0 && seq.Players[pi].ID == *state.ActionFrom {
+			state.SetTool(editor.ToolSelect)
+			state.Select(editor.SelectPlayer, pi, w.seqIndex)
+			w.dragPlayerIdx = pi
+			w.dragActive = true
+			state.IsDragging = true
+			w.Refresh()
+			w.notifyChanged()
+			return
+		}
+		// Other elements: fall through to ToolAction handler below.
+	} else {
 		if w.trySelectElement(seq, state, pos) {
 			return
 		}
@@ -959,12 +1080,16 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 		w.notifyChanged()
 
 	case editor.ToolAction:
+		// Use cumulative positions for all hit tests in action mode.
+		finalSeq := w.seqWithFinalPositions(seq)
+		finalCarriers := anim.ComputeFinalBallCarriers(seq)
+
 		if state.ActionFrom == nil {
 			sel := state.SelectedElement
 			if sel != nil && sel.Kind == editor.SelectPlayer &&
 				sel.SeqIndex == w.seqIndex && sel.Index < len(seq.Players) {
 				id := seq.Players[sel.Index].ID
-				if model.RequiresBall(state.ToolActionType) && !seq.BallCarrier.HasBall(id) {
+				if model.RequiresBall(state.ToolActionType) && !slices.Contains(finalCarriers, id) {
 					state.SetStatus(i18n.T(i18n.KeyStatusRequiresBall), 1)
 					w.notifyChanged()
 					return
@@ -975,15 +1100,19 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 		}
 
 		if state.ActionFrom == nil { //nolint:nestif
-			if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
+			if pi := court.HitTestPlayer(&w.viewport, finalSeq, pos); pi >= 0 {
 				id := seq.Players[pi].ID
-				if model.RequiresBall(state.ToolActionType) && !seq.BallCarrier.HasBall(id) {
+				if model.RequiresBall(state.ToolActionType) && !slices.Contains(finalCarriers, id) {
 					state.SetStatus(i18n.T(i18n.KeyStatusRequiresBall), 1)
 					w.notifyChanged()
 					return
 				}
 				state.ActionFrom = &id
 				w.Refresh()
+				w.notifyChanged()
+			} else {
+				// Click on empty space — cancel action tool.
+				state.SetTool(editor.ToolSelect)
 				w.notifyChanged()
 			}
 		} else {
@@ -993,16 +1122,18 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 				// Shots snap to the basket.
 				toRef.Position = court.BasketRelativePosition(w.geom, w.exercise.CourtType)
 			case state.ToolActionType == model.ActionPass:
-				if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
+				if pi := court.HitTestPlayer(&w.viewport, finalSeq, pos); pi >= 0 {
 					toRef.IsPlayer = true
 					toRef.PlayerID = seq.Players[pi].ID
 				} else {
-					state.SetStatus(i18n.T(i18n.KeyStatusPassRequiresPlayer), 1)
+					// Click on empty space — cancel pass.
+					state.ActionFrom = nil
+					state.SetTool(editor.ToolSelect)
 					w.notifyChanged()
 					return
 				}
 			default:
-				if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
+				if pi := court.HitTestPlayer(&w.viewport, finalSeq, pos); pi >= 0 {
 					toRef.IsPlayer = true
 					toRef.PlayerID = seq.Players[pi].ID
 				} else {
@@ -1022,7 +1153,14 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 					w.exercise.Sequences[nextIdx].BallCarrier.AddBall(toRef.PlayerID)
 				}
 			}
-			state.ActionFrom = nil
+			// Chain actions from the same player. Pass → receiver becomes source.
+			// Shots end the chain (can't chain after a shot).
+			switch {
+			case model.IsShot(state.ToolActionType):
+				state.ActionFrom = nil
+			case state.ToolActionType == model.ActionPass && toRef.IsPlayer:
+				state.ActionFrom = &toRef.PlayerID
+			}
 			state.MarkModified()
 			state.SetStatus(i18n.Tf(i18n.KeyStatusActionAdded, actionLabel(action.Type)), 0)
 			w.Refresh()
@@ -1067,6 +1205,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 		}
 		if actIdx := court.HitTestAction(&w.viewport, seq, pos); actIdx >= 0 {
 			seq.Actions = append(seq.Actions[:actIdx], seq.Actions[actIdx+1:]...)
+			model.ReorderSteps(seq)
 			state.Deselect()
 			state.MarkModified()
 			w.Refresh()
@@ -1111,11 +1250,12 @@ func (w *CourtWidget) handleDrag(pos court.Point) {
 		if sel == nil {
 			return
 		}
+		finalSeq := w.seqWithFinalPositions(seq)
 		var center court.Point
 		switch sel.Kind {
 		case editor.SelectPlayer:
-			if sel.Index < len(seq.Players) {
-				center = w.viewport.RelToPixel(seq.Players[sel.Index].Position)
+			if sel.Index < len(finalSeq.Players) {
+				center = w.viewport.RelToPixel(finalSeq.Players[sel.Index].Position)
 			}
 		case editor.SelectAccessory:
 			if sel.Index < len(seq.Accessories) {
@@ -1149,27 +1289,7 @@ func (w *CourtWidget) handleDrag(pos court.Point) {
 	relPos := court.ClampPosition(&w.viewport,w.viewport.PixelToRel(pos))
 
 	if w.dragPlayerIdx >= 0 && w.dragPlayerIdx < len(seq.Players) {
-		oldPos := seq.Players[w.dragPlayerIdx].Position
-		dx := relPos[0] - oldPos[0]
-		dy := relPos[1] - oldPos[1]
-		seq.Players[w.dragPlayerIdx].Position = relPos
-		// Move position-based action endpoints attached to this player.
-		// Shots stay fixed (aimantées au panier).
-		pid := seq.Players[w.dragPlayerIdx].ID
-		for i := range seq.Actions {
-			a := &seq.Actions[i]
-			if a.From.IsPlayer && a.From.PlayerID == pid && !a.To.IsPlayer {
-				switch a.Type {
-				case model.ActionShotLayup, model.ActionShotPushup, model.ActionShotJump:
-					// Shot destination stays at the basket.
-				default:
-					a.To.Position[0] += dx
-					a.To.Position[1] += dy
-				}
-			}
-		}
-		state.MarkModified()
-		w.Refresh()
+		w.dragPlayer(seq, relPos, state)
 	}
 	if w.dragAccIdx >= 0 && w.dragAccIdx < len(seq.Accessories) {
 		seq.Accessories[w.dragAccIdx].Position = relPos
@@ -1181,25 +1301,106 @@ func (w *CourtWidget) handleDrag(pos court.Point) {
 	}
 }
 
+// hitTestGhostPlayer checks if pos hits a ghost player (initial or intermediate step position).
+// Returns the player index and step number (0 = initial position).
+func (w *CourtWidget) hitTestGhostPlayer(seq *model.Sequence, pos court.Point) (int, int) {
+	maxStep := model.MaxStep(seq)
+	if maxStep <= 0 {
+		return -1, 0
+	}
+	finalPlayers := stepPlayers(seq, maxStep, maxStep+1)
+
+	// Check initial position ghosts.
+	for i := range seq.Players {
+		if seq.Players[i].Position == finalPlayers[i].Position {
+			continue // no ghost at this position
+		}
+		center := w.viewport.RelToPixel(seq.Players[i].Position)
+		dx := pos.X - center.X
+		dy := pos.Y - center.Y
+		if math.Sqrt(float64(dx*dx+dy*dy)) <= w.viewport.Sd(court.PlayerRadius+4) {
+			return i, 0
+		}
+	}
+
+	// Check intermediate step ghosts.
+	for step := 2; step <= maxStep; step++ {
+		ghostPlayers := stepPlayers(seq, maxStep, step)
+		for i := range ghostPlayers {
+			if ghostPlayers[i].Position == seq.Players[i].Position ||
+				ghostPlayers[i].Position == finalPlayers[i].Position {
+				continue
+			}
+			center := w.viewport.RelToPixel(ghostPlayers[i].Position)
+			dx := pos.X - center.X
+			dy := pos.Y - center.Y
+			if math.Sqrt(float64(dx*dx+dy*dy)) <= w.viewport.Sd(court.PlayerRadius+4) {
+				return i, step - 1 // step-1 = the movement action step that brought player here
+			}
+		}
+	}
+	return -1, 0
+}
+
+// seqWithFinalPositions returns a shallow copy of the sequence with players at their
+// cumulative step positions (for hit testing against visually displayed positions).
+func (w *CourtWidget) seqWithFinalPositions(seq *model.Sequence) *model.Sequence {
+	maxStep := model.MaxStep(seq)
+	if maxStep <= 0 {
+		return seq
+	}
+	final := *seq
+	final.Players = make([]model.Player, len(seq.Players))
+	copy(final.Players, seq.Players)
+	positions := anim.ComputeStepPositions(seq, maxStep, 1.0)
+	for i := range final.Players {
+		if pos, ok := positions[final.Players[i].ID]; ok {
+			final.Players[i].Position = pos
+		}
+	}
+	return &final
+}
+
 // trySelectElement checks if the press hits a player, accessory, or action and starts drag.
+// Switches to ToolSelect so the shelf opens with props.
 func (w *CourtWidget) trySelectElement(seq *model.Sequence, state *editor.EditorState, pos court.Point) bool {
-	if w.hitTestRotationHandle(seq, state, pos) {
+	// Use cumulative positions for hit testing (players are drawn at final positions).
+	finalSeq := w.seqWithFinalPositions(seq)
+	if w.hitTestRotationHandle(finalSeq, state, pos) {
 		w.dragRotating = true
 		w.dragActive = true
 		state.IsRotating = true
 		w.Refresh()
 		return true
 	}
-	if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
+	// Hit test final player position first.
+	if pi := court.HitTestPlayer(&w.viewport, finalSeq, pos); pi >= 0 {
+		state.SetTool(editor.ToolSelect)
 		state.Select(editor.SelectPlayer, pi, w.seqIndex)
 		w.dragPlayerIdx = pi
+		w.dragPlayerStep = -1
+		w.selectedStep = -1
 		w.dragActive = true
 		state.IsDragging = true
 		w.Refresh()
 		w.notifyChanged()
 		return true
 	}
-	if ai := court.HitTestAccessory(&w.viewport, seq, pos); ai >= 0 {
+	// Hit test ghost positions (initial + intermediate steps).
+	if pi, step := w.hitTestGhostPlayer(seq, pos); pi >= 0 {
+		state.SetTool(editor.ToolSelect)
+		state.Select(editor.SelectPlayer, pi, w.seqIndex)
+		w.dragPlayerIdx = pi
+		w.dragPlayerStep = step
+		w.selectedStep = step
+		w.dragActive = true
+		state.IsDragging = true
+		w.Refresh()
+		w.notifyChanged()
+		return true
+	}
+	if ai := court.HitTestAccessory(&w.viewport, finalSeq, pos); ai >= 0 {
+		state.SetTool(editor.ToolSelect)
 		state.Select(editor.SelectAccessory, ai, w.seqIndex)
 		w.dragAccIdx = ai
 		w.dragActive = true
@@ -1208,7 +1409,8 @@ func (w *CourtWidget) trySelectElement(seq *model.Sequence, state *editor.Editor
 		w.notifyChanged()
 		return true
 	}
-	if actIdx := court.HitTestAction(&w.viewport, seq, pos); actIdx >= 0 {
+	if actIdx := court.HitTestAction(&w.viewport, finalSeq, pos); actIdx >= 0 {
+		state.SetTool(editor.ToolSelect)
 		state.Select(editor.SelectAction, actIdx, w.seqIndex)
 		w.dragActionEndIdx = actIdx
 		w.dragActive = true
@@ -1218,6 +1420,63 @@ func (w *CourtWidget) trySelectElement(seq *model.Sequence, state *editor.Editor
 		return true
 	}
 	return false
+}
+
+func (w *CourtWidget) dragPlayer(seq *model.Sequence, relPos model.Position, state *editor.EditorState) {
+	pid := seq.Players[w.dragPlayerIdx].ID
+	relPos = court.AvoidOverlap(relPos, pid, seq.Players)
+
+	switch {
+	case w.dragPlayerStep == 0:
+		w.dragPlayerBase(seq, pid, relPos)
+	case w.dragPlayerStep > 0:
+		w.dragPlayerAtStep(seq, pid, relPos, w.dragPlayerStep)
+	default:
+		w.dragPlayerFinal(seq, pid, relPos)
+	}
+	state.MarkModified()
+	w.Refresh()
+}
+
+func (w *CourtWidget) dragPlayerBase(seq *model.Sequence, pid string, relPos model.Position) {
+	oldPos := seq.Players[w.dragPlayerIdx].Position
+	dx := relPos[0] - oldPos[0]
+	dy := relPos[1] - oldPos[1]
+	seq.Players[w.dragPlayerIdx].Position = relPos
+	for i := range seq.Actions {
+		a := &seq.Actions[i]
+		if a.From.IsPlayer && a.From.PlayerID == pid && !a.To.IsPlayer &&
+			!model.IsShot(a.Type) && !model.IsMovementAction(a.Type) {
+			a.To.Position[0] += dx
+			a.To.Position[1] += dy
+		}
+	}
+}
+
+func (w *CourtWidget) dragPlayerAtStep(seq *model.Sequence, pid string, relPos model.Position, step int) {
+	for i := range seq.Actions {
+		a := &seq.Actions[i]
+		if a.From.IsPlayer && a.From.PlayerID == pid && model.IsMovementAction(a.Type) &&
+			!a.To.IsPlayer && a.EffectiveStep() == step {
+			a.To.Position = relPos
+			break
+		}
+	}
+}
+
+func (w *CourtWidget) dragPlayerFinal(seq *model.Sequence, pid string, relPos model.Position) {
+	lastMoveIdx := -1
+	for i := range seq.Actions {
+		a := &seq.Actions[i]
+		if a.From.IsPlayer && a.From.PlayerID == pid && model.IsMovementAction(a.Type) && !a.To.IsPlayer {
+			lastMoveIdx = i
+		}
+	}
+	if lastMoveIdx >= 0 {
+		seq.Actions[lastMoveIdx].To.Position = relPos
+	} else {
+		w.dragPlayerBase(seq, pid, relPos)
+	}
 }
 
 func (w *CourtWidget) dragActionEndpoint(seq *model.Sequence, pos court.Point, relPos model.Position, state *editor.EditorState) {
@@ -1307,6 +1566,7 @@ func (w *CourtWidget) DeleteSelected() {
 		if sel.Index < len(seq.Actions) {
 			label := actionLabel(seq.Actions[sel.Index].Type)
 			seq.Actions = append(seq.Actions[:sel.Index], seq.Actions[sel.Index+1:]...)
+			model.ReorderSteps(seq)
 			statusMsg = i18n.Tf(i18n.KeyStatusActionDeleted, label)
 		}
 	default:
@@ -1357,6 +1617,7 @@ func removeActionsForPlayer(seq *model.Sequence, playerID string) {
 		filtered = append(filtered, a)
 	}
 	seq.Actions = filtered
+	model.ReorderSteps(seq)
 }
 
 // --- Renderer ---

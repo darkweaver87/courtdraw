@@ -69,7 +69,7 @@ func IsShot(at ActionType) bool {
 // IsMovementAction returns true if the action type physically moves the source player.
 func IsMovementAction(at ActionType) bool {
 	switch at {
-	case ActionDribble, ActionSprint, ActionCut, ActionReverse, ActionCloseOut:
+	case ActionDribble, ActionSprint, ActionCut, ActionReverse, ActionCloseOut, ActionScreen:
 		return true
 	default:
 		return false

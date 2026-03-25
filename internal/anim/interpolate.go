@@ -99,7 +99,7 @@ func InterpolateFrame(fromSeq, toSeq *model.Sequence, t float64) AnimatedFrame {
 	frame := AnimatedFrame{}
 
 	// Compute final positions after all steps in fromSeq (for step-aware movement).
-	finalPositions := computeStepPositions(fromSeq, model.MaxStep(fromSeq), 1.0)
+	finalPositions := ComputeStepPositions(fromSeq, model.MaxStep(fromSeq), 1.0)
 
 	// Build lookup maps by player ID, using final step positions.
 	fromMap := make(map[string]*model.Player, len(fromSeq.Players))
