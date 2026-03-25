@@ -509,7 +509,7 @@ func (w *CourtWidget) drawActionPreview(img *image.RGBA, seq *model.Sequence, se
 	if pos, ok := positions[*sel.ActionFrom]; ok {
 		fromPos = w.viewport.RelToPixel(pos)
 	}
-	court.DrawCircleOutline(img, fromPos, court.PlayerRadius+6, 2, court.ColorPass)
+	court.DrawCircleOutline(img, fromPos, court.PlayerRadius+6, 2, court.ActionLineColor)
 
 	// For passes, show subtle highlight on all valid target players.
 	if sel.ToolActionType == model.ActionPass {
@@ -688,25 +688,19 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 }
 
 func actionLabel(at model.ActionType) string {
-	switch at {
+	switch model.NormalizeActionType(at) {
 	case model.ActionPass:
 		return i18n.T(i18n.KeyToolActionPass)
 	case model.ActionDribble:
 		return i18n.T(i18n.KeyToolActionDribble)
-	case model.ActionSprint:
-		return i18n.T(i18n.KeyToolActionSprint)
-	case model.ActionShotLayup, model.ActionShotPushup, model.ActionShotJump:
-		return i18n.T(i18n.KeyToolActionShot)
-	case model.ActionScreen:
-		return i18n.T(i18n.KeyToolActionScreen)
 	case model.ActionCut:
 		return i18n.T(i18n.KeyToolActionCut)
-	case model.ActionCloseOut:
-		return i18n.T(i18n.KeyToolActionCloseOut)
-	case model.ActionContest:
-		return i18n.T(i18n.KeyToolActionContest)
-	case model.ActionReverse:
-		return i18n.T(i18n.KeyToolActionReverse)
+	case model.ActionScreen:
+		return i18n.T(i18n.KeyToolActionScreen)
+	case model.ActionShot:
+		return i18n.T(i18n.KeyToolActionShot)
+	case model.ActionHandoff:
+		return i18n.T(i18n.KeyToolActionHandoff)
 	default:
 		return string(at)
 	}

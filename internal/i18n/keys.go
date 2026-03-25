@@ -213,6 +213,7 @@ const (
 	KeyToolAccessoryLadder = "tool.accessory.ladder"
 	KeyToolActionCloseOut = "tool.action.close_out"
 	KeyToolActionContest = "tool.action.contest"
+	KeyToolActionHandoff = "tool.action.handoff"
 	KeyToolActionCut = "tool.action.cut"
 	KeyToolActionDribble = "tool.action.dribble"
 	KeyToolActionPass = "tool.action.pass"

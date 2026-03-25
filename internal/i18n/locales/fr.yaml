@@ -52,6 +52,7 @@ tool.action.cut: "Coupe"
 tool.action.close_out: "Fermeture"
 tool.action.contest: "Contest"
 tool.action.reverse: "Renversement"
+tool.action.handoff: "Remise"
 
 tool.accessory.cone: "Plot"
 tool.accessory.ladder: "Échelle"

@@ -52,6 +52,7 @@ tool.action.cut: "Cut"
 tool.action.close_out: "Close-out"
 tool.action.contest: "Contest"
 tool.action.reverse: "Reverse"
+tool.action.handoff: "Handoff"
 
 tool.accessory.cone: "Cone"
 tool.accessory.ladder: "Ladder"

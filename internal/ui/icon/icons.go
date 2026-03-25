@@ -79,3 +79,16 @@ var (
 	ChevronUp    = LoadPngResource("chevron-up")
 	ChevronRight = LoadPngResource("chevron-right")
 )
+
+// ActionHandoff returns the handoff icon (fallback to theme icon if PNG not available).
+func ActionHandoff() fyne.Resource {
+	if r := LoadPngResource("handoff"); r != nil {
+		return r
+	}
+	return theme.ContentCopyIcon()
+}
+
+// ChevronLeft returns the left chevron icon.
+func ChevronLeft() fyne.Resource {
+	return theme.NavigateBackIcon()
+}

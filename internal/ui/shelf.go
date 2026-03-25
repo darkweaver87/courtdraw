@@ -101,6 +101,9 @@ type EditorShelf struct {
 	propsUpdating   bool             // prevents recursive OnChanged → refreshEditor loop
 	propsSyncedSel  *editor.Selection // tracks which element is currently displayed
 
+	// Button-to-i18n key mapping for tooltip refresh.
+	btnKeys []string
+
 	// Layout elements.
 	shelfStack    *fyne.Container // swaps shelf content
 	shelfOuter    *fyne.Container // collapsible area (shelf + chevron)
@@ -172,21 +175,22 @@ func (ms *EditorShelf) build() {
 	playerGrid.Add(queueBtn)
 	ms.playerContent = playerGrid
 
-	// --- Actions: 9 buttons, 3 columns ---
+	// --- Actions: 6 buttons (standard basketball conventions) ---
 	actionTypes := []model.ActionType{
-		model.ActionPass, model.ActionDribble, model.ActionSprint,
-		model.ActionShotLayup, model.ActionScreen, model.ActionCut,
-		model.ActionCloseOut, model.ActionContest, model.ActionReverse,
+		model.ActionDribble, model.ActionPass, model.ActionCut,
+		model.ActionScreen, model.ActionShot, model.ActionHandoff,
 	}
 	actionKeys := []string{
-		i18n.KeyToolActionPass, i18n.KeyToolActionDribble, i18n.KeyToolActionSprint,
-		i18n.KeyToolActionShot, i18n.KeyToolActionScreen, i18n.KeyToolActionCut,
-		i18n.KeyToolActionCloseOut, i18n.KeyToolActionContest, i18n.KeyToolActionReverse,
+		i18n.KeyToolActionDribble, i18n.KeyToolActionPass, i18n.KeyToolActionCut,
+		i18n.KeyToolActionScreen, i18n.KeyToolActionShot, i18n.KeyToolActionHandoff,
 	}
 	actionIcons := []fyne.Resource{
-		icon.ActionPass, icon.ActionDribble, icon.ActionSprint,
-		icon.ActionShot, icon.ActionScreen, icon.ActionCut,
-		icon.ActionCloseOut, icon.ActionContest, icon.ActionReverse,
+		icon.GenerateActionIcon("dribble"),
+		icon.GenerateActionIcon("pass"),
+		icon.GenerateActionIcon("cut"),
+		icon.GenerateActionIcon("screen"),
+		icon.GenerateActionIcon("shot"),
+		icon.GenerateActionIcon("handoff"),
 	}
 	actionGrid := container.NewGridWrap(shelfCellSize)
 	for i, at := range actionTypes {
@@ -293,6 +297,7 @@ func (ms *EditorShelf) build() {
 // addBtn creates a TipButton for the shelf and registers it.
 func (ms *EditorShelf) addBtn(res fyne.Resource, key string, onTap func()) *TipButton {
 	btn := NewTipButton(res, i18n.T(key), onTap)
+	ms.btnKeys = append(ms.btnKeys, key)
 	if !isMobile {
 		// On desktop, cap size to keep shelf compact.
 		sz := shelfCellSize
@@ -331,9 +336,8 @@ func (ms *EditorShelf) syncHighlights() {
 		}
 	case editor.ToolAction:
 		actions := []model.ActionType{
-			model.ActionPass, model.ActionDribble, model.ActionSprint,
-			model.ActionShotLayup, model.ActionScreen, model.ActionCut,
-			model.ActionCloseOut, model.ActionContest, model.ActionReverse,
+			model.ActionDribble, model.ActionPass, model.ActionCut,
+			model.ActionScreen, model.ActionShot, model.ActionHandoff,
 		}
 		for i, a := range actions {
 			if ms.state.ToolActionType == a {
@@ -490,6 +494,12 @@ func (ms *EditorShelf) RefreshLanguage() {
 		if ms.tabLabels[i] != nil {
 			ms.tabLabels[i].Text = i18n.T(k)
 			ms.tabLabels[i].Refresh()
+		}
+	}
+	// Refresh button tooltips.
+	for i, btn := range ms.allBtns {
+		if i < len(ms.btnKeys) {
+			btn.SetTooltip(i18n.T(ms.btnKeys[i]))
 		}
 	}
 	ms.propsBallChk.Text = i18n.T(i18n.KeyPropsBall)
@@ -888,25 +898,19 @@ func accessoryI18nSuffix(t model.AccessoryType) string {
 }
 
 func actionDisplayLabel(at model.ActionType) string {
-	switch at {
+	switch model.NormalizeActionType(at) {
 	case model.ActionPass:
 		return i18n.T(i18n.KeyToolActionPass)
 	case model.ActionDribble:
 		return i18n.T(i18n.KeyToolActionDribble)
-	case model.ActionSprint:
-		return i18n.T(i18n.KeyToolActionSprint)
-	case model.ActionShotLayup, model.ActionShotPushup, model.ActionShotJump:
-		return i18n.T(i18n.KeyToolActionShot)
-	case model.ActionScreen:
-		return i18n.T(i18n.KeyToolActionScreen)
 	case model.ActionCut:
 		return i18n.T(i18n.KeyToolActionCut)
-	case model.ActionCloseOut:
-		return i18n.T(i18n.KeyToolActionCloseOut)
-	case model.ActionContest:
-		return i18n.T(i18n.KeyToolActionContest)
-	case model.ActionReverse:
-		return i18n.T(i18n.KeyToolActionReverse)
+	case model.ActionScreen:
+		return i18n.T(i18n.KeyToolActionScreen)
+	case model.ActionShot:
+		return i18n.T(i18n.KeyToolActionShot)
+	case model.ActionHandoff:
+		return i18n.T(i18n.KeyToolActionHandoff)
 	default:
 		return string(at)
 	}

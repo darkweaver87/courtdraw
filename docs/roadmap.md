@@ -252,10 +252,13 @@ Goal: define the order of actions within a single sequence with step-aware playe
 
 ### G — Arrow & Action Style Rework ⚡ P2
 
-115. Color palette rework — design a cohesive color scheme for action types (offensive/defensive/neutral). Current colors are placeholder. Reference HoopsGeek and standard basketball diagramming conventions
-116. Action icon rework — redesign shelf action icons to match the arrow styles (zigzag for dribble, dashed for pass, etc.). Current icons don't reflect the on-court rendering
-117. Arrow style customization — allow coaches to override action colors per exercise or globally in preferences
-118. Screen rendering — dedicated screen symbol (flat bar / T-shape) instead of thick line
+115. ✅ Action types simplified — 6 canonical types (Dribble, Pass, Cut, Screen, Shot, Handoff). Legacy types normalized automatically
+116. ✅ Action icons — generated programmatically with line style (zigzag, dashes, solid, T-bar, target, double bars)
+117. ✅ Screen T-bar — perpendicular bar at screen endpoint (convention standard)
+118. ✅ Single color palette — near-black for all actions (convention standard), differentiation by line style only
+119. Endpoint dots as drag targets — blue dot at arrow endpoint allows dragging to change pass/action target visually
+120. Ball carrier validation — prevent changing pass target if receiver uses ball in subsequent steps
+121. Arrow color customization — allow coaches to override action color per exercise or globally in preferences
 
 Deliverable: coaches build a full pick-and-roll in a single sequence — players move along their action paths step by step, with curved arrows and consistent visuals.
 

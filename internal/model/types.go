@@ -43,33 +43,45 @@ const (
 type ActionType string
 
 const (
-	ActionPass       ActionType = "pass"
-	ActionDribble    ActionType = "dribble"
-	ActionSprint     ActionType = "sprint"
-	ActionShotLayup  ActionType = "shot_layup"
-	ActionShotPushup ActionType = "shot_pushup"
-	ActionShotJump   ActionType = "shot_jumpshot"
-	ActionScreen     ActionType = "screen"
-	ActionCut        ActionType = "cut"
-	ActionCloseOut   ActionType = "close_out"
-	ActionContest    ActionType = "contest"
-	ActionReverse    ActionType = "reverse"
+	ActionPass    ActionType = "pass"
+	ActionDribble ActionType = "dribble"
+	ActionCut     ActionType = "cut"
+	ActionScreen  ActionType = "screen"
+	ActionShot    ActionType = "shot"
+	ActionHandoff ActionType = "handoff"
+
+	// ActionSprint and other legacy types are mapped to canonical types via NormalizeActionType.
+	ActionSprint     ActionType = "sprint"      // → Cut
+	ActionShotLayup  ActionType = "shot_layup"   // → Shot
+	ActionShotPushup ActionType = "shot_pushup"  // → Shot
+	ActionShotJump   ActionType = "shot_jumpshot" // → Shot
+	ActionCloseOut   ActionType = "close_out"    // → Cut
+	ActionContest    ActionType = "contest"      // → Cut
+	ActionReverse    ActionType = "reverse"      // → Cut
 )
+
+// NormalizeActionType maps legacy action types to their canonical equivalents.
+func NormalizeActionType(at ActionType) ActionType {
+	switch at {
+	case ActionSprint, ActionCloseOut, ActionContest, ActionReverse:
+		return ActionCut
+	case ActionShotLayup, ActionShotPushup, ActionShotJump:
+		return ActionShot
+	default:
+		return at
+	}
+}
 
 // IsShot returns true if the action type is a shot.
 func IsShot(at ActionType) bool {
-	switch at {
-	case ActionShotLayup, ActionShotPushup, ActionShotJump:
-		return true
-	default:
-		return false
-	}
+	return NormalizeActionType(at) == ActionShot
 }
 
 // IsMovementAction returns true if the action type physically moves the source player.
 func IsMovementAction(at ActionType) bool {
-	switch at {
-	case ActionDribble, ActionSprint, ActionCut, ActionReverse, ActionCloseOut, ActionScreen:
+	n := NormalizeActionType(at)
+	switch n {
+	case ActionDribble, ActionCut, ActionScreen:
 		return true
 	default:
 		return false
@@ -167,8 +179,9 @@ func RoleColor(role PlayerRole) color.NRGBA {
 
 // RequiresBall returns true if the action type requires the player to have the ball.
 func RequiresBall(at ActionType) bool {
-	switch at {
-	case ActionPass, ActionDribble, ActionShotLayup, ActionShotPushup, ActionShotJump:
+	n := NormalizeActionType(at)
+	switch n {
+	case ActionPass, ActionDribble, ActionShot, ActionHandoff:
 		return true
 	}
 	return false

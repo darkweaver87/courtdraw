@@ -461,6 +461,42 @@ func addCornerArc(r *vector.Rasterizer, cx, cy, radius float32, startAngle, endA
 	}
 }
 
+// DrawScreenBar draws a T-shaped perpendicular bar at the screen position.
+// tip is the screen endpoint, from is the direction the screen line comes from.
+func DrawScreenBar(img *image.RGBA, tip, from Point, barLen, barWidth float32, col color.NRGBA) {
+	dx := tip.X - from.X
+	dy := tip.Y - from.Y
+	dist := float32(math.Sqrt(float64(dx*dx + dy*dy)))
+	if dist < 0.1 {
+		return
+	}
+	// Perpendicular direction.
+	px := -dy / dist
+	py := dx / dist
+	p1 := Pt(tip.X+px*barLen/2, tip.Y+py*barLen/2)
+	p2 := Pt(tip.X-px*barLen/2, tip.Y-py*barLen/2)
+	DrawLine(img, p1, p2, barWidth, col)
+}
+
+// DrawHandoffBars draws two short perpendicular bars at the midpoint of a handoff action.
+func DrawHandoffBars(img *image.RGBA, from, to Point, lineWidth, barLen float32, col color.NRGBA) {
+	dx := to.X - from.X
+	dy := to.Y - from.Y
+	dist := float32(math.Sqrt(float64(dx*dx + dy*dy)))
+	if dist < 1 {
+		return
+	}
+	px := -dy / dist
+	py := dx / dist
+	// Two bars at 40% and 60% along the line.
+	for _, t := range []float32{0.4, 0.6} {
+		mid := Pt(from.X+dx*t, from.Y+dy*t)
+		p1 := Pt(mid.X+px*barLen, mid.Y+py*barLen)
+		p2 := Pt(mid.X-px*barLen, mid.Y-py*barLen)
+		DrawLine(img, p1, p2, lineWidth, col)
+	}
+}
+
 // DistToPolyline returns the shortest distance from point p to any segment of the polyline.
 func DistToPolyline(p Point, pts []Point) float64 {
 	if len(pts) < 2 {

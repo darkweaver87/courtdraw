@@ -26,34 +26,12 @@ const (
 	GapLen           = 6
 )
 
-// Action colors.
-var (
-	ColorSprint   = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff} // near black
-	ColorPass     = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff} // near black
-	ColorDribble  = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff} // near black
-	ColorCloseOut = color.NRGBA{R: 0x00, G: 0x33, B: 0x8b, A: 0xff} // dark blue
-	ColorCut      = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff} // near black
-	ColorScreen   = color.NRGBA{R: 0x00, G: 0x33, B: 0x8b, A: 0xff} // dark blue
-	ColorDefault  = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff} // near black
-)
+// ActionLineColor is the standard color for all action arrows (black, per basketball convention).
+var ActionLineColor = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff}
 
 // ActionColor returns the color for a given action type.
-func ActionColor(at model.ActionType) color.NRGBA {
-	switch at {
-	case model.ActionPass:
-		return ColorPass
-	case model.ActionDribble:
-		return ColorDribble
-	case model.ActionSprint, model.ActionCut, model.ActionShotLayup,
-		model.ActionShotPushup, model.ActionShotJump, model.ActionReverse:
-		return ColorSprint
-	case model.ActionCloseOut, model.ActionContest:
-		return ColorCloseOut
-	case model.ActionScreen:
-		return ColorScreen
-	default:
-		return ColorDefault
-	}
+func ActionColor(_ model.ActionType) color.NRGBA {
+	return ActionLineColor
 }
 
 // ResolveWaypoints converts model waypoints to pixel-space Points.
@@ -97,17 +75,25 @@ func DrawAction(img *image.RGBA, vp *Viewport, action *model.Action, players []m
 	dl := vp.S(DashLen)
 	gl := vp.S(GapLen)
 
-	switch action.Type {
+	switch model.NormalizeActionType(action.Type) {
 	case model.ActionPass:
 		DrawDashedLine(img, drawFrom, drawTo, lw, dl, gl, col)
 		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	case model.ActionDribble:
 		DrawZigzag(img, drawFrom, drawTo, lw, za, vp.S(ZigzagSegmentLen), col)
 		DrawArrowhead(img, drawFrom, drawTo, ah, col)
+	case model.ActionCut:
+		DrawLine(img, drawFrom, drawTo, lw, col)
+		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	case model.ActionScreen:
-		DrawLine(img, drawFrom, drawTo, lw*ScreenWidthRatio, col)
-	case model.ActionContest:
+		DrawLine(img, drawFrom, drawTo, lw, col)
+		DrawScreenBar(img, drawTo, drawFrom, vp.S(PlayerRadius*0.8), lw*1.5, col)
+	case model.ActionShot:
 		DrawDashedLine(img, drawFrom, drawTo, lw, dl, gl, col)
+		DrawArrowhead(img, drawFrom, drawTo, ah, col)
+	case model.ActionHandoff:
+		DrawLine(img, drawFrom, drawTo, lw, col)
+		DrawHandoffBars(img, drawFrom, drawTo, lw, vp.S(6), col)
 		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	default:
 		DrawLine(img, drawFrom, drawTo, lw, col)
@@ -124,15 +110,18 @@ func drawActionPath(img *image.RGBA, vp *Viewport, actionType model.ActionType, 
 	gl := vp.S(GapLen)
 	zsl := vp.S(12) // zigzag segment length
 
-	switch actionType {
-	case model.ActionPass, model.ActionContest:
+	switch model.NormalizeActionType(actionType) {
+	case model.ActionPass, model.ActionShot:
 		DrawDashedPolyline(img, pts, lw, dl, gl, col)
 		DrawArrowheadAtEnd(img, pts, ah, col)
 	case model.ActionDribble:
 		DrawZigzagPolyline(img, pts, lw, za, zsl, col)
 		DrawArrowheadAtEnd(img, pts, ah, col)
 	case model.ActionScreen:
-		DrawPolyline(img, pts, lw*ScreenWidthRatio, col)
+		DrawPolyline(img, pts, lw, col)
+		if len(pts) >= 2 {
+			DrawScreenBar(img, pts[len(pts)-1], pts[len(pts)-2], lw*4, lw*1.5, col)
+		}
 	default:
 		DrawPolyline(img, pts, lw, col)
 		DrawArrowheadAtEnd(img, pts, ah, col)
@@ -169,8 +158,8 @@ func DrawActionWithProgress(img *image.RGBA, vp *Viewport, action *model.Action,
 	dl := vp.S(DashLen)
 	gl := vp.S(GapLen)
 
-	switch action.Type {
-	case model.ActionPass, model.ActionContest:
+	switch model.NormalizeActionType(action.Type) {
+	case model.ActionPass, model.ActionShot:
 		DrawDashedLine(img, from, partialTo, lw, dl, gl, col)
 		if progress > 0.3 {
 			DrawArrowhead(img, from, partialTo, ah, col)
@@ -181,7 +170,10 @@ func DrawActionWithProgress(img *image.RGBA, vp *Viewport, action *model.Action,
 			DrawArrowhead(img, from, partialTo, ah, col)
 		}
 	case model.ActionScreen:
-		DrawLine(img, from, partialTo, lw*ScreenWidthRatio, col)
+		DrawLine(img, from, partialTo, lw, col)
+		if progress >= 1.0 {
+			DrawScreenBar(img, partialTo, from, lw*4, lw*1.5, col)
+		}
 	default:
 		DrawLine(img, from, partialTo, lw, col)
 		if progress > 0.3 {
