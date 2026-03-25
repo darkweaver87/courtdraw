@@ -33,6 +33,9 @@ type DragList struct {
 	OnDelete  func(idx int)
 	OnMove    func(idx, dir int)
 	OnPreview func(idx int)
+
+	// MinimalMode hides all buttons (preview, up/down, delete) — drag-only.
+	MinimalMode bool
 }
 
 // DragListItem represents one entry in the list.
@@ -241,7 +244,12 @@ func newDragRow(idx int, text string, dl *DragList) *dragRow {
 	})
 	r.delBtn.Importance = widget.LowImportance
 
-	row := container.NewBorder(nil, nil, handle, container.NewHBox(previewBtn, upBtn, downBtn, r.delBtn), r.label)
+	var row *fyne.Container
+	if dl.MinimalMode {
+		row = container.NewBorder(nil, nil, handle, nil, r.label)
+	} else {
+		row = container.NewBorder(nil, nil, handle, container.NewHBox(previewBtn, upBtn, downBtn, r.delBtn), r.label)
+	}
 	r.container = container.NewStack(r.bg, row)
 	return r
 }

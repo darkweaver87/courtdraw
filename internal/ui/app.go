@@ -59,8 +59,9 @@ type App struct {
 	propsPanel   *PropertiesPanel
 	seqTimeline  *SeqTimeline
 	instrPanel   *InstructionsPanel
-	animControls *AnimControls
-	statusBar    *StatusBar
+	animControls    *AnimControls
+	actionTimeline  *ActionTimeline
+	statusBar       *StatusBar
 	tooltipLayer *TooltipLayer
 	sessionTab   *SessionTab
 	myFilesTab   *MyFilesTab
@@ -185,6 +186,12 @@ func (a *App) BuildUI() fyne.CanvasObject {
 		a.syncAnimState()
 	}
 
+	a.actionTimeline = NewActionTimeline()
+	a.actionTimeline.OnModified = func() {
+		a.court.Refresh()
+		a.refreshEditor()
+	}
+
 	a.statusBar = NewStatusBar()
 	a.tooltipLayer = NewTooltipLayer()
 	SetTipLayer(a.tooltipLayer)
@@ -287,7 +294,7 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	}
 	editionBottom := a.editorShelf.Widget()
 
-	// Animation mode: playback controls only.
+	// Animation mode: playback controls (timeline is a side/bottom panel).
 	animBottom := a.animControls.Widget()
 
 	// Notes mode: full-page scrollable view (built dynamically on mode switch).
@@ -330,8 +337,14 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	// Hide seq bar initially (no exercise loaded).
 	seqBar.Hide()
 
-	// Court area with seq bar above.
-	courtWithSeq := container.NewBorder(seqBar, nil, nil, nil, container.NewStack(a.court, a.emptyState))
+	// Action timeline panel.
+	timelineWidget := a.actionTimeline.Widget()
+	timelineBg := canvas.NewRectangle(color.NRGBA{R: 0x28, G: 0x28, B: 0x28, A: 0xff})
+	timelinePanel := container.NewStack(timelineBg, container.NewPadded(timelineWidget))
+	timelinePanel.Hide()
+
+	// Court area with seq bar above + collapsible timeline on the right.
+	courtWithSeq := container.NewBorder(seqBar, nil, nil, timelinePanel, container.NewStack(a.court, a.emptyState))
 
 	// Bottom area: swapped between edition shelf and animation controls.
 	bottomStack := container.NewStack(editionBottom)
@@ -362,6 +375,7 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 			bottomStack.Refresh()
 			courtSection.Show()
 			seqBar.Show()
+			timelinePanel.Hide()
 			a.court.SetReadOnly(false)
 			a.modeLabel.Text = i18n.T(i18n.KeyModeEdition)
 		case ModeAnimation:
@@ -369,6 +383,7 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 			bottomStack.Refresh()
 			courtSection.Show()
 			seqBar.Show()
+			timelinePanel.Show()
 			a.court.SetReadOnly(true)
 			a.modeLabel.Text = i18n.T(i18n.KeyModeAnimation)
 		case ModeNotes:
@@ -644,8 +659,9 @@ func (a *App) refreshEditor() {
 		a.animControls.SetPlayback(a.playback, len(a.exercise.Sequences))
 	}
 
-	// Update shelf element props.
+	// Update shelf element props and action timeline.
 	a.editorShelf.UpdateElementProps(a.exercise, &a.editorState, seqIdx)
+	a.actionTimeline.Update(a.exercise, &a.editorState, seqIdx)
 
 	// Forward editor state status to the status bar.
 	if a.editorState.StatusMsg != "" {
