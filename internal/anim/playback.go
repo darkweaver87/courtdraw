@@ -412,57 +412,18 @@ func applyShotToBalls(balls []ballState, act *model.Action, progress float64, po
 	}
 }
 
-// interpolateAlongWaypoints follows a Bézier curve defined by waypoints.
+// interpolateAlongWaypoints follows a curve through waypoints (pass-through points).
 func interpolateAlongWaypoints(from, to model.Position, waypoints []model.Position, t float64) model.Position {
-	// Build anchors: from → waypoints → to
-	anchors := make([]model.Position, 0, len(waypoints)+2)
-	anchors = append(anchors, from)
-	anchors = append(anchors, waypoints...)
-	anchors = append(anchors, to)
-
-	// Generate path points.
-	numSegs := 32
-	pts := make([]model.Position, 0, numSegs+1)
-	pts = append(pts, from)
-	for i := range len(anchors) - 2 {
-		p0 := anchors[i]
-		ctrl := anchors[i+1]
-		var p2 model.Position
-		if i+2 < len(anchors)-1 {
-			p2 = model.Position{(ctrl[0] + anchors[i+2][0]) / 2, (ctrl[1] + anchors[i+2][1]) / 2}
-		} else {
-			p2 = anchors[i+2]
-		}
-		segsPerSection := max(4, numSegs/(len(anchors)-1))
-		for j := 1; j <= segsPerSection; j++ {
-			s := float64(j) / float64(segsPerSection)
-			u := 1 - s
-			x := u*u*p0[0] + 2*u*s*ctrl[0] + s*s*p2[0]
-			y := u*u*p0[1] + 2*u*s*ctrl[1] + s*s*p2[1]
-			pts = append(pts, model.Position{x, y})
-		}
+	// Convert model positions to court points for BezierPath reuse.
+	fromPt := court.Pt(float32(from[0]), float32(from[1]))
+	toPt := court.Pt(float32(to[0]), float32(to[1]))
+	wps := make([]court.Point, len(waypoints))
+	for i, wp := range waypoints {
+		wps[i] = court.Pt(float32(wp[0]), float32(wp[1]))
 	}
-
-	// Walk along the path to find position at fraction t.
-	totalLen := 0.0
-	for i := 1; i < len(pts); i++ {
-		dx := pts[i][0] - pts[i-1][0]
-		dy := pts[i][1] - pts[i-1][1]
-		totalLen += math.Sqrt(dx*dx + dy*dy)
-	}
-	target := totalLen * t
-	walked := 0.0
-	for i := 1; i < len(pts); i++ {
-		dx := pts[i][0] - pts[i-1][0]
-		dy := pts[i][1] - pts[i-1][1]
-		segLen := math.Sqrt(dx*dx + dy*dy)
-		if walked+segLen >= target {
-			frac := (target - walked) / segLen
-			return model.Position{pts[i-1][0] + frac*dx, pts[i-1][1] + frac*dy}
-		}
-		walked += segLen
-	}
-	return to
+	pts := court.BezierPath(fromPt, toPt, wps, 32)
+	p := court.PolylinePointAt(pts, t)
+	return model.Position{float64(p.X), float64(p.Y)}
 }
 
 // avoidOverlapPositions adjusts a position so it doesn't overlap with other players.

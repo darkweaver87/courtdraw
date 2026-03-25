@@ -16,23 +16,25 @@ const StepBadgeRadius = 8
 
 // Action visual constants (base sizes at 1x zoom).
 const (
-	ArrowLineWidth  = 2.5
-	ArrowHeadSize   = 10
-	ZigzagAmplitude = 5
-	ZigzagSegments  = 8
-	DashLen         = 8
-	GapLen          = 5
+	ArrowLineWidth    = 3.5
+	ArrowHeadSize     = 12
+	ArrowHeadRatio    = 3.5 // arrowhead size = line width × ratio
+	ScreenWidthRatio  = 2.5 // screen line = base width × ratio
+	ZigzagAmplitude  = 7
+	ZigzagSegmentLen = 10 // fixed segment length for consistent zigzag
+	DashLen          = 10
+	GapLen           = 6
 )
 
 // Action colors.
 var (
-	ColorSprint   = color.NRGBA{R: 0xe6, G: 0x39, B: 0x46, A: 0xff}
-	ColorPass     = color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff}
-	ColorDribble  = color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff}
-	ColorCloseOut = color.NRGBA{R: 0x2a, G: 0x6f, B: 0xdb, A: 0xff}
-	ColorCut      = color.NRGBA{R: 0xe6, G: 0x39, B: 0x46, A: 0xff}
-	ColorScreen   = color.NRGBA{R: 0xff, G: 0xb7, B: 0x03, A: 0xff}
-	ColorDefault  = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+	ColorSprint   = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff} // near black
+	ColorPass     = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff} // near black
+	ColorDribble  = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff} // near black
+	ColorCloseOut = color.NRGBA{R: 0x00, G: 0x33, B: 0x8b, A: 0xff} // dark blue
+	ColorCut      = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff} // near black
+	ColorScreen   = color.NRGBA{R: 0x00, G: 0x33, B: 0x8b, A: 0xff} // dark blue
+	ColorDefault  = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff} // near black
 )
 
 // ActionColor returns the color for a given action type.
@@ -69,12 +71,25 @@ func DrawAction(img *image.RGBA, vp *Viewport, action *model.Action, players []m
 	to := ResolveRef(vp, action.To, players)
 	col := ActionColor(action.Type)
 	lw := vp.S(ArrowLineWidth)
-	ah := vp.S(ArrowHeadSize)
+	ah := max(vp.S(ArrowHeadSize), lw*ArrowHeadRatio)
+	pr := vp.S(PlayerRadius) // offset to keep arrowhead outside player body
+	dotR := lw * 1.5         // endpoint dot radius
+
+	// Shorten endpoints to avoid arrowhead under players.
+	drawFrom := from
+	drawTo := to
+	if action.From.IsPlayer {
+		drawFrom = ShortenLine(to, from, pr)
+	}
+	if action.To.IsPlayer {
+		drawTo = ShortenLine(from, to, pr)
+	}
 
 	if len(action.Waypoints) > 0 {
 		wps := ResolveWaypoints(vp, action.Waypoints)
-		pts := BezierPath(from, to, wps, 16)
+		pts := BezierPath(drawFrom, drawTo, wps, 16)
 		drawActionPath(img, vp, action.Type, pts, lw, ah, col)
+		DrawEndpointDot(img, drawFrom, dotR, col)
 		return
 	}
 
@@ -84,20 +99,22 @@ func DrawAction(img *image.RGBA, vp *Viewport, action *model.Action, players []m
 
 	switch action.Type {
 	case model.ActionPass:
-		DrawDashedLine(img, from, to, lw, dl, gl, col)
-		DrawArrowhead(img, from, to, ah, col)
+		DrawDashedLine(img, drawFrom, drawTo, lw, dl, gl, col)
+		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	case model.ActionDribble:
-		DrawZigzag(img, from, to, lw, za, ZigzagSegments, col)
-		DrawArrowhead(img, from, to, ah, col)
+		DrawZigzag(img, drawFrom, drawTo, lw, za, vp.S(ZigzagSegmentLen), col)
+		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	case model.ActionScreen:
-		DrawLine(img, from, to, lw*3, col)
+		DrawLine(img, drawFrom, drawTo, lw*ScreenWidthRatio, col)
 	case model.ActionContest:
-		DrawDashedLine(img, from, to, lw, dl, gl, col)
-		DrawArrowhead(img, from, to, ah, col)
+		DrawDashedLine(img, drawFrom, drawTo, lw, dl, gl, col)
+		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	default:
-		DrawLine(img, from, to, lw, col)
-		DrawArrowhead(img, from, to, ah, col)
+		DrawLine(img, drawFrom, drawTo, lw, col)
+		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	}
+	// Endpoint dots.
+	DrawEndpointDot(img, drawFrom, dotR, col)
 }
 
 // drawActionPath draws an action along a curved polyline path.
@@ -115,7 +132,7 @@ func drawActionPath(img *image.RGBA, vp *Viewport, actionType model.ActionType, 
 		DrawZigzagPolyline(img, pts, lw, za, zsl, col)
 		DrawArrowheadAtEnd(img, pts, ah, col)
 	case model.ActionScreen:
-		DrawPolyline(img, pts, lw*3, col)
+		DrawPolyline(img, pts, lw*ScreenWidthRatio, col)
 	default:
 		DrawPolyline(img, pts, lw, col)
 		DrawArrowheadAtEnd(img, pts, ah, col)
@@ -136,7 +153,7 @@ func DrawActionWithProgress(img *image.RGBA, vp *Viewport, action *model.Action,
 	to := ResolveRef(vp, action.To, players)
 	col := ActionColor(action.Type)
 	lw := vp.S(ArrowLineWidth)
-	ah := vp.S(ArrowHeadSize)
+	ah := max(vp.S(ArrowHeadSize), lw*ArrowHeadRatio)
 
 	if len(action.Waypoints) > 0 {
 		wps := ResolveWaypoints(vp, action.Waypoints)
@@ -159,12 +176,12 @@ func DrawActionWithProgress(img *image.RGBA, vp *Viewport, action *model.Action,
 			DrawArrowhead(img, from, partialTo, ah, col)
 		}
 	case model.ActionDribble:
-		DrawZigzag(img, from, partialTo, lw, za, ZigzagSegments, col)
+		DrawZigzag(img, from, partialTo, lw, za, vp.S(ZigzagSegmentLen), col)
 		if progress > 0.3 {
 			DrawArrowhead(img, from, partialTo, ah, col)
 		}
 	case model.ActionScreen:
-		DrawLine(img, from, partialTo, lw*3, col)
+		DrawLine(img, from, partialTo, lw*ScreenWidthRatio, col)
 	default:
 		DrawLine(img, from, partialTo, lw, col)
 		if progress > 0.3 {
@@ -218,7 +235,7 @@ func DrawActionPreview(img *image.RGBA, vp *Viewport, from, to Point, actionType
 	col.A = a
 
 	lw := vp.S(ArrowLineWidth)
-	ah := vp.S(ArrowHeadSize)
+	ah := max(vp.S(ArrowHeadSize), lw*ArrowHeadRatio)
 	za := vp.S(ZigzagAmplitude)
 	dl := vp.S(DashLen)
 	gl := vp.S(GapLen)
@@ -228,10 +245,10 @@ func DrawActionPreview(img *image.RGBA, vp *Viewport, from, to Point, actionType
 		DrawDashedLine(img, from, to, lw, dl, gl, col)
 		DrawArrowhead(img, from, to, ah, col)
 	case model.ActionDribble:
-		DrawZigzag(img, from, to, lw, za, ZigzagSegments, col)
+		DrawZigzag(img, from, to, lw, za, vp.S(ZigzagSegmentLen), col)
 		DrawArrowhead(img, from, to, ah, col)
 	case model.ActionScreen:
-		DrawLine(img, from, to, lw*3, col)
+		DrawLine(img, from, to, lw*ScreenWidthRatio, col)
 	default:
 		DrawLine(img, from, to, lw, col)
 		DrawArrowhead(img, from, to, ah, col)
@@ -252,6 +269,36 @@ func DrawStepBadge(img *image.RGBA, vp *Viewport, action *model.Action, players 
 		col := ActionColor(action.Type)
 		DrawText(img, strconv.Itoa(step), mid, face, col)
 	}
+}
+
+// ShortenLine offsets an endpoint inward by `offset` pixels along the from→to direction.
+func ShortenLine(from, to Point, offset float32) Point {
+	dx := to.X - from.X
+	dy := to.Y - from.Y
+	dist := float32(math.Sqrt(float64(dx*dx + dy*dy)))
+	if dist < offset*2 {
+		return to
+	}
+	return Pt(to.X-dx/dist*offset, to.Y-dy/dist*offset)
+}
+
+// ShortenPolylineEnd shortens a polyline by offset pixels from the end.
+func ShortenPolylineEnd(pts []Point, offset float32) []Point {
+	if len(pts) < 2 {
+		return pts
+	}
+	last := pts[len(pts)-1]
+	prev := pts[len(pts)-2]
+	shortened := ShortenLine(prev, last, offset)
+	result := make([]Point, len(pts))
+	copy(result, pts)
+	result[len(result)-1] = shortened
+	return result
+}
+
+// DrawEndpointDot draws a small filled circle at a point.
+func DrawEndpointDot(img *image.RGBA, center Point, radius float32, col color.NRGBA) {
+	DrawCircleFill(img, center, radius, col)
 }
 
 // ResolveRef resolves an ActionRef to a pixel position.

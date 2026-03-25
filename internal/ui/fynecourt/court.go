@@ -603,10 +603,11 @@ func (w *CourtWidget) drawSelectionOverlays(img *image.RGBA, seq *model.Sequence
 			}
 			// Draw waypoint handles (blue circles) on selected action (edit mode only).
 			if !w.readOnly {
+				wpRadius := w.viewport.S(8)
 				for _, wp := range act.Waypoints {
 					center := w.viewport.RelToPixel(wp)
-					court.DrawCircleFill(img, center, w.viewport.S(5), color.NRGBA{R: 0x44, G: 0x88, B: 0xff, A: 0xcc})
-					court.DrawCircleOutline(img, center, w.viewport.S(5), w.viewport.S(1), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xcc})
+					court.DrawCircleFill(img, center, wpRadius, color.NRGBA{R: 0x29, G: 0x6d, B: 0xd4, A: 0xff})
+					court.DrawCircleOutline(img, center, wpRadius, w.viewport.S(2), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
 				}
 			}
 			// If no waypoints, show a draggable midpoint handle (edit mode only).
@@ -616,7 +617,8 @@ func (w *CourtWidget) drawSelectionOverlays(img *image.RGBA, seq *model.Sequence
 				from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
 				to := court.ResolveRef(&w.viewport, act.To, playersAtStep)
 				mid := court.Pt((from.X+to.X)/2, (from.Y+to.Y)/2)
-				court.DrawCircleFill(img, mid, w.viewport.S(4), color.NRGBA{R: 0x44, G: 0x88, B: 0xff, A: 0x88})
+				court.DrawCircleFill(img, mid, w.viewport.S(6), color.NRGBA{R: 0x29, G: 0x6d, B: 0xd4, A: 0xaa})
+				court.DrawCircleOutline(img, mid, w.viewport.S(6), w.viewport.S(1.5), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xaa})
 			}
 		}
 	}

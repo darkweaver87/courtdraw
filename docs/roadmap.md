@@ -245,10 +245,17 @@ Goal: define the order of actions within a single sequence with step-aware playe
 
 ### F — Arrow Visual Polish
 
-111. Zigzag consistency — fixed segment length (~12px) instead of fixed count (8). Long arrows get more segments
-112. Arrowhead proportional to line width, tangent-aligned for curves
-113. Line consistency audit — normalize thickness, dash patterns
+111. ✅ Zigzag consistency — fixed segment length instead of fixed count. Long arrows get more segments
+112. ✅ Arrowhead proportional to line width, endpoint dots, arrowheads offset from player body
+113. ✅ Waypoints as pass-through points (not Bézier control points). Blue handles on curve
 114. PDF step badges + visual parity with screen renderer
+
+### G — Arrow & Action Style Rework ⚡ P2
+
+115. Color palette rework — design a cohesive color scheme for action types (offensive/defensive/neutral). Current colors are placeholder. Reference HoopsGeek and standard basketball diagramming conventions
+116. Action icon rework — redesign shelf action icons to match the arrow styles (zigzag for dribble, dashed for pass, etc.). Current icons don't reflect the on-court rendering
+117. Arrow style customization — allow coaches to override action colors per exercise or globally in preferences
+118. Screen rendering — dedicated screen symbol (flat bar / T-shape) instead of thick line
 
 Deliverable: coaches build a full pick-and-roll in a single sequence — players move along their action paths step by step, with curved arrows and consistent visuals.
 

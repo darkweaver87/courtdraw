@@ -561,7 +561,8 @@ func (cr *courtRenderer) drawZigzag(x1, y1, x2, y2 float64) {
 	if length == 0 {
 		return
 	}
-	segments := court.ZigzagSegments
+	segLen := cr.su(float64(court.ZigzagSegmentLen))
+	segments := max(2, int(length/segLen))
 	amp := cr.su(float64(court.ZigzagAmplitude))
 	ux := dx / length
 	uy := dy / length

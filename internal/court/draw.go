@@ -330,16 +330,15 @@ func DrawRectFill(img *image.RGBA, min, max Point, col color.NRGBA) {
 }
 
 // DrawZigzag draws a zigzag line from p1 to p2.
-func DrawZigzag(img *image.RGBA, p1, p2 Point, width, amplitude float32, segments int, col color.NRGBA) {
-	if segments < 2 {
-		segments = 6
-	}
+// segmentLen is the target length of each zigzag segment (for consistent appearance).
+func DrawZigzag(img *image.RGBA, p1, p2 Point, width, amplitude float32, segmentLen float32, col color.NRGBA) {
 	dx := p2.X - p1.X
 	dy := p2.Y - p1.Y
 	totalLen := float32(math.Sqrt(float64(dx*dx + dy*dy)))
 	if totalLen < 1 {
 		return
 	}
+	segments := max(2, int(totalLen/segmentLen))
 
 	// Perpendicular direction.
 	px := -dy / totalLen
@@ -480,7 +479,8 @@ func DistToPolyline(p Point, pts []Point) float64 {
 // --- Curved path utilities ---
 
 // BezierPath generates a polyline from→waypoints→to using quadratic Bézier curves.
-// Each waypoint acts as a control point for a quadratic Bézier segment.
+// Waypoints are points ON the curve (pass-through), not control points.
+// The Bézier control points are computed so the curve passes through each waypoint.
 // numSegments is the number of line segments per curve section.
 func BezierPath(from, to Point, waypoints []Point, numSegments int) []Point {
 	if len(waypoints) == 0 {
@@ -490,31 +490,51 @@ func BezierPath(from, to Point, waypoints []Point, numSegments int) []Point {
 		numSegments = 16
 	}
 
-	points := []Point{from}
-	// Chain quadratic Bézier: from→wp1→mid1, mid1→wp2→mid2, ..., midN→to
-	anchors := make([]Point, 0, len(waypoints)+2)
-	anchors = append(anchors, from)
-	anchors = append(anchors, waypoints...)
-	anchors = append(anchors, to)
+	if len(waypoints) == 1 {
+		// Single waypoint: compute control point so curve passes through waypoint at t=0.5.
+		// C = 2*M - 0.5*(P0 + P2)
+		m := waypoints[0]
+		ctrl := Pt(2*m.X-0.5*(from.X+to.X), 2*m.Y-0.5*(from.Y+to.Y))
+		return quadBezierPoints(from, ctrl, to, numSegments)
+	}
 
-	for i := range len(anchors) - 2 {
-		p0 := anchors[i]
-		ctrl := anchors[i+1]
-		var p2 Point
-		if i+2 < len(anchors)-1 {
-			// Midpoint between this control and next control.
-			p2 = Pt((ctrl.X+anchors[i+2].X)/2, (ctrl.Y+anchors[i+2].Y)/2)
+	// Multiple waypoints: chain quadratic Bézier segments.
+	// Convert pass-through points to control points.
+	points := []Point{from}
+	for i, wp := range waypoints {
+		var p0, p2 Point
+		if i == 0 {
+			p0 = from
 		} else {
-			p2 = anchors[i+2]
+			// Midpoint between previous and current waypoint.
+			prev := waypoints[i-1]
+			p0 = Pt((prev.X+wp.X)/2, (prev.Y+wp.Y)/2)
 		}
-		for j := 1; j <= numSegments; j++ {
-			t := float32(j) / float32(numSegments)
-			// Quadratic Bézier: B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
-			u := 1 - t
-			x := u*u*p0.X + 2*u*t*ctrl.X + t*t*p2.X
-			y := u*u*p0.Y + 2*u*t*ctrl.Y + t*t*p2.Y
-			points = append(points, Pt(x, y))
+		if i == len(waypoints)-1 {
+			p2 = to
+		} else {
+			next := waypoints[i+1]
+			p2 = Pt((wp.X+next.X)/2, (wp.Y+next.Y)/2)
 		}
+		// Control point so curve passes through wp at t=0.5.
+		ctrl := Pt(2*wp.X-0.5*(p0.X+p2.X), 2*wp.Y-0.5*(p0.Y+p2.Y))
+		segs := max(4, numSegments/len(waypoints))
+		bezPts := quadBezierPoints(p0, ctrl, p2, segs)
+		// Skip first point (already in previous segment).
+		points = append(points, bezPts[1:]...)
+	}
+	return points
+}
+
+func quadBezierPoints(p0, ctrl, p2 Point, numSegments int) []Point {
+	points := make([]Point, numSegments+1)
+	points[0] = p0
+	for j := 1; j <= numSegments; j++ {
+		t := float32(j) / float32(numSegments)
+		u := 1 - t
+		x := u*u*p0.X + 2*u*t*ctrl.X + t*t*p2.X
+		y := u*u*p0.Y + 2*u*t*ctrl.Y + t*t*p2.Y
+		points[j] = Pt(x, y)
 	}
 	return points
 }
@@ -621,17 +641,15 @@ func DrawZigzagPolyline(img *image.RGBA, pts []Point, width, amplitude float32, 
 	for i := 1; i <= segments; i++ {
 		t := float64(i) / float64(segments)
 		mid := PolylinePointAt(pts, t)
-		// Compute perpendicular at this point.
+		// Compute perpendicular from tangent at this point.
+		near := PolylinePointAt(pts, max(0, t-0.01))
+		dx := mid.X - near.X
+		dy := mid.Y - near.Y
+		d := float32(math.Sqrt(float64(dx*dx + dy*dy)))
 		var nx, ny float32
-		if i < len(pts) {
-			near := PolylinePointAt(pts, t-0.01)
-			dx := mid.X - near.X
-			dy := mid.Y - near.Y
-			d := float32(math.Sqrt(float64(dx*dx + dy*dy)))
-			if d > 0.01 {
-				nx = -dy / d
-				ny = dx / d
-			}
+		if d > 0.01 {
+			nx = -dy / d
+			ny = dx / d
 		}
 		sign := float32(1)
 		if i%2 == 0 {
