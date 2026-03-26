@@ -260,6 +260,7 @@ Goal: define the order of actions within a single sequence with step-aware playe
 120. Ball carrier validation — prevent changing pass target if receiver uses ball in subsequent steps
 121. Arrow color customization — allow coaches to override action color per exercise or globally in preferences
 122. Player with ball shortcut — add "Attacker + Ball" player type in shelf to avoid switching between Players and Tools tabs just to assign the ball
+123. Light/dark theme toggle — add theme preference (dark default, light option). Fyne auto-tints icons. Consider HoopsGeek-style light theme with accent colors
 
 Deliverable: coaches build a full pick-and-roll in a single sequence — players move along their action paths step by step, with curved arrows and consistent visuals.
 
