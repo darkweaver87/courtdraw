@@ -304,10 +304,16 @@ func DrawArc(img *image.RGBA, center Point, radius float32, startAngle, endAngle
 
 // DrawRect draws a rectangle outline.
 func DrawRect(img *image.RGBA, min, max Point, width float32, col color.NRGBA) {
+	// Draw 4 lines + fill corners with small squares to avoid gaps.
 	DrawLine(img, min, Pt(max.X, min.Y), width, col)
 	DrawLine(img, Pt(max.X, min.Y), max, width, col)
 	DrawLine(img, max, Pt(min.X, max.Y), width, col)
 	DrawLine(img, Pt(min.X, max.Y), min, width, col)
+	// Fill corners.
+	hw := width / 2
+	for _, corner := range []Point{min, {max.X, min.Y}, max, {min.X, max.Y}} {
+		DrawRectFill(img, Pt(corner.X-hw, corner.Y-hw), Pt(corner.X+hw, corner.Y+hw), col)
+	}
 }
 
 // DrawRectFill draws a filled rectangle.
