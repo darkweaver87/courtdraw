@@ -56,15 +56,14 @@ var (
 	PlayerCenter   = LoadPngResource("center")
 	PlayerQueue    = LoadPngResource("queue")
 
-	ActionPass     = LoadPngResource("pass")
-	ActionDribble  = LoadPngResource("dribble")
-	ActionSprint   = LoadPngResource("sprint")
-	ActionShot     = LoadPngResource("shot")
-	ActionScreen   = LoadPngResource("screen")
-	ActionCut      = LoadPngResource("cut")
-	ActionCloseOut = LoadPngResource("close-out")
-	ActionContest  = LoadPngResource("contest")
-	ActionReverse  = LoadPngResource("reverse")
+	// ActionDribble and other action icons are generated via cmd/genicons.
+	ActionDribble = LoadPngResource("dribble-action")
+	ActionPass    = LoadPngResource("pass-action")
+	ActionCut     = LoadPngResource("cut-action")
+	ActionScreen  = LoadPngResource("screen-action")
+	ActionShot    = LoadPngResource("shot-action")
+	ActionHandoffRes = LoadPngResource("handoff-action")
+	BallIcon      = LoadPngResource("ball")
 
 	AccCone   = LoadPngResource("cone")
 	AccLadder = LoadPngResource("ladder")
@@ -80,12 +79,9 @@ var (
 	ChevronRight = LoadPngResource("chevron-right")
 )
 
-// ActionHandoff returns the handoff icon (fallback to theme icon if PNG not available).
+// ActionHandoff returns the handoff icon.
 func ActionHandoff() fyne.Resource {
-	if r := LoadPngResource("handoff"); r != nil {
-		return r
-	}
-	return theme.ContentCopyIcon()
+	return ActionHandoffRes
 }
 
 // ChevronLeft returns the left chevron icon.

@@ -87,6 +87,11 @@ func (tb *TipButton) SetText(s string) {
 	tb.Refresh()
 }
 
+// SetOnTapped changes the tap callback.
+func (tb *TipButton) SetOnTapped(fn func()) {
+	tb.onTapped = fn
+}
+
 // InnerButton returns self for API compatibility.
 func (tb *TipButton) InnerButton() *TipButton {
 	return tb

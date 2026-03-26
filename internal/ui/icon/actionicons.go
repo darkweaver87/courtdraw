@@ -114,6 +114,85 @@ func drawShotIcon(img *image.RGBA, col color.NRGBA, lw int) {
 	iconLine(img, cx, cy-3, cx, cy+3, col, 1)
 }
 
+// GenerateBallIcon creates a basketball icon (orange circle with seam lines).
+func GenerateBallIcon() fyne.Resource {
+	size := 48 // higher res for smoothness
+	img := image.NewRGBA(image.Rect(0, 0, size, size))
+	ball := color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff}
+	seam := color.NRGBA{R: 0x6b, G: 0x3a, B: 0x1a, A: 0xff}
+	outline := color.NRGBA{R: 0x4a, G: 0x2a, B: 0x10, A: 0xff}
+
+	cx, cy := float64(size)/2, float64(size)/2
+	r := float64(size)/2 - 3
+
+	// Filled circle with anti-aliased edge.
+	for y := range size {
+		for x := range size {
+			dx := float64(x) - cx + 0.5
+			dy := float64(y) - cy + 0.5
+			dist := math.Sqrt(dx*dx + dy*dy)
+			if dist <= r-1 {
+				img.Set(x, y, ball)
+			} else if dist <= r {
+				// Anti-alias edge.
+				alpha := uint8((r - dist) * 255)
+				img.Set(x, y, color.NRGBA{R: ball.R, G: ball.G, B: ball.B, A: alpha})
+			}
+		}
+	}
+
+	// Outline circle.
+	for a := range 720 {
+		rad := float64(a) * math.Pi / 360
+		for _, off := range []float64{0, 0.5, 1.0} {
+			px := int(cx + (r-off)*math.Cos(rad))
+			py := int(cy + (r-off)*math.Sin(rad))
+			if px >= 0 && px < size && py >= 0 && py < size {
+				img.Set(px, py, outline)
+			}
+		}
+	}
+
+	// Horizontal seam.
+	for x := int(cx - r + 3); x <= int(cx+r-3); x++ {
+		img.Set(x, int(cy), seam)
+		img.Set(x, int(cy)-1, seam)
+	}
+	// Vertical seam.
+	for y := int(cy - r + 3); y <= int(cy+r-3); y++ {
+		img.Set(int(cx), y, seam)
+		img.Set(int(cx)-1, y, seam)
+	}
+
+	// Curved seams (the two arcs that make a basketball).
+	for a := -80; a <= 80; a++ {
+		rad := float64(a) * math.Pi / 180
+		// Left arc.
+		arcR := r * 0.75
+		lx := int(cx - r*0.35 + arcR*math.Cos(rad))
+		ly := int(cy + arcR*math.Sin(rad))
+		if lx >= 0 && lx < size && ly >= 0 && ly < size {
+			img.Set(lx, ly, seam)
+			if lx+1 < size {
+				img.Set(lx+1, ly, seam)
+			}
+		}
+		// Right arc.
+		rx := int(cx + r*0.35 - arcR*math.Cos(rad))
+		ry := int(cy + arcR*math.Sin(rad))
+		if rx >= 0 && rx < size && ry >= 0 && ry < size {
+			img.Set(rx, ry, seam)
+			if rx-1 >= 0 {
+				img.Set(rx-1, ry, seam)
+			}
+		}
+	}
+
+	var buf bytes.Buffer
+	_ = png.Encode(&buf, img)
+	return fyne.NewStaticResource("ball-icon.png", buf.Bytes())
+}
+
 func drawHandoffIcon(img *image.RGBA, col color.NRGBA, lw int) {
 	iconLine(img, 3, 16, 28, 16, col, lw)
 	// Two perpendicular bars.

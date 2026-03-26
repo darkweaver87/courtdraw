@@ -93,6 +93,7 @@ type EditorShelf struct {
 	propsLabelE     *widget.Entry
 	propsRoleSel    *widget.Select
 	propsBallChk    *widget.Check
+	propsBallBtn    *TipButton
 	propsCalloutSel *widget.Select
 	propsPosXEntry  *widget.Entry
 	propsPosYEntry  *widget.Entry
@@ -102,7 +103,8 @@ type EditorShelf struct {
 	propsSyncedSel  *editor.Selection // tracks which element is currently displayed
 
 	// Button-to-i18n key mapping for tooltip refresh.
-	btnKeys []string
+	btnKeys       []string
+	ballToggleIdx int // index of ball toggle in allBtns
 
 	// Layout elements.
 	shelfStack    *fyne.Container // swaps shelf content
@@ -163,6 +165,9 @@ func (ms *EditorShelf) build() {
 				ms.state.SetTool(editor.ToolSelect)
 			} else {
 				ms.state.SetPlayerTool(r)
+				if r == model.RoleDefender {
+					ms.state.ToolWithBall = false
+				}
 			}
 			ms.syncHighlights()
 		})
@@ -173,6 +178,13 @@ func (ms *EditorShelf) build() {
 		ms.syncHighlights()
 	})
 	playerGrid.Add(queueBtn)
+	ballToggle := ms.addBtn(icon.BallIcon, i18n.KeyPropsBall, func() {
+		ms.state.ToolWithBall = !ms.state.ToolWithBall
+		ms.syncHighlights()
+	})
+	ms.ballToggleIdx = len(ms.allBtns) - 1
+	playerGrid.Add(ballToggle)
+	ms.ballToggleIdx = len(ms.allBtns) - 1
 	ms.playerContent = playerGrid
 
 	// --- Actions: 6 buttons (standard basketball conventions) ---
@@ -185,12 +197,8 @@ func (ms *EditorShelf) build() {
 		i18n.KeyToolActionScreen, i18n.KeyToolActionShot, i18n.KeyToolActionHandoff,
 	}
 	actionIcons := []fyne.Resource{
-		icon.GenerateActionIcon("dribble"),
-		icon.GenerateActionIcon("pass"),
-		icon.GenerateActionIcon("cut"),
-		icon.GenerateActionIcon("screen"),
-		icon.GenerateActionIcon("shot"),
-		icon.GenerateActionIcon("handoff"),
+		icon.ActionDribble, icon.ActionPass, icon.ActionCut,
+		icon.ActionScreen, icon.ActionShot, icon.ActionHandoffRes,
 	}
 	actionGrid := container.NewGridWrap(shelfCellSize)
 	for i, at := range actionTypes {
@@ -257,6 +265,7 @@ func (ms *EditorShelf) build() {
 	ms.propsLabelE.OnChanged = func(_ string) {} // wired in UpdateElementProps
 	ms.propsRoleSel = widget.NewSelect(nil, func(_ string) {})
 	ms.propsBallChk = widget.NewCheck(i18n.T(i18n.KeyPropsBall), func(_ bool) {})
+	ms.propsBallBtn = NewTipButton(icon.BallIcon, i18n.T(i18n.KeyPropsBall), func() {})
 	ms.propsCalloutSel = widget.NewSelect(nil, func(_ string) {})
 	ms.propsCalloutSel.PlaceHolder = i18n.T(i18n.KeyPropsCallout)
 	ms.propsPosXEntry = widget.NewEntry()
@@ -359,6 +368,13 @@ func (ms *EditorShelf) syncHighlights() {
 	if idx >= 0 && idx < len(ms.allBtns) {
 		ms.allBtns[idx].OverrideColor = toolActiveColor
 		ms.allBtns[idx].Refresh()
+	}
+	// Ball toggle highlight (independent of tool selection).
+	if ms.ballToggleIdx >= 0 && ms.ballToggleIdx < len(ms.allBtns) && ms.allBtns[ms.ballToggleIdx] != nil {
+		if ms.state.ToolWithBall {
+			ms.allBtns[ms.ballToggleIdx].OverrideColor = &color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff}
+		}
+		ms.allBtns[ms.ballToggleIdx].Refresh()
 	}
 	if ms.palette != nil {
 		ms.palette.ForceUpdateActive()
@@ -622,21 +638,22 @@ func (ms *EditorShelf) buildPropsLayout(_ *model.Exercise, state *editor.EditorS
 				}
 			}
 		}
-		ms.propsBallChk.OnChanged = func(checked bool) {
+		ms.propsBallBtn.SetOnTapped(func() {
 			if ms.propsUpdating || sel.Index >= len(seq.Players) {
 				return
 			}
 			pid := seq.Players[sel.Index].ID
-			if checked {
-				seq.BallCarrier.AddBall(pid)
-			} else {
+			if seq.BallCarrier.HasBall(pid) {
 				seq.BallCarrier.RemoveBall(pid)
+			} else {
+				seq.BallCarrier.AddBall(pid)
 			}
 			state.MarkModified()
+			ms.propsSyncedSel = nil // force rebuild to update ball highlight
 			if ms.OnToolChanged != nil {
 				ms.OnToolChanged()
 			}
-		}
+		})
 		ms.propsCalloutSel.Options = allCalloutLabels()
 		ms.propsCalloutSel.OnChanged = func(s string) {
 			if ms.propsUpdating || sel.Index >= len(seq.Players) {
@@ -671,7 +688,7 @@ func (ms *EditorShelf) buildPropsLayout(_ *model.Exercise, state *editor.EditorS
 		fields := container.New(newFlowLayout(4, 4),
 			container.NewGridWrap(labelMinW, ms.propsLabelE),
 			ms.propsRoleSel,
-			ms.propsBallChk,
+			container.NewGridWrap(shelfCellSize, ms.propsBallBtn),
 			container.NewGridWrap(calloutMinW, ms.propsCalloutSel),
 			container.NewHBox(xLabel, container.NewGridWrap(posMinW, ms.propsPosXEntry)),
 			container.NewHBox(yLabel, container.NewGridWrap(posMinW, ms.propsPosYEntry)),
@@ -776,7 +793,12 @@ func (ms *EditorShelf) syncPlayerValues(seq *model.Sequence, p *model.Player) {
 	ms.propsTitle.Refresh()
 	// Don't SetText on label/pos entries — it would steal focus during typing.
 	ms.propsRoleSel.SetSelected(roleDisplayLabel(p.Role))
-	ms.propsBallChk.SetChecked(seq.BallCarrier.HasBall(p.ID))
+	if seq.BallCarrier.HasBall(p.ID) {
+		ms.propsBallBtn.OverrideColor = &color.NRGBA{R: 0xf4, G: 0xa2, B: 0x61, A: 0xff}
+	} else {
+		ms.propsBallBtn.OverrideColor = nil
+	}
+	ms.propsBallBtn.Refresh()
 	if p.Callout != "" {
 		ms.propsCalloutSel.SetSelected(i18n.T("callout." + string(p.Callout)))
 	} else {

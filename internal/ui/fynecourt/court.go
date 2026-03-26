@@ -1136,6 +1136,9 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 			p.Count = 3
 		}
 		seq.Players = append(seq.Players, p)
+		if state.ToolWithBall {
+			seq.BallCarrier.AddBall(p.ID)
+		}
 		idx := len(seq.Players) - 1
 		state.Select(editor.SelectPlayer, idx, w.seqIndex)
 		state.MarkModified()

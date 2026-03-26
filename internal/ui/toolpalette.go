@@ -122,19 +122,16 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 	vbox.Add(tp.makeHeader(i18n.KeyToolHeaderActions))
 
 	actionTypes := []model.ActionType{
-		model.ActionPass, model.ActionDribble, model.ActionSprint,
-		model.ActionShotLayup, model.ActionScreen, model.ActionCut,
-		model.ActionCloseOut, model.ActionContest, model.ActionReverse,
+		model.ActionDribble, model.ActionPass, model.ActionCut,
+		model.ActionScreen, model.ActionShot, model.ActionHandoff,
 	}
 	actionKeys := []string{
-		i18n.KeyToolActionPass, i18n.KeyToolActionDribble, i18n.KeyToolActionSprint,
-		i18n.KeyToolActionShot, i18n.KeyToolActionScreen, i18n.KeyToolActionCut,
-		i18n.KeyToolActionCloseOut, i18n.KeyToolActionContest, i18n.KeyToolActionReverse,
+		i18n.KeyToolActionDribble, i18n.KeyToolActionPass, i18n.KeyToolActionCut,
+		i18n.KeyToolActionScreen, i18n.KeyToolActionShot, i18n.KeyToolActionHandoff,
 	}
 	actionIcons := []fyne.Resource{
-		icon.ActionPass, icon.ActionDribble, icon.ActionSprint,
-		icon.ActionShot, icon.ActionScreen, icon.ActionCut,
-		icon.ActionCloseOut, icon.ActionContest, icon.ActionReverse,
+		icon.ActionDribble, icon.ActionPass, icon.ActionCut,
+		icon.ActionScreen, icon.ActionShot, icon.ActionHandoffRes,
 	}
 	actionGrid := newToolGrid()
 	for i, at := range actionTypes {

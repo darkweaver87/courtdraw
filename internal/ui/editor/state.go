@@ -44,6 +44,8 @@ type EditorState struct {
 	ToolRole model.PlayerRole
 	// ToolQueue is true when the player tool creates a queue player.
 	ToolQueue bool
+	// ToolWithBall is true when the next placed player gets the ball.
+	ToolWithBall bool
 	// ToolActionType is the action type when ActiveTool == ToolAction.
 	ToolActionType model.ActionType
 	// ToolAccessoryType is the accessory type when ActiveTool == ToolAccessory.
