@@ -35,7 +35,7 @@ func DrawFIBACourt(img *image.RGBA, courtType model.CourtType, vp *Viewport, geo
 // drawCourt draws the court for any standard using the geometry.
 func drawCourt(img *image.RGBA, courtType model.CourtType, vp *Viewport, geom *CourtGeometry) {
 	lineCol := color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
-	bgCol := color.NRGBA{R: 0xc8, G: 0x96, B: 0x64, A: 0xff}
+	bgCol := color.NRGBA{R: 0xc8, G: 0x96, B: 0x64, A: 0xff} // fallback if texture not loaded
 	apronCol := color.NRGBA{R: 0x1a, G: 0x3c, B: 0x6e, A: 0xff} // dark blue apron
 
 	lineW := float32(vp.MeterToPixel(geom.LineWidth, geom, courtType))
@@ -59,7 +59,11 @@ func drawCourt(img *image.RGBA, courtType model.CourtType, vp *Viewport, geom *C
 	// Court floor.
 	topLeft := m2p(0, courtH)
 	botRight := m2p(courtW, 0)
-	DrawRectFill(img, topLeft, botRight, bgCol)
+	if woodTile := WoodFloorTexture(); woodTile != nil {
+		TileRectScaled(img, topLeft, botRight, woodTile, vp, geom, courtType)
+	} else {
+		DrawRectFill(img, topLeft, botRight, bgCol)
+	}
 
 	// Court outline.
 	DrawRect(img, topLeft, botRight, lineW, lineCol)
