@@ -601,24 +601,35 @@ func (w *CourtWidget) drawSelectionOverlays(img *image.RGBA, seq *model.Sequence
 					court.DrawActionTargetHighlight(img, &w.viewport, basketPx)
 				}
 			}
-			// Draw waypoint handles (blue circles) on selected action (edit mode only).
+			// Draw handles on selected action (edit mode only).
 			if !w.readOnly {
+				handleCol := color.NRGBA{R: 0x29, G: 0x6d, B: 0xd4, A: 0xff}
+				outlineCol := color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
 				wpRadius := w.viewport.S(8)
+
+				// Waypoint handles.
 				for _, wp := range act.Waypoints {
 					center := w.viewport.RelToPixel(wp)
-					court.DrawCircleFill(img, center, wpRadius, color.NRGBA{R: 0x29, G: 0x6d, B: 0xd4, A: 0xff})
-					court.DrawCircleOutline(img, center, wpRadius, w.viewport.S(2), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+					court.DrawCircleFill(img, center, wpRadius, handleCol)
+					court.DrawCircleOutline(img, center, wpRadius, w.viewport.S(2), outlineCol)
 				}
-			}
-			// If no waypoints, show a draggable midpoint handle (edit mode only).
-			if !w.readOnly && len(act.Waypoints) == 0 {
+
+				// Endpoint (To) handle — draggable to change target.
 				maxStep := model.MaxStep(seq)
 				playersAtStep := stepPlayers(seq, maxStep, act.EffectiveStep())
-				from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
 				to := court.ResolveRef(&w.viewport, act.To, playersAtStep)
-				mid := court.Pt((from.X+to.X)/2, (from.Y+to.Y)/2)
-				court.DrawCircleFill(img, mid, w.viewport.S(6), color.NRGBA{R: 0x29, G: 0x6d, B: 0xd4, A: 0xaa})
-				court.DrawCircleOutline(img, mid, w.viewport.S(6), w.viewport.S(1.5), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xaa})
+				court.DrawCircleFill(img, to, wpRadius, handleCol)
+				court.DrawCircleOutline(img, to, wpRadius, w.viewport.S(2), outlineCol)
+
+				// Midpoint handle (if no waypoints — for creating a curve).
+				if len(act.Waypoints) == 0 {
+					from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
+					mid := court.Pt((from.X+to.X)/2, (from.Y+to.Y)/2)
+					midR := w.viewport.S(6)
+					midCol := color.NRGBA{R: 0x29, G: 0x6d, B: 0xd4, A: 0xaa}
+					court.DrawCircleFill(img, mid, midR, midCol)
+					court.DrawCircleOutline(img, mid, midR, w.viewport.S(1.5), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xaa})
+				}
 			}
 		}
 	}
@@ -1373,20 +1384,28 @@ func (w *CourtWidget) hitTestWaypoint(act *model.Action, seq *model.Sequence, po
 			return i
 		}
 	}
+	// Check endpoint (To) handle.
+	maxStep := model.MaxStep(seq)
+	playersAtStep := stepPlayers(seq, maxStep, act.EffectiveStep())
+	to := court.ResolveRef(&w.viewport, act.To, playersAtStep)
+	{
+		dx := float64(pos.X - to.X)
+		dy := float64(pos.Y - to.Y)
+		if math.Sqrt(dx*dx+dy*dy) <= hitR {
+			return -3 // endpoint To
+		}
+	}
 	// Check midpoint handle (only if no waypoints).
 	if len(act.Waypoints) == 0 {
-		maxStep := model.MaxStep(seq)
-		playersAtStep := stepPlayers(seq, maxStep, act.EffectiveStep())
 		from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
-		to := court.ResolveRef(&w.viewport, act.To, playersAtStep)
 		mid := court.Pt((from.X+to.X)/2, (from.Y+to.Y)/2)
 		dx := float64(pos.X - mid.X)
 		dy := float64(pos.Y - mid.Y)
 		if math.Sqrt(dx*dx+dy*dy) <= hitR {
-			return -1
+			return -1 // midpoint (create waypoint)
 		}
 	}
-	return -2
+	return -2 // no hit
 }
 
 // hitTestGhostPlayer checks if pos hits a ghost player (initial or intermediate step position).
@@ -1461,7 +1480,43 @@ func (w *CourtWidget) trySelectElement(seq *model.Sequence, state *editor.Editor
 		w.Refresh()
 		return true
 	}
-	// Hit test final player position first.
+	// Check waypoint/endpoint handles on currently selected action FIRST (priority over players).
+	if selElem := state.SelectedElement; selElem != nil && selElem.Kind == editor.SelectAction && selElem.Index < len(seq.Actions) {
+		act := &seq.Actions[selElem.Index]
+		wpIdx := w.hitTestWaypoint(act, seq, pos)
+		switch {
+		case wpIdx == -3:
+			w.dragActionEndIdx = selElem.Index
+			w.dragWaypointIdx = -2
+			w.dragActive = true
+			state.IsDragging = true
+			w.Refresh()
+			return true
+		case wpIdx == -1:
+			w.dragActionEndIdx = selElem.Index
+			w.dragActive = true
+			state.IsDragging = true
+			maxStep := model.MaxStep(seq)
+			playersAtStep := stepPlayers(seq, maxStep, act.EffectiveStep())
+			from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
+			toPt := court.ResolveRef(&w.viewport, act.To, playersAtStep)
+			mid := w.viewport.PixelToRel(court.Pt((from.X+toPt.X)/2, (from.Y+toPt.Y)/2))
+			act.Waypoints = append(act.Waypoints, mid)
+			w.dragWaypointIdx = len(act.Waypoints) - 1
+			state.MarkModified()
+			w.Refresh()
+			return true
+		case wpIdx >= 0:
+			w.dragActionEndIdx = selElem.Index
+			w.dragWaypointIdx = wpIdx
+			w.dragActive = true
+			state.IsDragging = true
+			w.Refresh()
+			return true
+		}
+	}
+
+	// Hit test final player position.
 	if pi := court.HitTestPlayer(&w.viewport, finalSeq, pos); pi >= 0 {
 		state.SetTool(editor.ToolSelect)
 		state.Select(editor.SelectPlayer, pi, w.seqIndex)
@@ -1496,30 +1551,6 @@ func (w *CourtWidget) trySelectElement(seq *model.Sequence, state *editor.Editor
 		w.Refresh()
 		w.notifyChanged()
 		return true
-	}
-	// Check waypoint handles on currently selected action first.
-	if selElem := state.SelectedElement; selElem != nil && selElem.Kind == editor.SelectAction && selElem.Index < len(seq.Actions) {
-		act := &seq.Actions[selElem.Index]
-		wpIdx := w.hitTestWaypoint(act, seq, pos)
-		if wpIdx >= -1 { // -1 = midpoint (create new), >= 0 = existing waypoint
-			w.dragActionEndIdx = selElem.Index
-			w.dragWaypointIdx = wpIdx
-			w.dragActive = true
-			state.IsDragging = true
-			if wpIdx == -1 {
-				// Create waypoint at midpoint.
-				maxStep := model.MaxStep(seq)
-				playersAtStep := stepPlayers(seq, maxStep, act.EffectiveStep())
-				from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
-				to := court.ResolveRef(&w.viewport, act.To, playersAtStep)
-				mid := w.viewport.PixelToRel(court.Pt((from.X+to.X)/2, (from.Y+to.Y)/2))
-				act.Waypoints = append(act.Waypoints, mid)
-				w.dragWaypointIdx = len(act.Waypoints) - 1
-				state.MarkModified()
-			}
-			w.Refresh()
-			return true
-		}
 	}
 	if actIdx := w.hitTestActionStepAware(seq, pos); actIdx >= 0 {
 		state.SetTool(editor.ToolSelect)
@@ -1615,7 +1646,8 @@ func (w *CourtWidget) dragActionEndpoint(seq *model.Sequence, pos court.Point, r
 		w.notifyChanged()
 		return
 	}
-	pi := court.HitTestPlayer(&w.viewport, seq, pos)
+	finalSeq := w.seqWithFinalPositions(seq)
+	pi := court.HitTestPlayer(&w.viewport, finalSeq, pos)
 	if pi >= 0 {
 		act.To.IsPlayer = true
 		act.To.PlayerID = seq.Players[pi].ID
