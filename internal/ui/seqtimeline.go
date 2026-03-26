@@ -24,10 +24,12 @@ type SeqTimeline struct {
 	seqBtn    *widget.Button // current sequence label (tap to rename)
 	addBtn    *widget.Button
 	deleteBtn *widget.Button
-	settingsBtn *widget.Button
-	zoomInBtn   *widget.Button
-	zoomOutBtn  *widget.Button
-	zoomResetBtn *widget.Button
+	settingsBtn *TipButton
+	zoomInBtn    *TipButton
+	zoomOutBtn   *TipButton
+	zoomResetBtn *TipButton
+	rotateBtn    *TipButton
+	apronBtn     *TipButton
 	activeIdx int
 	numSeqs   int
 
@@ -43,6 +45,8 @@ type SeqTimeline struct {
 	OnZoomIn     func()
 	OnZoomOut    func()
 	OnZoomReset  func()
+	OnRotate     func() // rotates 90° CW
+	OnToggleApron func() // toggles apron bands
 	window       fyne.Window
 }
 
@@ -84,34 +88,40 @@ func NewSeqTimeline() *SeqTimeline {
 	})
 	st.deleteBtn.Importance = widget.DangerImportance
 
-	st.settingsBtn = widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
+	st.settingsBtn = NewTipButton(theme.SettingsIcon(), i18n.T(i18n.KeySettingsExerciseTitle), func() {
 		if st.OnSettings != nil {
 			st.OnSettings()
 		}
 	})
-	st.settingsBtn.Importance = widget.LowImportance
 
-	st.zoomOutBtn = widget.NewButtonWithIcon("", theme.ZoomOutIcon(), func() {
+	st.zoomOutBtn = NewTipButton(theme.ZoomOutIcon(), i18n.T(i18n.KeyTooltipZoomOut), func() {
 		if st.OnZoomOut != nil {
 			st.OnZoomOut()
 		}
 	})
-	st.zoomOutBtn.Importance = widget.LowImportance
-	st.zoomResetBtn = widget.NewButtonWithIcon("", theme.ZoomFitIcon(), func() {
+	st.zoomResetBtn = NewTipButton(theme.ZoomFitIcon(), i18n.T(i18n.KeyTooltipZoomReset), func() {
 		if st.OnZoomReset != nil {
 			st.OnZoomReset()
 		}
 	})
-	st.zoomResetBtn.Importance = widget.LowImportance
-	st.zoomInBtn = widget.NewButtonWithIcon("", theme.ZoomInIcon(), func() {
+	st.zoomInBtn = NewTipButton(theme.ZoomInIcon(), i18n.T(i18n.KeyTooltipZoomIn), func() {
 		if st.OnZoomIn != nil {
 			st.OnZoomIn()
 		}
 	})
-	st.zoomInBtn.Importance = widget.LowImportance
+	st.rotateBtn = NewTipButton(theme.ViewRefreshIcon(), i18n.T(i18n.KeyTooltipRotate), func() {
+		if st.OnRotate != nil {
+			st.OnRotate()
+		}
+	})
+	st.apronBtn = NewTipButton(theme.VisibilityIcon(), i18n.T(i18n.KeyTooltipApron), func() {
+		if st.OnToggleApron != nil {
+			st.OnToggleApron()
+		}
+	})
 
 	bg := canvas.NewRectangle(color.NRGBA{R: 0x2a, G: 0x2a, B: 0x2a, A: 0xff})
-	bar := container.NewHBox(st.prevBtn, st.seqBtn, st.nextBtn, st.addBtn, st.deleteBtn, layout.NewSpacer(), st.zoomOutBtn, st.zoomResetBtn, st.zoomInBtn, st.settingsBtn)
+	bar := container.NewHBox(st.prevBtn, st.seqBtn, st.nextBtn, st.addBtn, st.deleteBtn, layout.NewSpacer(), st.apronBtn, st.rotateBtn, st.zoomOutBtn, st.zoomResetBtn, st.zoomInBtn, st.settingsBtn)
 	st.box = container.NewStack(bg, bar)
 	return st
 }
@@ -208,6 +218,16 @@ func (st *SeqTimeline) showRenameDialog(idx int, exercise *model.Exercise) {
 		st.window,
 	)
 	dlg.Show()
+}
+
+// SetApronVisible updates the apron toggle button icon.
+func (st *SeqTimeline) SetApronVisible(visible bool) {
+	if visible {
+		st.apronBtn.Icon = theme.VisibilityIcon()
+	} else {
+		st.apronBtn.Icon = theme.VisibilityOffIcon()
+	}
+	st.apronBtn.Refresh()
 }
 
 // unused but needed for theme import

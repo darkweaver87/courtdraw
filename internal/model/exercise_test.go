@@ -192,6 +192,198 @@ func TestRoleLabel(t *testing.T) {
 	}
 }
 
+func TestRemapPositionsHalfToFull(t *testing.T) {
+	ex := &Exercise{
+		Sequences: []Sequence{
+			{
+				Players: []Player{
+					{ID: "p1", Position: Position{0.5, 0.5}},
+					{ID: "p2", Position: Position{0.3, 1.0}},
+				},
+				Accessories: []Accessory{
+					{ID: "c1", Position: Position{0.2, 0.8}},
+				},
+				Actions: []Action{
+					{
+						From:      ActionRef{IsPlayer: false, Position: Position{0.1, 0.6}},
+						To:        ActionRef{IsPlayer: false, Position: Position{0.9, 0.4}},
+						Waypoints: []Position{{0.5, 0.7}},
+					},
+				},
+			},
+		},
+	}
+	ex.RemapPositionsHalfToFull()
+
+	// Players.
+	if ex.Sequences[0].Players[0].Position[1] != 0.25 {
+		t.Fatalf("p1 Y: got %f, want 0.25", ex.Sequences[0].Players[0].Position[1])
+	}
+	if ex.Sequences[0].Players[1].Position[1] != 0.5 {
+		t.Fatalf("p2 Y: got %f, want 0.5", ex.Sequences[0].Players[1].Position[1])
+	}
+	// X unchanged.
+	if ex.Sequences[0].Players[0].Position[0] != 0.5 {
+		t.Fatalf("p1 X: got %f, want 0.5", ex.Sequences[0].Players[0].Position[0])
+	}
+	// Accessory.
+	if ex.Sequences[0].Accessories[0].Position[1] != 0.4 {
+		t.Fatalf("c1 Y: got %f, want 0.4", ex.Sequences[0].Accessories[0].Position[1])
+	}
+	// Action endpoints.
+	if ex.Sequences[0].Actions[0].From.Position[1] != 0.3 {
+		t.Fatalf("from Y: got %f, want 0.3", ex.Sequences[0].Actions[0].From.Position[1])
+	}
+	if ex.Sequences[0].Actions[0].To.Position[1] != 0.2 {
+		t.Fatalf("to Y: got %f, want 0.2", ex.Sequences[0].Actions[0].To.Position[1])
+	}
+	// Waypoint.
+	if ex.Sequences[0].Actions[0].Waypoints[0][1] != 0.35 {
+		t.Fatalf("waypoint Y: got %f, want 0.35", ex.Sequences[0].Actions[0].Waypoints[0][1])
+	}
+}
+
+func TestRemapPositionsFullToHalf_Bottom(t *testing.T) {
+	ex := &Exercise{
+		Sequences: []Sequence{
+			{
+				Players: []Player{
+					{ID: "p1", Position: Position{0.5, 0.25}},
+					{ID: "p2", Position: Position{0.3, 0.0}},
+				},
+			},
+		},
+	}
+	ex.RemapPositionsFullToHalf(true)
+
+	if ex.Sequences[0].Players[0].Position[1] != 0.5 {
+		t.Fatalf("p1 Y: got %f, want 0.5", ex.Sequences[0].Players[0].Position[1])
+	}
+	if ex.Sequences[0].Players[1].Position[1] != 0.0 {
+		t.Fatalf("p2 Y: got %f, want 0.0", ex.Sequences[0].Players[1].Position[1])
+	}
+}
+
+func TestRemapPositionsFullToHalf_Top(t *testing.T) {
+	ex := &Exercise{
+		Sequences: []Sequence{
+			{
+				Players: []Player{
+					{ID: "p1", Position: Position{0.5, 0.75}},
+					{ID: "p2", Position: Position{0.3, 1.0}},
+				},
+			},
+		},
+	}
+	ex.RemapPositionsFullToHalf(false)
+
+	if ex.Sequences[0].Players[0].Position[1] != 0.5 {
+		t.Fatalf("p1 Y: got %f, want 0.5", ex.Sequences[0].Players[0].Position[1])
+	}
+	if ex.Sequences[0].Players[1].Position[1] != 0.0 {
+		t.Fatalf("p2 Y: got %f, want 0.0", ex.Sequences[0].Players[1].Position[1])
+	}
+}
+
+func TestFullCourtPlayerHalf_AllBottom(t *testing.T) {
+	ex := &Exercise{
+		Sequences: []Sequence{
+			{
+				Players: []Player{
+					{ID: "p1", Position: Position{0.5, 0.2}},
+					{ID: "p2", Position: Position{0.3, 0.4}},
+				},
+			},
+		},
+	}
+	if h := ex.FullCourtPlayerHalf(); h != "bottom" {
+		t.Fatalf("got %q, want bottom", h)
+	}
+}
+
+func TestFullCourtPlayerHalf_AllTop(t *testing.T) {
+	ex := &Exercise{
+		Sequences: []Sequence{
+			{
+				Players: []Player{
+					{ID: "p1", Position: Position{0.5, 0.7}},
+					{ID: "p2", Position: Position{0.3, 0.9}},
+				},
+			},
+		},
+	}
+	if h := ex.FullCourtPlayerHalf(); h != "top" {
+		t.Fatalf("got %q, want top", h)
+	}
+}
+
+func TestFullCourtPlayerHalf_Mixed(t *testing.T) {
+	ex := &Exercise{
+		Sequences: []Sequence{
+			{
+				Players: []Player{
+					{ID: "p1", Position: Position{0.5, 0.2}},
+					{ID: "p2", Position: Position{0.3, 0.8}},
+				},
+			},
+		},
+	}
+	if h := ex.FullCourtPlayerHalf(); h != "mixed" {
+		t.Fatalf("got %q, want mixed", h)
+	}
+}
+
+func TestFullCourtPlayerHalf_Empty(t *testing.T) {
+	ex := &Exercise{Sequences: []Sequence{{}}}
+	if h := ex.FullCourtPlayerHalf(); h != "bottom" {
+		t.Fatalf("got %q, want bottom (default)", h)
+	}
+}
+
+func TestFullCourtPlayerHalf_AtCenter(t *testing.T) {
+	ex := &Exercise{
+		Sequences: []Sequence{
+			{
+				Players: []Player{
+					{ID: "p1", Position: Position{0.5, 0.5}},
+				},
+			},
+		},
+	}
+	// Y=0.5 is on the boundary — compatible with both, should return "bottom" (default).
+	if h := ex.FullCourtPlayerHalf(); h != "bottom" {
+		t.Fatalf("got %q, want bottom", h)
+	}
+}
+
+func TestRemapHalfToFullToHalf_RoundTrip(t *testing.T) {
+	ex := &Exercise{
+		Sequences: []Sequence{
+			{
+				Players: []Player{
+					{ID: "p1", Position: Position{0.5, 0.6}},
+				},
+			},
+		},
+	}
+	origY := ex.Sequences[0].Players[0].Position[1]
+	ex.RemapPositionsHalfToFull()
+	ex.RemapPositionsFullToHalf(true)
+	gotY := ex.Sequences[0].Players[0].Position[1]
+	if !approxEq(gotY, origY) {
+		t.Fatalf("round-trip Y: got %f, want %f", gotY, origY)
+	}
+}
+
+func approxEq(a, b float64) bool {
+	const eps = 1e-9
+	d := a - b
+	if d < 0 {
+		d = -d
+	}
+	return d < eps
+}
+
 func TestExercise_FullRoundTrip(t *testing.T) {
 	ex := Exercise{
 		Name:          "Test Drill",

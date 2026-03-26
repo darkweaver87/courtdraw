@@ -114,6 +114,7 @@ func NewApp(st store.Store, settings *store.Settings, lib *store.Library, w fyne
 func (a *App) BuildUI() fyne.CanvasObject {
 	// Create all panel widgets.
 	a.court = fynecourt.NewCourtWidget()
+	a.court.ShowApron = a.settings.ApronVisible()
 	a.court.SetEditorState(&a.editorState)
 	a.court.OnChanged = func() {
 		a.refreshEditor()
@@ -134,6 +135,7 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	}
 
 	a.propsPanel = NewPropertiesPanel()
+	a.propsPanel.Window = a.window
 	a.propsPanel.OnModified = func() {
 		a.court.Refresh()
 		a.updateWindowTitle()
@@ -178,6 +180,9 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	a.seqTimeline.OnZoomIn = func() { a.court.ZoomIn() }
 	a.seqTimeline.OnZoomOut = func() { a.court.ZoomOut() }
 	a.seqTimeline.OnZoomReset = func() { a.court.ResetZoom() }
+	a.seqTimeline.OnRotate = func() { a.toggleOrientation() }
+	a.seqTimeline.OnToggleApron = func() { a.toggleApron() }
+	a.seqTimeline.SetApronVisible(a.court.ShowApron)
 
 	a.instrPanel = NewInstructionsPanel()
 	a.instrPanel.OnModified = func() {
@@ -725,6 +730,10 @@ func (a *App) showPreferences() {
 		if langChanged {
 			a.switchLang(a.settings.Language)
 		}
+		// Apply apron visibility change.
+		a.court.ShowApron = a.settings.ApronVisible()
+		a.court.InvalidateBackground()
+		a.court.Refresh()
 	})
 }
 
@@ -894,10 +903,26 @@ func (a *App) NewExercise() {
 	// Always store English as the primary language, with translations in i18n.
 	enName := i18n.TLang("en", "default.exercise_name")
 	enSeqLabel := i18n.TLang("en", "default.sequence_label")
+	courtStandard := model.FIBA
+	if a.settings != nil && a.settings.DefaultCourtStandard == "nba" {
+		courtStandard = model.NBA
+	}
+	courtType := model.HalfCourt
+	if a.settings != nil && a.settings.DefaultCourtType == "full_court" {
+		courtType = model.FullCourt
+	}
+	orientation := model.OrientationLandscape
+	if isMobile {
+		orientation = model.OrientationPortrait
+	}
+	if a.settings != nil && a.settings.DefaultOrientation != "" {
+		orientation = model.Orientation(a.settings.DefaultOrientation)
+	}
 	ex := &model.Exercise{
 		Name:          enName,
-		CourtType:     model.HalfCourt,
-		CourtStandard: model.FIBA,
+		CourtType:     courtType,
+		CourtStandard: courtStandard,
+		Orientation:   orientation,
 		Sequences: []model.Sequence{
 			{Label: enSeqLabel},
 		},
@@ -1314,6 +1339,27 @@ func (a *App) showExerciseSettingsDialog() {
 		courtTypeSelect.SetSelected(courtTypeOptions[0])
 	}
 
+	orientLabels := []string{
+		i18n.T(i18n.KeyPropsOrientPortrait),
+		i18n.T(i18n.KeyPropsOrientLandscape),
+		i18n.T(i18n.KeyPropsOrientPortraitFlip),
+		i18n.T(i18n.KeyPropsOrientLandscapeFlip),
+	}
+	orientKeys := []model.Orientation{
+		model.OrientationPortrait, model.OrientationLandscape,
+		model.OrientationPortraitFlip, model.OrientationLandscapeFlip,
+	}
+	orientSelect := widget.NewSelect(orientLabels, nil)
+	for idx, k := range orientKeys {
+		if k == ex.Orientation {
+			orientSelect.SetSelected(orientLabels[idx])
+			break
+		}
+	}
+	if orientSelect.Selected == "" {
+		orientSelect.SetSelected(orientLabels[0])
+	}
+
 	durationEntry := widget.NewEntry()
 	durationEntry.SetText(ex.Duration)
 
@@ -1328,6 +1374,7 @@ func (a *App) showExerciseSettingsDialog() {
 		widget.NewFormItem(i18n.T(i18n.KeyPropsDescription), descEntry),
 		widget.NewFormItem(i18n.T(i18n.KeyPropsCourtStandard), courtStdSelect),
 		widget.NewFormItem(i18n.T(i18n.KeyPropsCourtType), courtTypeSelect),
+		widget.NewFormItem(i18n.T(i18n.KeyPropsOrientation), orientSelect),
 		widget.NewFormItem(i18n.T(i18n.KeyPropsDuration), durationEntry),
 		widget.NewFormItem(i18n.T(i18n.KeyPropsTags), tagsEntry),
 	}
@@ -1352,10 +1399,12 @@ func (a *App) showExerciseSettingsDialog() {
 			} else {
 				ex.CourtStandard = model.FIBA
 			}
-			if courtTypeSelect.Selected == courtTypeOptions[1] {
-				ex.CourtType = model.FullCourt
-			} else {
-				ex.CourtType = model.HalfCourt
+			a.applyCourtTypeSwitch(courtTypeSelect.Selected == courtTypeOptions[1])
+			for idx, label := range orientLabels {
+				if label == orientSelect.Selected {
+					ex.Orientation = orientKeys[idx]
+					break
+				}
 			}
 			ex.Duration = strings.TrimSpace(durationEntry.Text)
 			ex.Tags = splitTags(tagsEntry.Text)
@@ -1367,6 +1416,66 @@ func (a *App) showExerciseSettingsDialog() {
 	)
 	dlg.Resize(fyne.NewSize(400, 400))
 	dlg.Show()
+}
+
+// toggleApron toggles apron band visibility and persists the setting.
+func (a *App) toggleApron() {
+	a.court.ShowApron = !a.court.ShowApron
+	a.court.InvalidateBackground()
+	a.court.Refresh()
+	a.seqTimeline.SetApronVisible(a.court.ShowApron)
+	// Persist to settings.
+	v := a.court.ShowApron
+	a.settings.ShowApron = &v
+	if ys, ok := a.store.(*store.YAMLStore); ok {
+		_ = ys.SaveSettings(a.settings)
+	}
+}
+
+// toggleOrientation rotates the court 90° clockwise.
+func (a *App) toggleOrientation() {
+	if a.exercise == nil {
+		return
+	}
+	a.exercise.Orientation = model.NextRotationCW(a.exercise.Orientation)
+	a.editorState.Modified = true
+	a.court.Refresh()
+	a.refreshEditor()
+	a.updateWindowTitle()
+}
+
+// applyCourtTypeSwitch handles smart court type switching with position remapping.
+// wantFull indicates whether the desired court type is full court.
+func (a *App) applyCourtTypeSwitch(wantFull bool) {
+	ex := a.exercise
+	if ex == nil {
+		return
+	}
+	if wantFull && ex.CourtType == model.FullCourt {
+		return
+	}
+	if !wantFull && ex.CourtType == model.HalfCourt {
+		return
+	}
+
+	if ex.CourtType == model.HalfCourt && wantFull {
+		ex.RemapPositionsHalfToFull()
+		ex.CourtType = model.FullCourt
+		return
+	}
+
+	// Full → Half: detect which half has elements.
+	half := ex.FullCourtPlayerHalf()
+	if half == "mixed" {
+		dialog.ShowInformation(
+			i18n.T(i18n.KeyCourtSwitchBlockedTitle),
+			i18n.T(i18n.KeyCourtSwitchBlockedMsg),
+			a.window,
+		)
+		return
+	}
+	ex.RemapPositionsFullToHalf(half == "bottom")
+	ex.CourtType = model.HalfCourt
 }
 
 func joinTags(tags []string) string {

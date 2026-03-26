@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/i18n"
@@ -29,10 +30,14 @@ type PropertiesPanel struct {
 	tagsEntry        *widget.Entry
 
 	// Dropdown selectors.
-	courtStdSelect  *widget.Select
-	courtTypeSelect *widget.Select
-	categorySelect  *widget.Select
-	ageGroupSelect  *widget.Select
+	courtStdSelect    *widget.Select
+	courtTypeSelect   *widget.Select
+	orientationSelect *widget.Select
+	categorySelect    *widget.Select
+	ageGroupSelect    *widget.Select
+
+	// Window reference for dialogs.
+	Window fyne.Window
 
 	// Intensity.
 	intensityBtns [3]*TipButton
@@ -90,13 +95,27 @@ func NewPropertiesPanel() *PropertiesPanel {
 	pp.courtTypeSelect = widget.NewSelect(
 		[]string{i18n.T(i18n.KeyPropsCourtHalf), i18n.T(i18n.KeyPropsCourtFull)},
 		func(s string) {
+			pp.switchCourtType(s)
+		},
+	)
+
+	pp.orientationSelect = widget.NewSelect(
+		[]string{
+			i18n.T(i18n.KeyPropsOrientPortrait), i18n.T(i18n.KeyPropsOrientLandscape),
+			i18n.T(i18n.KeyPropsOrientPortraitFlip), i18n.T(i18n.KeyPropsOrientLandscapeFlip),
+		},
+		func(s string) {
 			if pp.exercise == nil {
 				return
 			}
-			if s == i18n.T(i18n.KeyPropsCourtFull) {
-				pp.exercise.CourtType = model.FullCourt
-			} else {
-				pp.exercise.CourtType = model.HalfCourt
+			orientMap := map[string]model.Orientation{
+				i18n.T(i18n.KeyPropsOrientPortrait):      model.OrientationPortrait,
+				i18n.T(i18n.KeyPropsOrientLandscape):     model.OrientationLandscape,
+				i18n.T(i18n.KeyPropsOrientPortraitFlip):  model.OrientationPortraitFlip,
+				i18n.T(i18n.KeyPropsOrientLandscapeFlip): model.OrientationLandscapeFlip,
+			}
+			if o, ok := orientMap[s]; ok {
+				pp.exercise.Orientation = o
 			}
 			pp.markModified()
 		},
@@ -291,6 +310,13 @@ func (pp *PropertiesPanel) RefreshLanguage() {
 	pp.courtTypeSelect.Options = []string{i18n.T(i18n.KeyPropsCourtHalf), i18n.T(i18n.KeyPropsCourtFull)}
 	pp.courtTypeSelect.Refresh()
 
+	// Orientation.
+	pp.orientationSelect.Options = []string{
+		i18n.T(i18n.KeyPropsOrientPortrait), i18n.T(i18n.KeyPropsOrientLandscape),
+		i18n.T(i18n.KeyPropsOrientPortraitFlip), i18n.T(i18n.KeyPropsOrientLandscapeFlip),
+	}
+	pp.orientationSelect.Refresh()
+
 	// Category.
 	pp.categorySelect.Options = []string{
 		i18n.T(i18n.KeyPropsCategoryNone),
@@ -408,6 +434,7 @@ func (pp *PropertiesPanel) addMetadataFields(ex *model.Exercise, editLang string
 	// Non-translatable fields — always visible regardless of editLang.
 	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsStandard), pp.courtStdSelect))
 	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsCourt), pp.courtTypeSelect))
+	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsOrientation), pp.orientationSelect))
 	pp.content.Add(pp.makeField(i18n.T(i18n.KeyPropsDuration), pp.durationEntry))
 
 	pp.refreshIntensity()
@@ -441,6 +468,16 @@ func (pp *PropertiesPanel) addMetadataFields(ex *model.Exercise, editLang string
 		pp.courtTypeSelect.SetSelected(i18n.T(i18n.KeyPropsCourtFull))
 	} else {
 		pp.courtTypeSelect.SetSelected(i18n.T(i18n.KeyPropsCourtHalf))
+	}
+	switch ex.Orientation {
+	case model.OrientationLandscape:
+		pp.orientationSelect.SetSelected(i18n.T(i18n.KeyPropsOrientLandscape))
+	case model.OrientationPortraitFlip:
+		pp.orientationSelect.SetSelected(i18n.T(i18n.KeyPropsOrientPortraitFlip))
+	case model.OrientationLandscapeFlip:
+		pp.orientationSelect.SetSelected(i18n.T(i18n.KeyPropsOrientLandscapeFlip))
+	default:
+		pp.orientationSelect.SetSelected(i18n.T(i18n.KeyPropsOrientPortrait))
 	}
 	pp.syncCategorySelect(ex)
 	pp.syncAgeGroupSelect(ex)
@@ -707,6 +744,47 @@ func (pp *PropertiesPanel) onCalloutChanged(s string, labels []string) {
 			}
 		}
 	}
+	pp.markModified()
+}
+
+func (pp *PropertiesPanel) switchCourtType(s string) {
+	if pp.exercise == nil || pp.updating {
+		return
+	}
+	newType := model.HalfCourt
+	if s == i18n.T(i18n.KeyPropsCourtFull) {
+		newType = model.FullCourt
+	}
+	if newType == pp.exercise.CourtType {
+		return
+	}
+
+	if pp.exercise.CourtType == model.HalfCourt && newType == model.FullCourt {
+		// Half → Full: compress Y into bottom half.
+		pp.exercise.RemapPositionsHalfToFull()
+		pp.exercise.CourtType = model.FullCourt
+		pp.markModified()
+		return
+	}
+
+	// Full → Half: detect which half has elements.
+	half := pp.exercise.FullCourtPlayerHalf()
+	if half == "mixed" {
+		// Revert the Select to full court and show dialog.
+		pp.updating = true
+		pp.courtTypeSelect.SetSelected(i18n.T(i18n.KeyPropsCourtFull))
+		pp.updating = false
+		if pp.Window != nil {
+			dialog.ShowInformation(
+				i18n.T(i18n.KeyCourtSwitchBlockedTitle),
+				i18n.T(i18n.KeyCourtSwitchBlockedMsg),
+				pp.Window,
+			)
+		}
+		return
+	}
+	pp.exercise.RemapPositionsFullToHalf(half == "bottom")
+	pp.exercise.CourtType = model.HalfCourt
 	pp.markModified()
 }
 

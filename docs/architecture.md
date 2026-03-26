@@ -6,7 +6,7 @@
 |---|---|---|
 | Language | **Go** | Performant, cross-compile, no runtime |
 | UI Framework | **Fyne v2** (fyne.io/fyne/v2) | Retained-mode Go UI, supports Android/Linux/Windows/macOS |
-| Court Rendering | **image.RGBA** + `golang.org/x/image/vector` | Framework-agnostic 2D rasterization, anti-aliased, 2m apron |
+| Court Rendering | **image.RGBA** + `golang.org/x/image/vector` | Framework-agnostic 2D rasterization, anti-aliased, 2m apron; landscape mode rotates the court 90° via `ComputeViewportOriented()` |
 | Court Widget | **canvas.Raster** (Fyne) | Bitmap rendering bridge between `image.RGBA` and Fyne |
 | Animation | goroutine + `time.Ticker` (30fps) | Interpolation between sequence keyframes |
 | PDF Generation | **go-pdf/fpdf** v0.9.0 | PDF generation, Helvetica font |
@@ -106,7 +106,7 @@ courtdraw/
 │   │   ├── draw_arrows.go           # Action arrow rendering (solid, dashed, zigzag) + DrawActionPreview()
 │   │   ├── fiba.go                  # FIBA court markings
 │   │   ├── nba.go                   # NBA court markings
-│   │   ├── geometry.go              # Coordinate mapping (relative ↔ pixel), apron, element scaling
+│   │   ├── geometry.go              # Coordinate mapping (relative ↔ pixel), apron, element scaling; ComputeViewportOriented() applies landscape rotation; RelToPixel/PixelToRel handle the axis swap
 │   │   └── draw_test.go             # Rendering tests (no UI framework)
 │   ├── anim/                        # Animation engine
 │   │   ├── interpolate.go           # Position/rotation interpolation

@@ -135,6 +135,35 @@ const (
 	IntensityMax    Intensity = 3
 )
 
+// Orientation defines the court rendering rotation (0°, 90°, 180°, 270° clockwise).
+type Orientation string
+
+const (
+	OrientationPortrait      Orientation = "portrait"       // 0° — basket at bottom (default)
+	OrientationLandscape     Orientation = "landscape"      // 90° CW — basket at left
+	OrientationPortraitFlip  Orientation = "portrait_flip"  // 180° — basket at top
+	OrientationLandscapeFlip Orientation = "landscape_flip" // 270° CW — basket at right
+)
+
+// NextRotationCW returns the next orientation after a 90° clockwise rotation.
+func NextRotationCW(o Orientation) Orientation {
+	switch o {
+	case OrientationLandscape:
+		return OrientationPortraitFlip
+	case OrientationPortraitFlip:
+		return OrientationLandscapeFlip
+	case OrientationLandscapeFlip:
+		return OrientationPortrait
+	default:
+		return OrientationLandscape
+	}
+}
+
+// IsLandscape returns true for 90° and 270° orientations (swapped dimensions).
+func (o Orientation) IsLandscape() bool {
+	return o == OrientationLandscape || o == OrientationLandscapeFlip
+}
+
 // CalloutType defines a predefined shout a player makes during a sequence.
 type CalloutType string
 

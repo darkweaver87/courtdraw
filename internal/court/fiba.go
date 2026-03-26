@@ -58,9 +58,11 @@ func drawCourt(img *image.RGBA, courtType model.CourtType, vp *Viewport, geom *C
 	}
 
 	// Apron (2m run-off area around the court).
-	apronTL := m2p(-ApronMeters, courtH+ApronMeters)
-	apronBR := m2p(courtW+ApronMeters, -ApronMeters)
-	DrawRectFill(img, apronTL, apronBR, apronCol)
+	if !vp.HideApron {
+		apronTL := m2p(-ApronMeters, courtH+ApronMeters)
+		apronBR := m2p(courtW+ApronMeters, -ApronMeters)
+		DrawRectFill(img, apronTL, apronBR, apronCol)
+	}
 
 	// Court floor — flat color slightly oversized as safety under lines, texture on exact court area.
 	pad := lineW + 1

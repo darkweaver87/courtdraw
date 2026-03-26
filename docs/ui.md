@@ -89,7 +89,7 @@ Grouped into sections:
 
 - Displays the court for the **current sequence**
 - Court type set in exercise metadata (FIBA or NBA, half or full)
-- 2m dark-blue apron (run-off area) rendered around the court
+- 2m dark-blue apron (run-off area) rendered around the court — visibility controlled by the Show Apron Bands preference (`CourtWidget.ShowApron`)
 - All players, accessories, and actions for the current sequence are rendered
 - Element sizes scale proportionally with court type (smaller on full court, larger on half court)
 - Players are clamped within court boundaries (body radius accounted for)
@@ -102,6 +102,7 @@ Grouped into sections:
 - **[+]** adds a new sequence (copies current element positions as starting point)
 - Drag tabs to reorder sequences
 - Right-click / long-press a tab: rename, duplicate, delete
+- **Rotate button** (↻) next to the zoom buttons — toggles court orientation between portrait and landscape; fires `SeqTimeline.OnRotate`, wired to `app.toggleOrientation()`
 
 ### Right Panel: Properties
 
@@ -113,7 +114,9 @@ Two sections:
    - Accessory: type, rotation
 
 2. **Exercise metadata** (bottom) — always visible:
-   - Name, court standard, court type, duration, intensity, category, tags
+   - Name, court standard, court type, orientation (portrait/landscape), duration, intensity, category, tags
+   - **Court type switching**: changing between half court and full court triggers automatic position remapping across all sequences (Half→Full compresses Y by 0.5; Full→Half expands Y by 2.0). If elements span both halves, a blocking dialog is shown instead of remapping. The same smart switching logic is also available in the **exercise settings dialog** (`app.applyCourtTypeSwitch(wantFull bool)`).
+   - **Exercise settings dialog**: provides an orientation selector (portrait/landscape) and court type switcher with the same smart remapping behaviour.
 
 ### Bottom Panel: Instructions
 
@@ -190,7 +193,7 @@ Three-column layout merging the exercise library, preview, and session compositi
 - **[Refresh]**: reload exercise library
 - **[PDF]**: generate session sheet PDF — file dialog opens in configured PDF export dir (or home)
 - **[About]**: info icon, right-aligned — shows version and app info
-- **[Preferences]**: gear icon, right-aligned — opens preferences dialog (GitHub token, language, exercise directory, PDF export directory)
+- **[Preferences]**: gear icon, right-aligned — opens preferences dialog (GitHub token, language, exercise directory, PDF export directory, default court type, default orientation, show apron bands)
 - Save icon highlights when session is modified
 
 ### Left Column: Library (~30%)

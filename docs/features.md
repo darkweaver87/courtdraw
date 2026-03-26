@@ -31,12 +31,34 @@ Source: NBA Official Rule Book — court diagram.
 ### Court Rendering
 
 - All markings drawn with white lines on wood-tone background
-- 2m dark-blue apron (run-off area) drawn around the court on all sides (FIBA standard)
-- Orientation: vertical (baskets at top and bottom)
+- 2m dark-blue apron (run-off area) drawn around the court on all sides (FIBA standard) — visibility toggled by the Show Apron Bands setting
 - Half-court: only one basket end
 - Elements shared between standards: sidelines, baselines, midcourt line (full), center circle (full), free-throw line, free-throw circle, paint/lane, three-point arc, no-charge zone, basket (backboard + rim)
 - Element sizing derived from physical dimensions — player body = 0.90m on the court (2× shoulder width for visibility), via `ElementScaleForCourt()` shared between screen and PDF renderers. Font scales with elements so labels fill the head circle.
 - Players are clamped to stay entirely within court boundaries (body radius accounted for, not just center point)
+
+### Court Orientation
+
+Each exercise has an `Orientation` field (`portrait` or `landscape`):
+
+- **Portrait**: court length runs vertically (baskets at top and bottom) — default on mobile
+- **Landscape**: court is rotated 90° so the length is horizontal — default on desktop
+
+The orientation can be changed in two places:
+- The exercise metadata section of the properties panel
+- The **rotate button** (↻) in the sequence timeline bar, next to the zoom buttons — toggles between portrait and landscape immediately
+- The exercise settings dialog
+
+Changing orientation updates the court widget immediately. PDF generation is not affected by orientation — PDFs always use the layout best suited to A4.
+
+### Smart Court Type Switching
+
+When switching between half court and full court — either in the properties panel or the exercise settings dialog — all player, accessory, and waypoint positions are automatically remapped so they remain visually in the same location on the court:
+
+- **Half → Full**: Y coordinates are compressed by 0.5 (the half-court occupies the bottom half of a full court)
+- **Full → Half**: Y coordinates in the bottom half are expanded by 2.0; if elements span both halves (i.e. some players are in the top half), a dialog blocks the switch and informs the coach
+
+The remapping is applied across all sequences in the exercise atomically.
 
 ## Player Roles
 
@@ -165,6 +187,9 @@ Icons are PNG or SVG files in `assets/icons/`. They can be replaced for custom s
 - **GitHub Token**: stored base64-encoded in `settings.yaml` (mode 0600)
 - **Language**: switch between EN/FR (applies immediately)
 - **Exercise Directory**: exercises storage path with folder picker (defaults to `~/.courtdraw/exercises/`)
+- **Default Court Type**: half or full — applied when creating a new exercise
+- **Default Orientation**: portrait or landscape — applied when creating a new exercise
+- **Show Apron Bands**: checkbox (default: on) — controls visibility of the 2m dark-blue apron band around the court
 
 ## Localization
 

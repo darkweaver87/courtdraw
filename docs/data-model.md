@@ -106,6 +106,7 @@ sequences:
 | `description` | string | no | Short description |
 | `court_type` | enum | yes | `half_court` or `full_court` |
 | `court_standard` | enum | yes | `fiba` or `nba` |
+| `orientation` | enum | no | `portrait` or `landscape` — court display orientation; defaults to `landscape` on desktop, `portrait` on mobile (omitempty) |
 | `duration` | duration | no | Estimated duration (e.g. `15m`, `1h30m`) |
 | `intensity` | int 0–3 | no | 0=rest, 1=low, 2=medium, 3=max |
 | `category` | enum | no | `warmup`, `offense`, `defense`, `transition`, `scrimmage`, `cooldown` |
@@ -374,6 +375,9 @@ language: en
 github_token: "base64-encoded-token"
 exercise_dir: /home/user/.courtdraw/exercises
 pdf_export_dir: /home/user/Documents
+default_court_type: half_court
+default_orientation: landscape
+show_apron: true
 ```
 
 | Field | Type | Description |
@@ -382,6 +386,9 @@ pdf_export_dir: /home/user/Documents
 | `pdf_export_dir` | string | Default directory for PDF exports |
 | `github_token` | string | GitHub PAT, base64-encoded in YAML, decoded at load |
 | `exercise_dir` | string | Exercises storage directory (defaults to `~/.courtdraw/exercises/`) |
+| `default_court_type` | string | Default court type for new exercises: `half_court` or `full_court` |
+| `default_orientation` | string | Default orientation for new exercises: `portrait` or `landscape` |
+| `show_apron` | *bool | Whether to render the 2m apron band around the court (defaults to `true`); accessed via `ApronVisible()` helper |
 | `recent_files` | []string | Recently opened exercise names (deprecated — migrated to index `last_opened`) |
 
 ## Share Bundle

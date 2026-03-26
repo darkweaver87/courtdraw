@@ -93,11 +93,56 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 
 	pdfDirRow := container.NewBorder(nil, nil, nil, pdfBrowseBtn, pdfDirEntry)
 
+	// Default court standard.
+	standardOptions := []string{"FIBA", "NBA"}
+	standardSelect := widget.NewSelect(standardOptions, nil)
+	if settings.DefaultCourtStandard == "nba" {
+		standardSelect.SetSelected("NBA")
+	} else {
+		standardSelect.SetSelected("FIBA")
+	}
+
+	// Default court type.
+	courtTypeOptions := []string{i18n.T(i18n.KeyPropsCourtHalf), i18n.T(i18n.KeyPropsCourtFull)}
+	courtTypeSelect := widget.NewSelect(courtTypeOptions, nil)
+	if settings.DefaultCourtType == "full_court" {
+		courtTypeSelect.SetSelected(courtTypeOptions[1])
+	} else {
+		courtTypeSelect.SetSelected(courtTypeOptions[0])
+	}
+
+	// Default orientation.
+	orientOptions := []string{i18n.T(i18n.KeyPropsOrientPortrait), i18n.T(i18n.KeyPropsOrientLandscape)}
+	orientSelect := widget.NewSelect(orientOptions, nil)
+	if settings.DefaultOrientation == "landscape" {
+		orientSelect.SetSelected(orientOptions[1])
+	} else if settings.DefaultOrientation == "portrait" {
+		orientSelect.SetSelected(orientOptions[0])
+	} else {
+		// Default: landscape on desktop, portrait on mobile.
+		if isMobile {
+			orientSelect.SetSelected(orientOptions[0])
+		} else {
+			orientSelect.SetSelected(orientOptions[1])
+		}
+	}
+
+	// Show apron bands.
+	apronCheck := widget.NewCheck(i18n.T(i18n.KeyPrefsShowApron), nil)
+	apronCheck.SetChecked(settings.ApronVisible())
+
 	form := container.NewVBox(
 		widget.NewLabel(i18n.T(i18n.KeyPrefsGithubToken)),
 		tokenEntry,
 		widget.NewLabel(i18n.T(i18n.KeyPrefsLanguage)),
 		langSelect,
+		widget.NewLabel(i18n.T(i18n.KeyPrefsDefaultStandard)),
+		standardSelect,
+		widget.NewLabel(i18n.T(i18n.KeyPrefsDefaultCourt)),
+		courtTypeSelect,
+		widget.NewLabel(i18n.T(i18n.KeyPrefsDefaultOrientation)),
+		orientSelect,
+		apronCheck,
 		widget.NewLabel(i18n.T(i18n.KeyPrefsExerciseDir)),
 		dirRow,
 		widget.NewLabel(i18n.T(i18n.KeyPrefsPdfExportDir)),
@@ -119,6 +164,23 @@ func showPrefsDialog(w fyne.Window, settings *store.Settings, ys *store.YAMLStor
 			settings.Language = langSelect.Selected
 			settings.ExerciseDir = strings.TrimSpace(dirEntry.Text)
 			settings.PdfExportDir = strings.TrimSpace(pdfDirEntry.Text)
+			if standardSelect.Selected == "NBA" {
+				settings.DefaultCourtStandard = "nba"
+			} else {
+				settings.DefaultCourtStandard = "fiba"
+			}
+			if courtTypeSelect.Selected == courtTypeOptions[1] {
+				settings.DefaultCourtType = "full_court"
+			} else {
+				settings.DefaultCourtType = "half_court"
+			}
+			if orientSelect.Selected == orientOptions[1] {
+				settings.DefaultOrientation = "landscape"
+			} else {
+				settings.DefaultOrientation = "portrait"
+			}
+			apronVal := apronCheck.Checked
+			settings.ShowApron = &apronVal
 
 			if ys != nil {
 				_ = ys.SaveSettings(settings)

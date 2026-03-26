@@ -69,8 +69,9 @@ type CourtWidget struct {
 	baseVP      court.Viewport // viewport before zoom/pan
 	geom        *court.CourtGeometry
 
-	playback *anim.Playback
-	animMode bool
+	playback  *anim.Playback
+	animMode  bool
+	ShowApron bool // whether to draw apron bands (default: true)
 
 	raster *canvas.Raster
 
@@ -83,9 +84,11 @@ type CourtWidget struct {
 	courtBgH       int
 	courtBgType    model.CourtType
 	courtBgStd     model.CourtStandard
-	courtBgZoom    float64
-	courtBgPanX    float64
-	courtBgPanY    float64
+	courtBgZoom      float64
+	courtBgPanX      float64
+	courtBgPanY      float64
+	courtBgLandscape  bool
+	courtBgHideApron  bool
 
 	// Zoom and pan state.
 	zoomLevel   float64 // 1.0 = normal, max 5.0
@@ -148,6 +151,11 @@ func NewCourtWidget() *CourtWidget {
 }
 
 // SetExercise sets the exercise to display.
+// InvalidateBackground forces the court background to be redrawn on next frame.
+func (w *CourtWidget) InvalidateBackground() {
+	w.courtBg = nil
+}
+
 func (w *CourtWidget) SetExercise(ex *model.Exercise) {
 	w.exercise = ex
 	w.seqIndex = 0
@@ -286,19 +294,29 @@ func (w *CourtWidget) draw(pixW, pixH int) image.Image {
 	}
 
 	w.updateGeometry()
-	w.baseVP = court.ComputeViewport(
+	orient := w.exercise.Orientation
+
+	// For 90°/270° orientations, draw in portrait space (swapped dimensions) then rotate.
+	drawW, drawH := pixW, pixH
+	if orient.IsLandscape() {
+		drawW, drawH = pixH, pixW
+	}
+
+	w.baseVP = court.ComputeViewportOriented(
 		w.exercise.CourtType,
 		w.geom,
 		image.Pt(pixW, pixH),
 		10,
+		orient,
+		!w.ShowApron,
 	)
 	w.viewport = w.applyZoomPan(w.baseVP)
 
-	// Build or reuse cached court background.
-	w.ensureCourtBg(pixW, pixH, &w.viewport)
+	// Build or reuse cached court background (always in portrait space).
+	w.ensureCourtBg(drawW, drawH, &w.viewport)
 
 	// Fresh frame buffer, copy background.
-	img := image.NewRGBA(image.Rect(0, 0, pixW, pixH))
+	img := image.NewRGBA(image.Rect(0, 0, drawW, drawH))
 	copy(img.Pix, w.courtBg.Pix)
 
 	// Scale font with both element scale and zoom so labels fill the head.
@@ -313,7 +331,7 @@ func (w *CourtWidget) draw(pixW, pixH int) image.Image {
 		frame, _ := w.playback.Update()
 		w.seqIndex = w.playback.SeqIndex()
 		w.drawAnimatedFrame(img, face, &frame)
-		return img
+		return court.RotateImage(img, orient)
 	}
 
 	// Static mode: draw current sequence.
@@ -322,14 +340,17 @@ func (w *CourtWidget) draw(pixW, pixH int) image.Image {
 		w.drawSequence(img, face, seq)
 	}
 
-	return img
+	return court.RotateImage(img, orient)
 }
 
 // ensureCourtBg caches the court line drawing. Only redraws when size or court type changes.
 func (w *CourtWidget) ensureCourtBg(pixW, pixH int, vp *court.Viewport) {
+	landscape := w.exercise.Orientation.IsLandscape()
 	if w.courtBg != nil && w.courtBgW == pixW && w.courtBgH == pixH &&
 		w.courtBgType == w.exercise.CourtType && w.courtBgStd == w.exercise.CourtStandard &&
-		w.courtBgZoom == w.zoomLevel && w.courtBgPanX == w.panX && w.courtBgPanY == w.panY {
+		w.courtBgZoom == w.zoomLevel && w.courtBgPanX == w.panX && w.courtBgPanY == w.panY &&
+		w.courtBgLandscape == landscape &&
+		w.courtBgHideApron == vp.HideApron {
 		return
 	}
 	w.courtBg = image.NewRGBA(image.Rect(0, 0, pixW, pixH))
@@ -346,6 +367,8 @@ func (w *CourtWidget) ensureCourtBg(pixW, pixH int, vp *court.Viewport) {
 	w.courtBgZoom = w.zoomLevel
 	w.courtBgPanX = w.panX
 	w.courtBgPanY = w.panY
+	w.courtBgLandscape = landscape
+	w.courtBgHideApron = vp.HideApron
 }
 
 func (w *CourtWidget) drawSequence(img *image.RGBA, face font.Face, seq *model.Sequence) {
@@ -796,7 +819,12 @@ func (w *CourtWidget) dpToPixel(dp fyne.Position) court.Point {
 	}
 	scaleX := float32(w.pixelW) / size.Width
 	scaleY := float32(w.pixelH) / size.Height
-	return court.Pt(dp.X*scaleX, dp.Y*scaleY)
+	pt := court.Pt(dp.X*scaleX, dp.Y*scaleY)
+	// Reverse the image rotation to get portrait-buffer coordinates for hit testing.
+	if w.exercise != nil && w.exercise.Orientation != model.OrientationPortrait && w.exercise.Orientation != "" {
+		pt = court.ScreenToPortrait(pt, w.exercise.Orientation, w.pixelW, w.pixelH)
+	}
+	return pt
 }
 
 // --- Fyne interfaces ---
@@ -968,6 +996,8 @@ func (w *CourtWidget) applyZoomPan(base court.Viewport) court.Viewport {
 		Height:       newH,
 		Scale:        z,
 		ElementScale: base.ElementScale,
+		Landscape:    base.Landscape,
+		HideApron:    base.HideApron,
 	}
 }
 
@@ -1292,10 +1322,25 @@ func (w *CourtWidget) handlePanDrag(delta fyne.Delta) {
 	if size.Width <= 0 || size.Height <= 0 {
 		return
 	}
-	// Convert dp delta to relative pan offset.
-	// baseVP dimensions are in pixels, so we need to account for the zoom.
-	w.panX += float64(delta.DX) / float64(size.Width)
-	w.panY += float64(delta.DY) / float64(size.Height)
+	// Convert dp delta to relative pan offset, accounting for rotation.
+	orient := model.OrientationPortrait
+	if w.exercise != nil {
+		orient = w.exercise.Orientation
+	}
+	switch orient {
+	case model.OrientationLandscape: // 90° CW
+		w.panX += float64(delta.DY) / float64(size.Height)
+		w.panY -= float64(delta.DX) / float64(size.Width)
+	case model.OrientationPortraitFlip: // 180°
+		w.panX -= float64(delta.DX) / float64(size.Width)
+		w.panY -= float64(delta.DY) / float64(size.Height)
+	case model.OrientationLandscapeFlip: // 270° CW
+		w.panX -= float64(delta.DY) / float64(size.Height)
+		w.panY += float64(delta.DX) / float64(size.Width)
+	default: // 0°
+		w.panX += float64(delta.DX) / float64(size.Width)
+		w.panY += float64(delta.DY) / float64(size.Height)
+	}
 	w.clampPan()
 	w.courtBg = nil
 	w.Refresh()

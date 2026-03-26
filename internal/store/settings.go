@@ -12,12 +12,24 @@ import (
 
 // Settings holds application-level preferences.
 type Settings struct {
-	Language         string   `yaml:"language"`
-	PdfExportDir     string   `yaml:"pdf_export_dir,omitempty"`
-	GithubToken      string   `yaml:"github_token,omitempty"`
-	ExerciseDir      string   `yaml:"exercise_dir,omitempty"`
-	RecentFiles      []string `yaml:"recent_files,omitempty"`
-	DismissedVersion string   `yaml:"dismissed_version,omitempty"` // version update already seen/dismissed by the user
+	Language           string   `yaml:"language"`
+	PdfExportDir       string   `yaml:"pdf_export_dir,omitempty"`
+	GithubToken        string   `yaml:"github_token,omitempty"`
+	ExerciseDir        string   `yaml:"exercise_dir,omitempty"`
+	RecentFiles        []string `yaml:"recent_files,omitempty"`
+	DismissedVersion   string   `yaml:"dismissed_version,omitempty"` // version update already seen/dismissed by the user
+	DefaultCourtStandard string `yaml:"default_court_standard,omitempty"` // "fiba" or "nba"
+	DefaultCourtType   string   `yaml:"default_court_type,omitempty"`   // "half_court" or "full_court"
+	DefaultOrientation string   `yaml:"default_orientation,omitempty"` // "portrait" or "landscape"
+	ShowApron          *bool    `yaml:"show_apron,omitempty"`          // nil = default (true)
+}
+
+// ApronVisible returns whether the apron bands should be shown (default: true).
+func (s *Settings) ApronVisible() bool {
+	if s.ShowApron == nil {
+		return true
+	}
+	return *s.ShowApron
 }
 
 // LoadSettings reads settings from baseDir/settings.yaml.

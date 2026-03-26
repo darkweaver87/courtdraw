@@ -55,6 +55,8 @@ type Viewport struct {
 	Height       float64
 	Scale        float64 // zoom scale factor (1.0 = normal)
 	ElementScale float64 // court-type scale for players/accessories (1.0 = half court reference)
+	Landscape    bool    // true = court rotated 90° (length horizontal)
+	HideApron    bool    // true = skip drawing apron bands
 }
 
 // S scales a pixel value by element scale and zoom, returns float32.
@@ -112,6 +114,91 @@ func (v *Viewport) MeterToPixel(meters float64, geom *CourtGeometry, courtType m
 	scaleY := v.Height / courtH
 	scale := math.Min(scaleX, scaleY)
 	return meters * scale
+}
+
+// RotateImage90CW rotates an RGBA image 90° clockwise.
+// Input size (w, h) produces output size (h, w).
+func RotateImage90CW(src *image.RGBA) *image.RGBA {
+	b := src.Bounds()
+	sw, sh := b.Dx(), b.Dy()
+	dst := image.NewRGBA(image.Rect(0, 0, sh, sw))
+	for y := 0; y < sh; y++ {
+		for x := 0; x < sw; x++ {
+			si := (y-b.Min.Y)*src.Stride + (x-b.Min.X)*4
+			dx := sh - 1 - y
+			dy := x
+			di := dy*dst.Stride + dx*4
+			copy(dst.Pix[di:di+4], src.Pix[si:si+4])
+		}
+	}
+	return dst
+}
+
+// RotateImage180 rotates an RGBA image 180°. Output has the same size.
+func RotateImage180(src *image.RGBA) *image.RGBA {
+	b := src.Bounds()
+	sw, sh := b.Dx(), b.Dy()
+	dst := image.NewRGBA(image.Rect(0, 0, sw, sh))
+	for y := 0; y < sh; y++ {
+		for x := 0; x < sw; x++ {
+			si := (y-b.Min.Y)*src.Stride + (x-b.Min.X)*4
+			dx := sw - 1 - x
+			dy := sh - 1 - y
+			di := dy*dst.Stride + dx*4
+			copy(dst.Pix[di:di+4], src.Pix[si:si+4])
+		}
+	}
+	return dst
+}
+
+// RotateImage270CW rotates an RGBA image 270° clockwise (= 90° CCW).
+// Input size (w, h) produces output size (h, w).
+func RotateImage270CW(src *image.RGBA) *image.RGBA {
+	b := src.Bounds()
+	sw, sh := b.Dx(), b.Dy()
+	dst := image.NewRGBA(image.Rect(0, 0, sh, sw))
+	for y := 0; y < sh; y++ {
+		for x := 0; x < sw; x++ {
+			si := (y-b.Min.Y)*src.Stride + (x-b.Min.X)*4
+			dx := y
+			dy := sw - 1 - x
+			di := dy*dst.Stride + dx*4
+			copy(dst.Pix[di:di+4], src.Pix[si:si+4])
+		}
+	}
+	return dst
+}
+
+// RotateImage applies the rotation corresponding to the given orientation.
+func RotateImage(src *image.RGBA, orient model.Orientation) *image.RGBA {
+	switch orient {
+	case model.OrientationLandscape:
+		return RotateImage90CW(src)
+	case model.OrientationPortraitFlip:
+		return RotateImage180(src)
+	case model.OrientationLandscapeFlip:
+		return RotateImage270CW(src)
+	default:
+		return src
+	}
+}
+
+// ScreenToPortrait converts a screen-space point to the corresponding point
+// in the portrait buffer, reversing the rotation applied by RotateImage.
+func ScreenToPortrait(p Point, orient model.Orientation, screenW, screenH int) Point {
+	switch orient {
+	case model.OrientationLandscape:
+		// 90° CW: screen(sx,sy) → portrait(sy, screenW-1-sx)
+		return Point{X: p.Y, Y: float32(screenW-1) - p.X}
+	case model.OrientationPortraitFlip:
+		// 180°: screen(sx,sy) → portrait(screenW-1-sx, screenH-1-sy)
+		return Point{X: float32(screenW-1) - p.X, Y: float32(screenH-1) - p.Y}
+	case model.OrientationLandscapeFlip:
+		// 270° CW: screen(sx,sy) → portrait(screenH-1-sy, sx)
+		return Point{X: float32(screenH-1) - p.Y, Y: p.X}
+	default:
+		return p
+	}
 }
 
 // courtDimensions returns the logical width/height of the court based on type.
@@ -178,11 +265,34 @@ func ElementScaleForCourt(unitsPerMeter, baseBodyWidth float64) float64 {
 // ComputeViewport computes a Viewport that fits the court (plus 2m apron)
 // into the given widget size while maintaining the court's aspect ratio.
 func ComputeViewport(courtType model.CourtType, geom *CourtGeometry, widgetSize image.Point, padding int) Viewport {
+	return computeViewportPortrait(courtType, geom, widgetSize, padding, false)
+}
+
+// ComputeViewportOriented computes a Viewport for the given orientation.
+// For 90°/270° orientations, dimensions are swapped (court drawn in portrait then rotated).
+// For 180°, same dimensions as portrait (rotated in place).
+func ComputeViewportOriented(courtType model.CourtType, geom *CourtGeometry, widgetSize image.Point, padding int, orient model.Orientation, hideApron bool) Viewport {
+	if orient.IsLandscape() {
+		vp := computeViewportPortrait(courtType, geom, image.Pt(widgetSize.Y, widgetSize.X), padding, hideApron)
+		vp.Landscape = true
+		vp.HideApron = hideApron
+		return vp
+	}
+	vp := computeViewportPortrait(courtType, geom, widgetSize, padding, hideApron)
+	vp.HideApron = hideApron
+	return vp
+}
+
+func computeViewportPortrait(courtType model.CourtType, geom *CourtGeometry, widgetSize image.Point, padding int, hideApron bool) Viewport {
 	courtW, courtH := courtDimensions(geom, courtType)
 
-	// Total area includes 2m apron on each side.
-	totalW := courtW + 2*ApronMeters
-	totalH := courtH + 2*ApronMeters
+	// Apron margin: 2m on each side, or 0 when hidden.
+	apron := ApronMeters
+	if hideApron {
+		apron = 0
+	}
+	totalW := courtW + 2*apron
+	totalH := courtH + 2*apron
 	totalAspect := totalW / totalH
 
 	availW := float64(widgetSize.X - 2*padding)
@@ -204,7 +314,7 @@ func ComputeViewport(courtType model.CourtType, geom *CourtGeometry, widgetSize 
 	pxPerMeter := fitW / totalW
 	vpW := courtW * pxPerMeter
 	vpH := courtH * pxPerMeter
-	apronPx := ApronMeters * pxPerMeter
+	apronPx := apron * pxPerMeter
 
 	totalOriginX := (float64(widgetSize.X) - fitW) / 2
 	totalOriginY := (float64(widgetSize.Y) - fitH) / 2

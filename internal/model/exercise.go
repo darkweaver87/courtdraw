@@ -15,6 +15,7 @@ type Exercise struct {
 	Description   string        `yaml:"description,omitempty"`
 	CourtType     CourtType     `yaml:"court_type"`
 	CourtStandard CourtStandard `yaml:"court_standard"`
+	Orientation   Orientation   `yaml:"orientation,omitempty"`
 	Duration      string        `yaml:"duration,omitempty"`
 	Intensity     Intensity     `yaml:"intensity,omitempty"`
 	Category      Category      `yaml:"category,omitempty"`
@@ -296,6 +297,112 @@ type Accessory struct {
 	ID       string        `yaml:"id"`
 	Position Position      `yaml:"position"`
 	Rotation float64       `yaml:"rotation,omitempty"`
+}
+
+// RemapPositionsHalfToFull remaps all position Y values from half court [0,1]
+// to the bottom half of full court [0,0.5]. X is unchanged.
+func (e *Exercise) RemapPositionsHalfToFull() {
+	for si := range e.Sequences {
+		seq := &e.Sequences[si]
+		for pi := range seq.Players {
+			seq.Players[pi].Position[1] *= 0.5
+		}
+		for ai := range seq.Accessories {
+			seq.Accessories[ai].Position[1] *= 0.5
+		}
+		for ai := range seq.Actions {
+			for wi := range seq.Actions[ai].Waypoints {
+				seq.Actions[ai].Waypoints[wi][1] *= 0.5
+			}
+			if !seq.Actions[ai].From.IsPlayer {
+				seq.Actions[ai].From.Position[1] *= 0.5
+			}
+			if !seq.Actions[ai].To.IsPlayer {
+				seq.Actions[ai].To.Position[1] *= 0.5
+			}
+		}
+	}
+}
+
+// RemapPositionsFullToHalf remaps all position Y values from full court to half court.
+// If bottom is true, maps [0,0.5] → [0,1] (bottom half).
+// If bottom is false, maps [0.5,1] → [0,1] with mirroring (top half).
+func (e *Exercise) RemapPositionsFullToHalf(bottom bool) {
+	for si := range e.Sequences {
+		seq := &e.Sequences[si]
+		for pi := range seq.Players {
+			seq.Players[pi].Position[1] = remapFullToHalfY(seq.Players[pi].Position[1], bottom)
+		}
+		for ai := range seq.Accessories {
+			seq.Accessories[ai].Position[1] = remapFullToHalfY(seq.Accessories[ai].Position[1], bottom)
+		}
+		for ai := range seq.Actions {
+			for wi := range seq.Actions[ai].Waypoints {
+				seq.Actions[ai].Waypoints[wi][1] = remapFullToHalfY(seq.Actions[ai].Waypoints[wi][1], bottom)
+			}
+			if !seq.Actions[ai].From.IsPlayer {
+				seq.Actions[ai].From.Position[1] = remapFullToHalfY(seq.Actions[ai].From.Position[1], bottom)
+			}
+			if !seq.Actions[ai].To.IsPlayer {
+				seq.Actions[ai].To.Position[1] = remapFullToHalfY(seq.Actions[ai].To.Position[1], bottom)
+			}
+		}
+	}
+}
+
+func remapFullToHalfY(y float64, bottom bool) float64 {
+	if bottom {
+		return y * 2.0
+	}
+	return (1.0 - y) * 2.0
+}
+
+// FullCourtPlayerHalf scans all position Y values across all sequences and returns:
+//   - "bottom" if all Y ≤ 0.5
+//   - "top" if all Y ≥ 0.5
+//   - "mixed" if elements span both halves
+//   - "bottom" if there are no positioned elements (default)
+func (e *Exercise) FullCourtPlayerHalf() string {
+	hasBottom := false // Y < 0.5
+	hasTop := false    // Y > 0.5
+
+	check := func(y float64) {
+		if y < 0.5 {
+			hasBottom = true
+		}
+		if y > 0.5 {
+			hasTop = true
+		}
+		// Y == 0.5 is compatible with both halves.
+	}
+
+	for _, seq := range e.Sequences {
+		for _, p := range seq.Players {
+			check(p.Position[1])
+		}
+		for _, a := range seq.Accessories {
+			check(a.Position[1])
+		}
+		for _, act := range seq.Actions {
+			for _, wp := range act.Waypoints {
+				check(wp[1])
+			}
+			if !act.From.IsPlayer {
+				check(act.From.Position[1])
+			}
+			if !act.To.IsPlayer {
+				check(act.To.Position[1])
+			}
+		}
+	}
+
+	if hasBottom && hasTop {
+		return "mixed"
+	}
+	if hasTop {
+		return "top"
+	}
+	return "bottom"
 }
 
 // Sentinel errors for validation.
