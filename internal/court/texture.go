@@ -41,13 +41,13 @@ func WoodFloorTexture() *image.RGBA {
 
 // Warm overlay applied on top of texture (flat clipart look).
 const overlayR, overlayG, overlayB = 225.0, 200.0, 170.0
-const overlayAlpha = 0.50
+const overlayAlpha = 0.75
 
 // PlankWidthMeters is the real-world width of a single floor plank.
-const PlankWidthMeters = 0.08
+const PlankWidthMeters = 0.20
 
 // PlanksPerTile is the number of planks visible in the tile texture.
-const PlanksPerTile = 4
+const PlanksPerTile = 20
 
 // TileRectScaled fills a rectangle by tiling a texture image scaled to real-world plank dimensions.
 func TileRectScaled(dst *image.RGBA, topLeft, botRight Point, tile *image.RGBA, vp *Viewport, geom *CourtGeometry, courtType model.CourtType) {
@@ -75,8 +75,12 @@ func TileRectScaled(dst *image.RGBA, topLeft, botRight Point, tile *image.RGBA, 
 
 	x0, y0 := int(topLeft.X), int(topLeft.Y)
 	x1, y1 := int(botRight.X), int(botRight.Y)
-	if x0 > x1 { x0, x1 = x1, x0 }
-	if y0 > y1 { y0, y1 = y1, y0 }
+	if x0 > x1 {
+		x0, x1 = x1, x0
+	}
+	if y0 > y1 {
+		y0, y1 = y1, y0
+	}
 
 	texAlpha := 1.0 - overlayAlpha
 	dstBounds := dst.Bounds()
