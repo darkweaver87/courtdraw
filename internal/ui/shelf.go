@@ -730,7 +730,24 @@ func (ms *EditorShelf) buildPropsLayout(_ *model.Exercise, state *editor.EditorS
 		})
 		stepRow := container.NewHBox(stepLabel, minusBtn, plusBtn)
 		delWrap := container.NewGridWrap(shelfCellSize, ms.propsDeleteBtn)
-		ms.propsContent.Add(container.NewVBox(ms.propsTitle, stepRow, container.NewHBox(delWrap)))
+
+		// Validation messages.
+		propsCol := container.NewVBox(ms.propsTitle, stepRow, container.NewHBox(delWrap))
+		actionIssues := model.ValidateActions(seq)
+		if issues, ok := actionIssues[sel.Index]; ok {
+			for _, issue := range issues {
+				prefix := "⚠️ "
+				col := color.NRGBA{R: 0xcc, G: 0x88, B: 0x00, A: 0xff}
+				if issue.IsError {
+					prefix = "⛔ "
+					col = color.NRGBA{R: 0xcc, G: 0x22, B: 0x22, A: 0xff}
+				}
+				msg := canvas.NewText(prefix+i18n.T(issue.Message), col)
+				msg.TextSize = 11
+				propsCol.Add(msg)
+			}
+		}
+		ms.propsContent.Add(propsCol)
 	}
 }
 

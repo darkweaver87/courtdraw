@@ -29,6 +29,12 @@ const (
 // ActionLineColor is the standard color for all action arrows (black, per basketball convention).
 var ActionLineColor = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff}
 
+// ActionErrorColor is used for actions with strong errors (red).
+var ActionErrorColor = color.NRGBA{R: 0xcc, G: 0x22, B: 0x22, A: 0xff}
+
+// ActionWarningColor is used for actions with warnings (orange).
+var ActionWarningColor = color.NRGBA{R: 0xcc, G: 0x88, B: 0x00, A: 0xff}
+
 // ActionColor returns the color for a given action type.
 func ActionColor(_ model.ActionType) color.NRGBA {
 	return ActionLineColor
@@ -43,11 +49,19 @@ func ResolveWaypoints(vp *Viewport, waypoints []model.Position) []Point {
 	return pts
 }
 
+// DrawActionWithColor draws an action with a custom color override.
+func DrawActionWithColor(img *image.RGBA, vp *Viewport, action *model.Action, players []model.Player, overrideCol color.NRGBA) {
+	drawActionImpl(img, vp, action, players, overrideCol)
+}
+
 // DrawAction draws an action (arrow/movement) between elements.
 func DrawAction(img *image.RGBA, vp *Viewport, action *model.Action, players []model.Player) {
+	drawActionImpl(img, vp, action, players, ActionColor(action.Type))
+}
+
+func drawActionImpl(img *image.RGBA, vp *Viewport, action *model.Action, players []model.Player, col color.NRGBA) {
 	from := ResolveRef(vp, action.From, players)
 	to := ResolveRef(vp, action.To, players)
-	col := ActionColor(action.Type)
 	lw := vp.S(ArrowLineWidth)
 	ah := max(vp.S(ArrowHeadSize), lw*ArrowHeadRatio)
 	pr := vp.S(PlayerRadius) // offset to keep arrowhead outside player body

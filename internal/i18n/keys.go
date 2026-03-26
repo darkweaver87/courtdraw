@@ -258,6 +258,8 @@ const (
 	KeyTrainingSeq = "training.seq"
 	KeyTrainingTimeExpired = "training.time_expired"
 	KeyUpdateAvailable = "update.available"
+	KeyValidationErrors = "validation.errors"
+	KeyValidationWarnings = "validation.warnings"
 	KeyVersionNewAvailable = "version.new_available"
 	KeyVersionReleaseNotes = "version.release_notes"
 	KeyVersionUpdateTitle = "version.update_title"

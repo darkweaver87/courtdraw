@@ -107,13 +107,29 @@ func (at *ActionTimeline) rebuild() {
 
 	// Build sorted action indices by step then order.
 	sorted := sortedActionIndices(seq)
+	actionIssues := model.ValidateActions(seq)
 
 	items := make([]DragListItem, len(sorted))
 	for i, idx := range sorted {
 		act := &seq.Actions[idx]
 		desc := actionTimelineLabel(act, seq)
+		indicator := "✅"
+		if issues, ok := actionIssues[idx]; ok {
+			hasError := false
+			for _, issue := range issues {
+				if issue.IsError {
+					hasError = true
+					break
+				}
+			}
+			if hasError {
+				indicator = "⛔"
+			} else {
+				indicator = "⚠️"
+			}
+		}
 		items[i] = DragListItem{
-			Text: fmt.Sprintf("%d. %s", act.EffectiveStep(), desc),
+			Text: fmt.Sprintf("%s %d. %s", indicator, act.EffectiveStep(), desc),
 		}
 	}
 	at.list.SetItems(items)

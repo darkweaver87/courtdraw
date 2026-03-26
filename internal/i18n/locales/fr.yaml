@@ -54,6 +54,13 @@ tool.action.contest: "Contest"
 tool.action.reverse: "Renversement"
 tool.action.handoff: "Remise"
 
+# Validation
+validation.cut_with_ball: "Le joueur a le ballon — utiliser Dribble ?"
+validation.screen_with_ball: "Écran avec le ballon — inhabituel"
+validation.player_not_found: "Le joueur n'existe plus"
+validation.errors: "%d erreur(s) dans l'exercice"
+validation.warnings: "%d avertissement(s) dans l'exercice"
+
 tool.accessory.cone: "Plot"
 tool.accessory.ladder: "Échelle"
 tool.accessory.chair: "Chaise"

@@ -390,6 +390,8 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 			timelinePanel.Show()
 			a.court.SetReadOnly(true)
 			a.modeLabel.Text = i18n.T(i18n.KeyModeAnimation)
+			// Warn about validation issues.
+			a.checkExerciseValidation()
 		case ModeNotes:
 			notesContent.Objects = []fyne.CanvasObject{a.buildNotesView()}
 			notesContent.Show()
@@ -646,6 +648,31 @@ func (a *App) updateLangBtnStyles() {
 		a.langBtn.Icon = icon.FlagEN
 	}
 	a.langBtn.Refresh()
+}
+
+// checkExerciseValidation shows a status bar warning if the exercise has validation issues.
+func (a *App) checkExerciseValidation() {
+	if a.exercise == nil {
+		return
+	}
+	errors, warnings := 0, 0
+	for _, seq := range a.exercise.Sequences {
+		issues := model.ValidateActions(&seq)
+		for _, issueList := range issues {
+			for _, issue := range issueList {
+				if issue.IsError {
+					errors++
+				} else {
+					warnings++
+				}
+			}
+		}
+	}
+	if errors > 0 {
+		a.statusBar.SetStatus(i18n.Tf(i18n.KeyValidationErrors, errors), StatusError)
+	} else if warnings > 0 {
+		a.statusBar.SetStatus(i18n.Tf(i18n.KeyValidationWarnings, warnings), StatusWarning)
+	}
 }
 
 // refreshEditor updates all editor panels to reflect current state.

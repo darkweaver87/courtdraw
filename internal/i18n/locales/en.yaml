@@ -54,6 +54,13 @@ tool.action.contest: "Contest"
 tool.action.reverse: "Reverse"
 tool.action.handoff: "Handoff"
 
+# Validation
+validation.cut_with_ball: "Player has ball — use Dribble instead?"
+validation.screen_with_ball: "Screen with ball — unusual"
+validation.player_not_found: "Player no longer exists"
+validation.errors: "%d error(s) in exercise"
+validation.warnings: "%d warning(s) in exercise"
+
 tool.accessory.cone: "Cone"
 tool.accessory.ladder: "Ladder"
 tool.accessory.chair: "Chair"

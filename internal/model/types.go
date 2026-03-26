@@ -1,6 +1,9 @@
 package model
 
-import "image/color"
+import (
+	"image/color"
+	"slices"
+)
 
 // Position represents a relative coordinate on the court [0.0–1.0].
 // [0,0] = bottom-left, [1,1] = top-right.
@@ -185,6 +188,91 @@ func RequiresBall(at ActionType) bool {
 		return true
 	}
 	return false
+}
+
+// ActionIssue represents a validation issue on an action.
+type ActionIssue struct {
+	IsError bool   // true = strong error (red), false = warning (orange)
+	Message string // i18n key for the message
+}
+
+// ValidateActions checks action consistency across steps.
+// Returns a map of action index → list of issues.
+func ValidateActions(seq *Sequence) map[int][]ActionIssue {
+	issues := make(map[int][]ActionIssue)
+
+	// Track ball carriers progressively by step.
+	carriers := make([]string, len(seq.BallCarrier))
+	copy(carriers, seq.BallCarrier)
+
+	// Build player ID set for orphan detection.
+	playerIDs := make(map[string]bool, len(seq.Players))
+	for i := range seq.Players {
+		playerIDs[seq.Players[i].ID] = true
+	}
+
+	maxStep := MaxStep(seq)
+	for step := 1; step <= maxStep; step++ {
+		for i := range seq.Actions {
+			if seq.Actions[i].EffectiveStep() != step {
+				continue
+			}
+			act := &seq.Actions[i]
+			nat := NormalizeActionType(act.Type)
+
+			// --- Strong errors (red) ---
+
+			// Ball required but player doesn't have it.
+			if RequiresBall(nat) && act.From.IsPlayer {
+				if !slices.Contains(carriers, act.From.PlayerID) {
+					issues[i] = append(issues[i], ActionIssue{IsError: true, Message: "status.requires_ball"})
+				}
+			}
+
+			// Pass/Handoff target must be a player.
+			if (nat == ActionPass || nat == ActionHandoff) && !act.To.IsPlayer {
+				issues[i] = append(issues[i], ActionIssue{IsError: true, Message: "status.pass_requires_player"})
+			}
+
+			// --- Warnings (orange) ---
+
+			// Cut with ball → should probably be a Dribble.
+			if nat == ActionCut && act.From.IsPlayer && slices.Contains(carriers, act.From.PlayerID) {
+				issues[i] = append(issues[i], ActionIssue{IsError: false, Message: "validation.cut_with_ball"})
+			}
+
+			// Screen with ball → unusual.
+			if nat == ActionScreen && act.From.IsPlayer && slices.Contains(carriers, act.From.PlayerID) {
+				issues[i] = append(issues[i], ActionIssue{IsError: false, Message: "validation.screen_with_ball"})
+			}
+
+			// Orphan action: references a player that doesn't exist.
+			if act.From.IsPlayer && !playerIDs[act.From.PlayerID] {
+				issues[i] = append(issues[i], ActionIssue{IsError: false, Message: "validation.player_not_found"})
+			}
+			if act.To.IsPlayer && !playerIDs[act.To.PlayerID] {
+				issues[i] = append(issues[i], ActionIssue{IsError: false, Message: "validation.player_not_found"})
+			}
+		}
+
+		// Apply passes/handoffs at this step to update carriers for next step.
+		for i := range seq.Actions {
+			if seq.Actions[i].EffectiveStep() != step {
+				continue
+			}
+			act := &seq.Actions[i]
+			nat := NormalizeActionType(act.Type)
+			if (nat == ActionPass || nat == ActionHandoff) && act.From.IsPlayer && act.To.IsPlayer {
+				for j, c := range carriers {
+					if c == act.From.PlayerID {
+						carriers[j] = act.To.PlayerID
+						break
+					}
+				}
+			}
+		}
+	}
+	return issues
 }
 
 // RoleLabel returns the short display label for a player role.

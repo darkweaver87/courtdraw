@@ -372,13 +372,18 @@ func (w *CourtWidget) drawSequence(img *image.RGBA, face font.Face, seq *model.S
 
 	// Actions — draw with cumulative positions so chained actions connect properly.
 	maxStep := model.MaxStep(seq)
+	actionIssues := model.ValidateActions(seq)
 	for i := range seq.Actions {
 		step := seq.Actions[i].EffectiveStep()
 		playersAtStep := stepPlayers(seq, maxStep, step)
 		if selElem != nil && selElem.Kind == editor.SelectAction && selElem.Index == i && selElem.SeqIndex == w.seqIndex {
 			court.DrawActionHighlight(img, &w.viewport, &seq.Actions[i], playersAtStep)
 		}
-		court.DrawAction(img, &w.viewport, &seq.Actions[i], playersAtStep)
+		if col, ok := actionIssueColor(actionIssues[i]); ok {
+			court.DrawActionWithColor(img, &w.viewport, &seq.Actions[i], playersAtStep, col)
+		} else {
+			court.DrawAction(img, &w.viewport, &seq.Actions[i], playersAtStep)
+		}
 	}
 	// Step badges (only when multiple steps exist).
 	if maxStep > 1 {
@@ -696,6 +701,26 @@ func (w *CourtWidget) drawAnimatedFrame(img *image.RGBA, face font.Face, frame *
 			court.DrawBallWithOpacity(img, vp, ballPixel, b.Opacity)
 		}
 	}
+}
+
+// actionIssueColor returns the color for an action based on its issues.
+func actionIssueColor(issues []model.ActionIssue) (color.NRGBA, bool) {
+	hasError := false
+	hasWarning := false
+	for _, issue := range issues {
+		if issue.IsError {
+			hasError = true
+		} else {
+			hasWarning = true
+		}
+	}
+	if hasError {
+		return court.ActionErrorColor, true
+	}
+	if hasWarning {
+		return court.ActionWarningColor, true
+	}
+	return color.NRGBA{}, false
 }
 
 func actionLabel(at model.ActionType) string {
