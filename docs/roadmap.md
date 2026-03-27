@@ -278,6 +278,34 @@ Goal: match modern app standards with smooth interactions and clear visual feedb
 
 Deliverable: the app feels responsive and polished, with clear visual cues at every interaction.
 
+## Phase 16c — Shelf & Tools UX Simplification ⚡ P1
+
+Goal: streamline the editing interface — fewer tabs, contextual properties, lateral view tools.
+
+### ViewTools lateral panel
+- Collapsible panel on the left side of the court (chevron ‹/› to fold/unfold, collapsed by default on mobile)
+- Contains: Select, Eraser, Apron toggle, Rotate 90°, Zoom +/−/reset
+- Always accessible regardless of active shelf tab
+
+### Shelf simplification (4 tabs → 3 tabs)
+- Remove "Outils" tab — Select and Eraser move to ViewTools lateral panel
+- Keep 3 tabs: **Joueurs | Actions | Accessoires**
+
+### Contextual properties in shelf tabs
+- **Joueurs tab** + player selected → show player properties below the role grid: label, role, ball, callout, rotation slider, position + d-pad, delete button
+- **Joueurs tab** + no selection → show only the role grid + queue + ball toggle
+- **Actions tab** + player selected → show list of actions involving that player (source or target) with delete button per action, instead of switching to Joueurs tab
+- **Actions tab** + action selected → show action properties (type, from, to, step)
+- **Actions tab** + no selection → show action type grid
+- **Accessoires tab** + accessory selected → show accessory properties: type, rotation slider, position + d-pad, delete button
+- **Accessoires tab** + no selection → show accessory type grid
+
+### Eraser tool behavior
+- Eraser is a mode (like Select) — when active, clicking any element deletes it immediately
+- Visual feedback: cursor changes, element highlights red on hover
+
+Deliverable: simpler shelf with 3 tabs, contextual properties, and always-accessible view tools on the side.
+
 ## Phase 16b — Undo/Redo ⚡ P1
 
 Goal: coaches can undo mistakes without losing work.

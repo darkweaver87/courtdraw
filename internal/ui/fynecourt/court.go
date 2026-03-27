@@ -1111,6 +1111,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 	w.dragPanning = false
 
 	// Universal hit test: select and drag elements regardless of active tool.
+	// Skip for eraser tool — let it fall through to ToolDelete handler.
 	if state.ActiveTool == editor.ToolAction && state.ActionFrom != nil {
 		// In action targeting mode: clicking the source player cancels and selects it.
 		finalSeq := w.seqWithFinalPositions(seq)
@@ -1125,7 +1126,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 			return
 		}
 		// Other elements: fall through to ToolAction handler below.
-	} else {
+	} else if state.ActiveTool != editor.ToolDelete {
 		if w.trySelectElement(seq, state, pos) {
 			return
 		}
@@ -1281,7 +1282,8 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 		w.notifyChanged()
 
 	case editor.ToolDelete:
-		if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
+		finalSeq := w.seqWithFinalPositions(seq)
+		if pi := court.HitTestPlayer(&w.viewport, finalSeq, pos); pi >= 0 {
 			playerID := seq.Players[pi].ID
 			seq.Players = append(seq.Players[:pi], seq.Players[pi+1:]...)
 			removeActionsForPlayer(seq, playerID)
@@ -1292,7 +1294,7 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 			w.notifyChanged()
 			return
 		}
-		if ai := court.HitTestAccessory(&w.viewport, seq, pos); ai >= 0 {
+		if ai := court.HitTestAccessory(&w.viewport, finalSeq, pos); ai >= 0 {
 			seq.Accessories = append(seq.Accessories[:ai], seq.Accessories[ai+1:]...)
 			state.Deselect()
 			state.MarkModified()
@@ -1300,7 +1302,8 @@ func (w *CourtWidget) handlePress(pos court.Point) { //nolint:gocyclo
 			w.notifyChanged()
 			return
 		}
-		if actIdx := court.HitTestAction(&w.viewport, seq, pos); actIdx >= 0 {
+		// Use step-aware hit testing for actions (handles curves, waypoints, step positions).
+		if actIdx := w.hitTestActionStepAware(seq, pos); actIdx >= 0 {
 			seq.Actions = append(seq.Actions[:actIdx], seq.Actions[actIdx+1:]...)
 			model.ReorderSteps(seq)
 			state.Deselect()

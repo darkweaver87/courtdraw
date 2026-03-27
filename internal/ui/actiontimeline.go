@@ -7,11 +7,11 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	fynetheme "fyne.io/fyne/v2/theme"
 
 	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/model"
 	"github.com/darkweaver87/courtdraw/internal/ui/editor"
+	"github.com/darkweaver87/courtdraw/internal/ui/icon"
 )
 
 // ActionTimeline displays an ordered list of actions per sequence
@@ -52,15 +52,15 @@ func NewActionTimeline() *ActionTimeline {
 	listSpacer.SetMinSize(fyne.NewSize(listMinW, 0))
 	at.listOuter = container.NewStack(listSpacer, container.NewBorder(header, nil, nil, nil, at.list))
 
-	at.chevronBtn = NewTipButton(fynetheme.NavigateNextIcon(), "", func() {
+	at.chevronBtn = NewTipButton(icon.ChevronRight, "", func() {
 		if at.collapsed {
 			at.collapsed = false
 			at.listOuter.Show()
-			at.chevronBtn.Icon = fynetheme.NavigateNextIcon()
+			at.chevronBtn.Icon = icon.ChevronRight
 		} else {
 			at.collapsed = true
 			at.listOuter.Hide()
-			at.chevronBtn.Icon = fynetheme.NavigateBackIcon()
+			at.chevronBtn.Icon = icon.ChevronLeft
 		}
 		at.chevronBtn.Refresh()
 		// Force parent layout to resize the court.
@@ -74,7 +74,7 @@ func NewActionTimeline() *ActionTimeline {
 	if isMobile {
 		at.collapsed = true
 		at.listOuter.Hide()
-		at.chevronBtn.Icon = fynetheme.NavigateBackIcon()
+		at.chevronBtn.Icon = icon.ChevronLeft
 	}
 
 	at.box = container.NewBorder(nil, nil, container.NewGridWrap(chevronSize, at.chevronBtn), nil, at.listOuter)

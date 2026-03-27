@@ -7,7 +7,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/model"
@@ -76,14 +75,6 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 		_, obj := tp.makeToolWidget(key, res, onTap)
 		grid.Add(obj)
 	}
-
-	// Select tool.
-	selectGrid := newToolGrid()
-	addToolToGrid(selectGrid, i18n.KeyToolSelect, icon.ToolSelect, func() {
-		state.SetTool(editor.ToolSelect)
-		tp.updateActive()
-	})
-	vbox.Add(selectGrid)
 
 	// --- Players ---
 	vbox.Add(tp.makeHeader(i18n.KeyToolHeaderPlayers))
@@ -160,19 +151,6 @@ func NewToolPalette(state *editor.EditorState) *ToolPalette {
 		})
 	}
 	vbox.Add(accGrid)
-
-	// --- Delete ---
-	vbox.Add(widget.NewSeparator())
-	deleteGrid := newToolGrid()
-	addToolToGrid(deleteGrid, i18n.KeyToolDelete, icon.Delete(), func() {
-		if state.SelectedElement != nil {
-			state.DeleteRequested = true
-		} else {
-			state.SetTool(editor.ToolDelete)
-		}
-		tp.updateActive()
-	})
-	vbox.Add(deleteGrid)
 
 	bg := canvas.NewRectangle(color.NRGBA{R: 0x30, G: 0x30, B: 0x30, A: 0xff})
 	scroll := container.NewVScroll(vbox)

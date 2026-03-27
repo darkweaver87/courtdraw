@@ -61,6 +61,7 @@ type App struct {
 	instrPanel   *InstructionsPanel
 	animControls    *AnimControls
 	actionTimeline  *ActionTimeline
+	viewTools       *ViewTools
 	statusBar       *StatusBar
 	tooltipLayer *TooltipLayer
 	sessionTab   *SessionTab
@@ -131,6 +132,7 @@ func (a *App) BuildUI() fyne.CanvasObject {
 			a.editorState.DeleteRequested = false
 			a.court.DeleteSelected()
 		}
+		a.viewTools.SyncToolHighlight()
 		a.court.Refresh()
 	}
 
@@ -177,12 +179,25 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	a.seqTimeline.OnSettings = func() {
 		a.showExerciseSettingsDialog()
 	}
-	a.seqTimeline.OnZoomIn = func() { a.court.ZoomIn() }
-	a.seqTimeline.OnZoomOut = func() { a.court.ZoomOut() }
-	a.seqTimeline.OnZoomReset = func() { a.court.ResetZoom() }
-	a.seqTimeline.OnRotate = func() { a.toggleOrientation() }
-	a.seqTimeline.OnToggleApron = func() { a.toggleApron() }
-	a.seqTimeline.SetApronVisible(a.court.ShowApron)
+	a.viewTools = NewViewTools()
+	a.viewTools.ActiveTool = &a.editorState.ActiveTool
+	a.viewTools.OnSelect = func() {
+		a.editorState.SetTool(editor.ToolSelect)
+		a.viewTools.SyncToolHighlight()
+		a.court.Refresh()
+	}
+	a.viewTools.OnEraser = func() {
+		a.editorState.SetTool(editor.ToolDelete)
+		a.viewTools.SyncToolHighlight()
+		a.court.Refresh()
+	}
+	a.viewTools.SyncToolHighlight()
+	a.viewTools.OnZoomIn = func() { a.court.ZoomIn() }
+	a.viewTools.OnZoomOut = func() { a.court.ZoomOut() }
+	a.viewTools.OnZoomReset = func() { a.court.ResetZoom() }
+	a.viewTools.OnRotate = func() { a.toggleOrientation() }
+	a.viewTools.OnToggleApron = func() { a.toggleApron() }
+	a.viewTools.SetApronVisible(a.court.ShowApron)
 
 	a.instrPanel = NewInstructionsPanel()
 	a.instrPanel.OnModified = func() {
@@ -298,6 +313,7 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 			a.editorState.DeleteRequested = false
 			a.court.DeleteSelected()
 		}
+		a.viewTools.SyncToolHighlight()
 		a.court.Refresh()
 		a.refreshEditor()
 	}
@@ -346,14 +362,17 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	// Hide seq bar initially (no exercise loaded).
 	seqBar.Hide()
 
-	// Action timeline panel.
+	// Action timeline panel (left of court).
 	timelineWidget := a.actionTimeline.Widget()
 	timelineBg := canvas.NewRectangle(color.NRGBA{R: 0x28, G: 0x28, B: 0x28, A: 0xff})
 	timelinePanel := container.NewStack(timelineBg, container.NewPadded(timelineWidget))
 	timelinePanel.Hide()
 
-	// Court area with seq bar above, timeline on right.
-	courtWithSeq := container.NewBorder(seqBar, nil, nil, timelinePanel, container.NewStack(a.court, a.emptyState))
+	// View tools panel (left of court).
+	viewToolsPanel := a.viewTools.Widget()
+
+	// Court area with seq bar above, view tools on left, action timeline on right.
+	courtWithSeq := container.NewBorder(seqBar, nil, viewToolsPanel, timelinePanel, container.NewStack(a.court, a.emptyState))
 
 	// Bottom area: swapped between edition shelf and animation controls.
 	bottomStack := container.NewStack(editionBottom)
@@ -734,6 +753,7 @@ func (a *App) showPreferences() {
 		a.court.ShowApron = a.settings.ApronVisible()
 		a.court.InvalidateBackground()
 		a.court.Refresh()
+		a.viewTools.SetApronVisible(a.court.ShowApron)
 	})
 }
 
@@ -1423,7 +1443,7 @@ func (a *App) toggleApron() {
 	a.court.ShowApron = !a.court.ShowApron
 	a.court.InvalidateBackground()
 	a.court.Refresh()
-	a.seqTimeline.SetApronVisible(a.court.ShowApron)
+	a.viewTools.SetApronVisible(a.court.ShowApron)
 	// Persist to settings.
 	v := a.court.ShowApron
 	a.settings.ShowApron = &v

@@ -238,6 +238,7 @@ const (
 	KeyToolActionShot = "tool.action.shot"
 	KeyToolActionSprint = "tool.action.sprint"
 	KeyToolDelete = "tool.delete"
+	KeyToolEraser = "tool.eraser"
 	KeyToolHeaderAccessories = "tool.header.accessories"
 	KeyToolHeaderActions = "tool.header.actions"
 	KeyToolHeaderPlayers = "tool.header.players"

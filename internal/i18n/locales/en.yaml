@@ -19,6 +19,7 @@ anim.seq_format: "Seq %d/%d"
 # Tool palette
 tool.select: "Select"
 tool.delete: "Delete"
+tool.eraser: "Eraser"
 tool.header.players: "Players"
 tool.header.actions: "Actions"
 tool.header.accessories: "Accessories"

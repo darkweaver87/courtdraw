@@ -41,13 +41,12 @@ const (
 type shelfCategory int
 
 const (
-	shelfTools       shelfCategory = iota // select + delete
-	shelfPlayers                          // player roles + queue
+	shelfPlayers     shelfCategory = iota // player roles + queue
 	shelfActions                          // action types
 	shelfAccessories                      // cones, ladder, chair
 )
 
-const numShelfCategories = 4
+const numShelfCategories = 3
 
 // Grid cell size for shelf tool buttons.
 var shelfCellSize fyne.Size
@@ -82,7 +81,6 @@ type EditorShelf struct {
 	allBtns  []*TipButton
 
 	// Shelf content per category.
-	toolsContent  fyne.CanvasObject
 	playerContent fyne.CanvasObject
 	actionContent fyne.CanvasObject
 	accContent    fyne.CanvasObject
@@ -98,6 +96,7 @@ type EditorShelf struct {
 	propsPosXEntry  *widget.Entry
 	propsPosYEntry  *widget.Entry
 	propsDpad       *fyne.Container
+	propsRotKnob    *RotKnob
 	propsDeleteBtn  *TipButton
 	propsUpdating   bool             // prevents recursive OnChanged → refreshEditor loop
 	propsSyncedSel  *editor.Selection // tracks which element is currently displayed
@@ -125,22 +124,6 @@ func NewEditorShelf(state *editor.EditorState, palette *ToolPalette) *EditorShel
 }
 
 func (ms *EditorShelf) build() {
-	// --- Tools: select + delete ---
-	selectBtn := ms.addBtn(icon.ToolSelect, i18n.KeyToolSelect, func() {
-		ms.state.SetTool(editor.ToolSelect)
-		ms.syncHighlights()
-	})
-	deleteBtn := ms.addBtn(icon.Delete(), i18n.KeyToolDelete, func() {
-		if ms.state.SelectedElement != nil {
-			ms.state.DeleteRequested = true
-		} else {
-			ms.state.SetTool(editor.ToolDelete)
-		}
-		ms.syncHighlights()
-	})
-	deleteBtn.SetImportance(widget.DangerImportance)
-	ms.toolsContent = container.NewGridWrap(shelfCellSize, selectBtn, deleteBtn)
-
 	// --- Players: 8 roles + queue = 9 buttons, 5 columns ---
 	playerRoles := []model.PlayerRole{
 		model.RoleAttacker, model.RoleDefender, model.RoleCoach,
@@ -250,7 +233,7 @@ func (ms *EditorShelf) build() {
 	}
 	ms.accContent = accGrid
 
-	ms.shelfStack = container.NewStack(ms.toolsContent)
+	ms.shelfStack = container.NewStack(ms.playerContent)
 
 	// --- Compact element properties (shown when element selected in tools tab) ---
 	ms.propsTitle = canvas.NewText("", color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
@@ -278,6 +261,8 @@ func (ms *EditorShelf) build() {
 	if isMobile {
 		dpadBtnSize = fyne.NewSize(40, 40)
 	}
+	ms.propsRotKnob = NewRotKnob(func(_ float64) {}) // wired in buildPropsLayout
+
 	dpadUp := NewTipButton(fynetheme.MoveUpIcon(), "", func() { ms.nudgeSelection(0, dpadStep) })
 	dpadDown := NewTipButton(fynetheme.MoveDownIcon(), "", func() { ms.nudgeSelection(0, -dpadStep) })
 	dpadLeft := NewTipButton(fynetheme.NavigateBackIcon(), "", func() { ms.nudgeSelection(-dpadStep, 0) })
@@ -286,7 +271,7 @@ func (ms *EditorShelf) build() {
 	empty.SetMinSize(dpadBtnSize)
 	dpadGrid := container.NewGridWithColumns(3,
 		empty, container.NewGridWrap(dpadBtnSize, dpadUp), empty,
-		container.NewGridWrap(dpadBtnSize, dpadLeft), empty, container.NewGridWrap(dpadBtnSize, dpadRight),
+		container.NewGridWrap(dpadBtnSize, dpadLeft), container.NewGridWrap(dpadBtnSize, ms.propsRotKnob), container.NewGridWrap(dpadBtnSize, dpadRight),
 		empty, container.NewGridWrap(dpadBtnSize, dpadDown), empty,
 	)
 	ms.propsDpad = container.NewCenter(dpadGrid)
@@ -321,13 +306,9 @@ func (ms *EditorShelf) syncHighlights() {
 		btn.OverrideColor = nil
 		btn.Refresh()
 	}
-	// Index map: 0=select, 1=delete, 2..9=players, 10=queue, 11..19=actions, 20..22=accessories
+	// Index map: 0..7=players, 8=queue, 9=ball, 10..15=actions, 16..18=accessories
 	idx := -1
 	switch ms.state.ActiveTool {
-	case editor.ToolSelect:
-		idx = 0
-	case editor.ToolDelete:
-		idx = 1
 	case editor.ToolPlayer:
 		roles := []model.PlayerRole{
 			model.RoleAttacker, model.RoleDefender, model.RoleCoach,
@@ -336,12 +317,12 @@ func (ms *EditorShelf) syncHighlights() {
 		}
 		for i, r := range roles {
 			if ms.state.ToolRole == r && !ms.state.ToolQueue {
-				idx = 2 + i
+				idx = i
 				break
 			}
 		}
 		if ms.state.ToolQueue {
-			idx = 10
+			idx = 8
 		}
 	case editor.ToolAction:
 		actions := []model.ActionType{
@@ -350,7 +331,7 @@ func (ms *EditorShelf) syncHighlights() {
 		}
 		for i, a := range actions {
 			if ms.state.ToolActionType == a {
-				idx = 11 + i
+				idx = 10 + i
 				break
 			}
 		}
@@ -360,7 +341,7 @@ func (ms *EditorShelf) syncHighlights() {
 		}
 		for i, a := range accTypes {
 			if ms.state.ToolAccessoryType == a {
-				idx = 20 + i
+				idx = 16 + i
 				break
 			}
 		}
@@ -381,6 +362,18 @@ func (ms *EditorShelf) syncHighlights() {
 	}
 	if ms.OnToolChanged != nil {
 		ms.OnToolChanged()
+	}
+}
+
+// selectionTab returns the shelf tab that should show properties for the given selection kind.
+func selectionTab(kind editor.SelectionKind) shelfCategory {
+	switch kind {
+	case editor.SelectPlayer:
+		return shelfPlayers
+	case editor.SelectAccessory:
+		return shelfAccessories
+	default:
+		return shelfActions
 	}
 }
 
@@ -450,13 +443,17 @@ func (ms *EditorShelf) Widget() fyne.CanvasObject {
 	shelfInner := container.NewBorder(nil, nil, nil, chevronCol, ms.shelfStack)
 	ms.shelfOuter = container.NewStack(shelfBg, container.NewPadded(shelfInner))
 
+	// Start collapsed — maximize court space on launch.
+	ms.collapsed = true
+	ms.shelfOuter.Hide()
+	ms.chevronBtn.Icon = icon.ChevronUp
+
 	// Tab bar.
 	tabs := []struct {
 		ico   fyne.Resource
 		label string
 		cat   shelfCategory
 	}{
-		{icon.ToolSelect, i18n.T(i18n.KeyMobileShelfTools), shelfTools},
 		{icon.PlayerAttacker, i18n.T(i18n.KeyMobileShelfPlayers), shelfPlayers},
 		{icon.ActionPass, i18n.T(i18n.KeyMobileShelfActions), shelfActions},
 		{icon.AccCone, i18n.T(i18n.KeyMobileShelfAccessories), shelfAccessories},
@@ -503,7 +500,7 @@ func (ms *EditorShelf) SetZoomController(z ZoomController) {
 // RefreshLanguage updates tab labels.
 func (ms *EditorShelf) RefreshLanguage() {
 	keys := []string{
-		i18n.KeyMobileShelfTools, i18n.KeyMobileShelfPlayers,
+		i18n.KeyMobileShelfPlayers,
 		i18n.KeyMobileShelfActions, i18n.KeyMobileShelfAccessories,
 	}
 	for i, k := range keys {
@@ -535,21 +532,120 @@ func (ms *EditorShelf) RefreshLanguage() {
 func (ms *EditorShelf) refreshShelfContent() {
 	var content fyne.CanvasObject
 	switch ms.active {
-	case shelfTools:
-		if ms.propsContent != nil && len(ms.propsContent.Objects) > 0 {
-			content = ms.propsContent
-		} else {
-			content = ms.toolsContent
-		}
 	case shelfPlayers:
-		content = ms.playerContent
+		if ms.propsContent != nil && len(ms.propsContent.Objects) > 0 &&
+			ms.propsSyncedSel != nil && ms.propsSyncedSel.Kind == editor.SelectPlayer {
+			content = container.NewVBox(ms.playerContent, widget.NewSeparator(), ms.propsContent)
+		} else {
+			content = ms.playerContent
+		}
 	case shelfActions:
-		content = ms.actionContent
+		if ms.propsSyncedSel != nil && ms.propsSyncedSel.Kind == editor.SelectPlayer &&
+			ms.exercise != nil && ms.propsSyncedSel.SeqIndex < len(ms.exercise.Sequences) {
+			actionsList := ms.buildPlayerActionsList()
+			if actionsList != nil {
+				content = container.NewVBox(ms.actionContent, widget.NewSeparator(), actionsList)
+			} else {
+				content = ms.actionContent
+			}
+		} else {
+			content = ms.actionContent
+		}
 	case shelfAccessories:
-		content = ms.accContent
+		if ms.propsContent != nil && len(ms.propsContent.Objects) > 0 &&
+			ms.propsSyncedSel != nil && ms.propsSyncedSel.Kind == editor.SelectAccessory {
+			content = container.NewVBox(ms.accContent, widget.NewSeparator(), ms.propsContent)
+		} else {
+			content = ms.accContent
+		}
 	}
 	ms.shelfStack.Objects = []fyne.CanvasObject{content}
 	ms.shelfStack.Refresh()
+}
+
+// buildPlayerActionsList builds a list of actions involving the selected player, with delete buttons.
+func (ms *EditorShelf) buildPlayerActionsList() fyne.CanvasObject {
+	sel := ms.propsSyncedSel
+	if sel == nil || sel.Kind != editor.SelectPlayer {
+		return nil
+	}
+	if ms.exercise == nil || sel.SeqIndex >= len(ms.exercise.Sequences) {
+		return nil
+	}
+	seq := &ms.exercise.Sequences[sel.SeqIndex]
+	if sel.Index >= len(seq.Players) {
+		return nil
+	}
+	playerID := seq.Players[sel.Index].ID
+
+	// Find all actions involving this player.
+	var rows []fyne.CanvasObject
+	headerTxt := canvas.NewText(
+		fmt.Sprintf("%s — %s", i18n.T(i18n.KeyToolHeaderActions), playerID),
+		color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff},
+	)
+	headerTxt.TextStyle.Bold = true
+	if isMobile {
+		headerTxt.TextSize = 13
+	} else {
+		headerTxt.TextSize = 11
+	}
+	rows = append(rows, headerTxt)
+
+	found := false
+	for ai, act := range seq.Actions {
+		involves := (act.From.IsPlayer && act.From.PlayerID == playerID) ||
+			(act.To.IsPlayer && act.To.PlayerID == playerID)
+		if !involves {
+			continue
+		}
+		found = true
+		actionIdx := ai
+
+		// Build label: "Pass → D1" or "Cut → (0.5, 0.3)"
+		label := actionDisplayLabel(act.Type)
+		if act.To.IsPlayer {
+			label += " → " + act.To.PlayerID
+		} else {
+			label += fmt.Sprintf(" → (%.2f, %.2f)", act.To.Position.X(), act.To.Position.Y())
+		}
+		if act.From.IsPlayer && act.From.PlayerID != playerID {
+			label = act.From.PlayerID + " → " + label
+		}
+
+		lblText := canvas.NewText(label, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+		if isMobile {
+			lblText.TextSize = 13
+		} else {
+			lblText.TextSize = 11
+		}
+
+		delBtn := NewTipButton(icon.Delete(), i18n.T(i18n.KeyToolDelete), func() {
+			if actionIdx < len(seq.Actions) {
+				seq.Actions = append(seq.Actions[:actionIdx], seq.Actions[actionIdx+1:]...)
+				model.ReorderSteps(seq)
+				ms.state.MarkModified()
+				ms.propsSyncedSel = nil // force rebuild
+				ms.refreshShelfContent()
+				if ms.OnToolChanged != nil {
+					ms.OnToolChanged()
+				}
+			}
+		})
+		delBtn.SetImportance(widget.DangerImportance)
+
+		btnSize := fyne.NewSize(28, 28)
+		if isMobile {
+			btnSize = fyne.NewSize(40, 40)
+		}
+		row := container.NewBorder(nil, nil, nil, container.NewGridWrap(btnSize, delBtn), lblText)
+		rows = append(rows, row)
+	}
+
+	if !found {
+		return nil
+	}
+	return container.NewVBox(rows...)
 }
 
 // UpdateElementProps updates the compact element properties view in the tools shelf.
@@ -564,21 +660,20 @@ func (ms *EditorShelf) UpdateElementProps(exercise *model.Exercise, state *edito
 	ms.seqIdx = seqIdx
 	sel := state.SelectedElement
 
-	// No selection → clear props and show tools.
+	// No selection → clear props and refresh current tab.
 	if sel == nil || exercise == nil || seqIdx >= len(exercise.Sequences) {
 		ms.propsSyncedSel = nil
 		ms.propsContent.RemoveAll()
-		if ms.active == shelfTools {
-			ms.refreshShelfContent()
-		}
+		ms.refreshShelfContent()
 		return
 	}
 
-	// Auto-switch to tools tab only when selecting an existing element (not creating).
+	// Auto-switch to the relevant tab when selecting an element.
 	isSelecting := ms.state.ActiveTool == editor.ToolSelect || ms.state.ActiveTool == editor.ToolNone
 	if isSelecting {
-		if ms.active != shelfTools {
-			ms.active = shelfTools
+		targetTab := selectionTab(sel.Kind)
+		if ms.active != targetTab {
+			ms.active = targetTab
 			ms.updateTabIndicators()
 		}
 		ms.expand()
@@ -590,9 +685,7 @@ func (ms *EditorShelf) UpdateElementProps(exercise *model.Exercise, state *edito
 	sameSelection := ms.propsSyncedSel != nil && *ms.propsSyncedSel == *sel
 	if sameSelection {
 		ms.syncPropsValues(seq, sel)
-		if isSelecting {
-			ms.refreshShelfContent()
-		}
+		ms.refreshShelfContent()
 		return
 	}
 
@@ -600,10 +693,7 @@ func (ms *EditorShelf) UpdateElementProps(exercise *model.Exercise, state *edito
 	ms.propsSyncedSel = &editor.Selection{Kind: sel.Kind, Index: sel.Index, SeqIndex: sel.SeqIndex}
 	ms.propsContent.RemoveAll()
 	ms.buildPropsLayout(exercise, state, seq, sel, seqIdx)
-
-	if ms.active == shelfTools {
-		ms.refreshShelfContent()
-	}
+	ms.refreshShelfContent()
 }
 
 // buildPropsLayout builds the compact element properties layout for the given selection.
@@ -666,6 +756,18 @@ func (ms *EditorShelf) buildPropsLayout(_ *model.Exercise, state *editor.EditorS
 			}
 		}
 		ms.wirePosEntries(seq, sel, state)
+		ms.propsRotKnob.Value = p.Rotation
+		ms.propsRotKnob.Refresh()
+		ms.propsRotKnob.OnChanged = func(v float64) {
+			if ms.propsUpdating || sel.Index >= len(seq.Players) {
+				return
+			}
+			seq.Players[sel.Index].Rotation = v
+			state.MarkModified()
+			if ms.OnToolChanged != nil {
+				ms.OnToolChanged()
+			}
+		}
 
 		// Set initial values (including label entry text for first build).
 		ms.propsLabelE.SetText(p.Label)
