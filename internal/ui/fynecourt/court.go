@@ -504,16 +504,34 @@ func (w *CourtWidget) drawHoverHighlights(img *image.RGBA, seq *model.Sequence, 
 		return
 	}
 
+	isEraser := sel != nil && sel.ActiveTool == editor.ToolDelete
+
 	switch hovElem.Kind {
+	case editor.SelectAction:
+		if isEraser && hovElem.Index < len(seq.Actions) {
+			act := &seq.Actions[hovElem.Index]
+			maxStep := model.MaxStep(seq)
+			playersAtStep := stepPlayers(seq, maxStep, act.EffectiveStep())
+			from := court.ResolveRef(&w.viewport, act.From, playersAtStep)
+			to := court.ResolveRef(&w.viewport, act.To, playersAtStep)
+			mid := court.Pt((from.X+to.X)/2, (from.Y+to.Y)/2)
+			court.DrawEraserHighlight(img, &w.viewport, mid, 12)
+		}
 	case editor.SelectAccessory:
 		if hovElem.Index < len(seq.Accessories) {
 			center := w.viewport.RelToPixel(seq.Accessories[hovElem.Index].Position)
-			court.DrawAccessoryHoverHighlight(img, &w.viewport, center)
+			if isEraser {
+				court.DrawEraserHighlight(img, &w.viewport, center, court.AccessoryConeSize+8)
+			} else {
+				court.DrawAccessoryHoverHighlight(img, &w.viewport, center)
+			}
 		}
 	case editor.SelectPlayer:
 		if hovElem.Index < len(seq.Players) {
 			center := w.viewport.RelToPixel(seq.Players[hovElem.Index].Position)
-			if sel != nil && sel.ActiveTool == editor.ToolAction && sel.ActionFrom != nil {
+			if isEraser {
+				court.DrawEraserHighlight(img, &w.viewport, center, court.PlayerRadius+6)
+			} else if sel != nil && sel.ActiveTool == editor.ToolAction && sel.ActionFrom != nil {
 				court.DrawActionTargetHighlight(img, &w.viewport, center)
 			} else {
 				court.DrawHoverHighlight(img, &w.viewport, center)
@@ -929,12 +947,18 @@ func (w *CourtWidget) MouseMoved(e *desktop.MouseEvent) {
 	pos := w.dpToPixel(e.Position)
 	mousePoint := court.Pt(pos.X, pos.Y)
 
-	// Update hover state.
+	// Update hover state (use final positions for accurate hit testing).
+	finalSeq := w.seqWithFinalPositions(seq)
 	var hovered *editor.Selection
-	if pi := court.HitTestPlayer(&w.viewport, seq, pos); pi >= 0 {
+	if pi := court.HitTestPlayer(&w.viewport, finalSeq, pos); pi >= 0 {
 		hovered = &editor.Selection{Kind: editor.SelectPlayer, Index: pi, SeqIndex: w.seqIndex}
-	} else if ai := court.HitTestAccessory(&w.viewport, seq, pos); ai >= 0 {
+	} else if ai := court.HitTestAccessory(&w.viewport, finalSeq, pos); ai >= 0 {
 		hovered = &editor.Selection{Kind: editor.SelectAccessory, Index: ai, SeqIndex: w.seqIndex}
+	} else if state.ActiveTool == editor.ToolDelete {
+		// In eraser mode, also detect actions for hover feedback.
+		if actIdx := w.hitTestActionStepAware(seq, pos); actIdx >= 0 {
+			hovered = &editor.Selection{Kind: editor.SelectAction, Index: actIdx, SeqIndex: w.seqIndex}
+		}
 	}
 
 	changed := false

@@ -540,8 +540,13 @@ func (ms *EditorShelf) refreshShelfContent() {
 			content = ms.playerContent
 		}
 	case shelfActions:
-		if ms.propsSyncedSel != nil && ms.propsSyncedSel.Kind == editor.SelectPlayer &&
+		if ms.propsSyncedSel != nil && ms.propsSyncedSel.Kind == editor.SelectAction &&
+			ms.propsContent != nil && len(ms.propsContent.Objects) > 0 {
+			// Action selected → show only props (type buttons replace the creation grid).
+			content = ms.propsContent
+		} else if ms.propsSyncedSel != nil && ms.propsSyncedSel.Kind == editor.SelectPlayer &&
 			ms.exercise != nil && ms.propsSyncedSel.SeqIndex < len(ms.exercise.Sequences) {
+			// Player selected → show player's action list.
 			actionsList := ms.buildPlayerActionsList()
 			if actionsList != nil {
 				content = container.NewVBox(ms.actionContent, widget.NewSeparator(), actionsList)
@@ -669,10 +674,12 @@ func (ms *EditorShelf) UpdateElementProps(exercise *model.Exercise, state *edito
 	}
 
 	// Auto-switch to the relevant tab when selecting an element.
+	// Exception: stay in Actions tab when selecting a player (shows player's action list).
 	isSelecting := ms.state.ActiveTool == editor.ToolSelect || ms.state.ActiveTool == editor.ToolNone
 	if isSelecting {
 		targetTab := selectionTab(sel.Kind)
-		if ms.active != targetTab {
+		stayInActions := ms.active == shelfActions && sel.Kind == editor.SelectPlayer
+		if !stayInActions && ms.active != targetTab {
 			ms.active = targetTab
 			ms.updateTabIndicators()
 		}
@@ -808,6 +815,18 @@ func (ms *EditorShelf) buildPropsLayout(_ *model.Exercise, state *editor.EditorS
 		ms.wirePosEntries(seq, sel, state)
 		ms.propsPosXEntry.SetText(fmt.Sprintf("%.0f", a.Position.X()*100))
 		ms.propsPosYEntry.SetText(fmt.Sprintf("%.0f", a.Position.Y()*100))
+		ms.propsRotKnob.Value = a.Rotation
+		ms.propsRotKnob.Refresh()
+		ms.propsRotKnob.OnChanged = func(v float64) {
+			if ms.propsUpdating || sel.Index >= len(seq.Accessories) {
+				return
+			}
+			seq.Accessories[sel.Index].Rotation = v
+			state.MarkModified()
+			if ms.OnToolChanged != nil {
+				ms.OnToolChanged()
+			}
+		}
 		posW := fyne.NewSize(60, ms.propsPosXEntry.MinSize().Height)
 		posXWrap := container.NewGridWrap(posW, ms.propsPosXEntry)
 		posYWrap := container.NewGridWrap(posW, ms.propsPosYEntry)
@@ -825,33 +844,71 @@ func (ms *EditorShelf) buildPropsLayout(_ *model.Exercise, state *editor.EditorS
 		step := act.EffectiveStep()
 		ms.propsTitle.Text = fmt.Sprintf("%s — %s %d", actionDisplayLabel(act.Type), i18n.T(i18n.KeyPropsStep), step)
 
+		// Action type buttons — tap to change type.
+		actionTypes := []model.ActionType{
+			model.ActionDribble, model.ActionPass, model.ActionCut,
+			model.ActionScreen, model.ActionShot, model.ActionHandoff,
+		}
+		actionIcons := []fyne.Resource{
+			icon.ActionDribble, icon.ActionPass, icon.ActionCut,
+			icon.ActionScreen, icon.ActionShot, icon.ActionHandoffRes,
+		}
+		typeGrid := container.NewGridWrap(shelfCellSize)
+		for i, at := range actionTypes {
+			actionType := at
+			btn := NewTipButton(actionIcons[i], actionDisplayLabel(at), func() {
+				if ms.propsUpdating || sel.Index >= len(seq.Actions) {
+					return
+				}
+				seq.Actions[sel.Index].Type = actionType
+				ms.propsTitle.Text = fmt.Sprintf("%s — %s %d", actionDisplayLabel(actionType), i18n.T(i18n.KeyPropsStep), seq.Actions[sel.Index].EffectiveStep())
+				ms.propsTitle.Refresh()
+				state.MarkModified()
+				ms.propsSyncedSel = nil // force rebuild to update highlights
+				if ms.OnToolChanged != nil {
+					ms.OnToolChanged()
+				}
+			})
+			if actionType == act.Type {
+				btn.OverrideColor = toolActiveColor
+			}
+			typeGrid.Add(btn)
+		}
+
 		stepLabel := canvas.NewText(fmt.Sprintf("%s %d", i18n.T(i18n.KeyPropsStep), step), color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
 		stepLabel.TextSize = 12
-		minusBtn := NewTipButton(fynetheme.ContentRemoveIcon(), "", func() {
-			if sel.Index < len(seq.Actions) && seq.Actions[sel.Index].EffectiveStep() > 1 {
-				seq.Actions[sel.Index].Step = seq.Actions[sel.Index].EffectiveStep() - 1
-				state.MarkModified()
-				ms.propsSyncedSel = nil // force rebuild
-				if ms.OnToolChanged != nil {
-					ms.OnToolChanged()
+		swapStep := func(delta int) {
+			if sel.Index >= len(seq.Actions) {
+				return
+			}
+			cur := seq.Actions[sel.Index].EffectiveStep()
+			target := cur + delta
+			if target < 1 || target > model.MaxStep(seq) {
+				return
+			}
+			// Swap: all actions at current step go to target, all at target go to current.
+			for i := range seq.Actions {
+				s := seq.Actions[i].EffectiveStep()
+				if s == cur {
+					seq.Actions[i].Step = target
+				} else if s == target {
+					seq.Actions[i].Step = cur
 				}
 			}
-		})
-		plusBtn := NewTipButton(fynetheme.ContentAddIcon(), "", func() {
-			if sel.Index < len(seq.Actions) {
-				seq.Actions[sel.Index].Step = seq.Actions[sel.Index].EffectiveStep() + 1
-				state.MarkModified()
-				ms.propsSyncedSel = nil // force rebuild
-				if ms.OnToolChanged != nil {
-					ms.OnToolChanged()
-				}
+			model.ReorderSteps(seq)
+			state.MarkModified()
+			ms.propsSyncedSel = nil
+			if ms.OnToolChanged != nil {
+				ms.OnToolChanged()
 			}
-		})
+		}
+		minusBtn := NewTipButton(fynetheme.ContentRemoveIcon(), "", func() { swapStep(-1) })
+		plusBtn := NewTipButton(fynetheme.ContentAddIcon(), "", func() { swapStep(1) })
 		stepRow := container.NewHBox(stepLabel, minusBtn, plusBtn)
 		delWrap := container.NewGridWrap(shelfCellSize, ms.propsDeleteBtn)
 
 		// Validation messages.
-		propsCol := container.NewVBox(ms.propsTitle, stepRow, container.NewHBox(delWrap))
+		propsCol := container.NewVBox(ms.propsTitle, typeGrid, stepRow, container.NewHBox(delWrap))
 		actionIssues := model.ValidateActions(seq)
 		if issues, ok := actionIssues[sel.Index]; ok {
 			for _, issue := range issues {

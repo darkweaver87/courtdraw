@@ -356,6 +356,12 @@ func DrawAccessoryHoverHighlight(img *image.RGBA, vp *Viewport, center Point) {
 	DrawCircleOutline(img, center, vp.S(AccessoryConeSize+8), vp.S(2.0), col)
 }
 
+// DrawEraserHighlight draws a red ring around an element targeted for deletion.
+func DrawEraserHighlight(img *image.RGBA, vp *Viewport, center Point, radius float64) {
+	col := color.NRGBA{R: 0xff, G: 0x33, B: 0x33, A: 0xaa}
+	DrawCircleOutline(img, center, vp.S(radius), vp.S(2.5), col)
+}
+
 // HitTestPlayer returns the index of the player under pos, or -1.
 func HitTestPlayer(vp *Viewport, seq *model.Sequence, pos Point) int {
 	hitR := vp.Sd(PlayerRadius + 4)
