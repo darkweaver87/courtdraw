@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"log"
 	"math"
 	"slices"
 	"sync"
@@ -286,6 +287,14 @@ func (w *CourtWidget) currentSequence() *model.Sequence {
 
 // draw is the raster generator function.
 func (w *CourtWidget) draw(pixW, pixH int) image.Image {
+	drawStart := time.Now()
+	orientLog := ""
+	if w.exercise != nil {
+		orientLog = string(w.exercise.Orientation)
+	}
+	defer func() {
+		log.Printf("[COURT] draw(%d, %d) orient=%s took %v", pixW, pixH, orientLog, time.Since(drawStart))
+	}()
 	w.pixelW = pixW
 	w.pixelH = pixH
 

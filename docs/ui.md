@@ -354,6 +354,63 @@ View for running a session during practice. The training view replaces the app c
   - **Luc Léger**: shows current stage, shuttle count, and speed; beeps on each shuttle interval
 - **Quit**: returns to normal session tab
 
+## Match Mode
+
+Live match management view for tracking substitutions, playing time, fouls, and score during a game.
+
+### Match Tab (ModeMatch)
+
+Two views in a content stack:
+- **Match list**: scrollable list of matches showing opponent, date, home/away, status badge (gray=planned, green=live, blue=finished). Open/delete buttons per row. "New Match" button at the bottom.
+- **Match creation form**: team dropdown (from store), opponent entry, date/time/location/competition fields, home/away radio, period format selector (4x8, 4x10, 2x20), player selection checkboxes from team roster with starting five checkboxes. "Create Match" button.
+
+### Live Match View (full-screen)
+
+Full-screen takeover following the same pattern as Training Mode (`normalContent` save/restore):
+
+```
++------------------------------------------------------------------+
+|   Team A          P2  05:32          Opponent                     |
+|     42                                 38                         |
++------------------------------------------------------------------+
+| [+1] [+2] [+3]  Home    | [+1] [+2] [+3]  Away                  |
+| [Start Period] [Timeout]                                          |
++------------------------------------------------------------------+
+| ON COURT                                                          |
+| #7 Jean  ●●●○○  12:30  [Foul] [Sub]                             |
+| #11 Marc ●○○○○  08:45  [Foul] [Sub]                             |
+| ...                                                               |
++------------------------------------------------------------------+
+| BENCH                                                             |
+| #23 Lucas  00:00  [Select In]                                    |
+| #5 Pierre  04:20  [Select In]                                    |
++------------------------------------------------------------------+
+|                              [Quit] [End Match]                   |
++------------------------------------------------------------------+
+```
+
+### Components
+
+- **Scoreboard header**: dark background, home/away team names, large score numbers, period indicator, countdown clock
+- **Period clock**: countdown from period duration, 100ms ticker with `sync.Mutex`, `fyne.Do()` for UI updates
+- **Player cards**: jersey number (large), first name, foul dots (filled red / empty gray), playing time (MM:SS)
+  - Foul background: 4 fouls = orange, 5 fouls = red
+  - Bench players with zero playing time get yellow name color
+  - Selected bench player highlighted with blue background
+- **Substitution flow**: tap bench player "Select In" -> player highlighted -> tap on-court player "Sub" -> swap executed with sub_in/sub_out events
+- **Score buttons**: +1/+2/+3 for each team, creates score event
+- **Foul button**: per on-court player, creates foul event, shows warning dialog at 4 and fouled-out dialog at 5
+- **Timeout**: pauses clock, creates timeout event
+- **Auto-save**: `store.SaveMatch()` after every event
+
+### Match Summary
+
+Shown when match ends or when opening a finished match from the list:
+- Final score header (large text)
+- Playing time per player: proportional horizontal bars
+- Fouls per player
+- Close button to return
+
 ## Session Sharing
 
 ### Share Dialog

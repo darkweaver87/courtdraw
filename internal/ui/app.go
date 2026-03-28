@@ -66,6 +66,8 @@ type App struct {
 	tooltipLayer *TooltipLayer
 	sessionTab   *SessionTab
 	myFilesTab   *MyFilesTab
+	teamTab      *TeamTab
+	matchTab     *MatchTab
 
 	// Navigation state.
 	sessionNeedsRefresh bool
@@ -85,6 +87,9 @@ type App struct {
 	// Training mode.
 	trainingMode  *TrainingMode
 	normalContent fyne.CanvasObject
+
+	// Match live mode.
+	matchLive *MatchLive
 
 	// QR scan import.
 	scanPending bool
@@ -239,6 +244,20 @@ func (a *App) BuildUI() fyne.CanvasObject {
 		a.handleMyFilesAction(ev)
 	}
 
+	a.teamTab = NewTeamTab(a.store, a.window, func(msg string, level int) {
+		a.statusBar.SetStatus(msg, level)
+	})
+
+	a.matchTab = NewMatchTab(a.store, a.window, func(msg string, level int) {
+		a.statusBar.SetStatus(msg, level)
+	})
+	a.matchTab.OnStartMatch = func(match *model.Match, team *model.Team) {
+		a.enterMatchLive(match, team)
+	}
+	a.matchTab.OnShowSummary = func(match *model.Match) {
+		a.showMatchSummary(match)
+	}
+
 	// Init language buttons.
 	a.initLangButtons()
 
@@ -334,6 +353,12 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	// My Files mode: full my files tab content.
 	myFilesContent := a.myFilesTab.Widget()
 
+	// Team mode: full team tab content.
+	teamContent := a.teamTab.Widget()
+
+	// Match mode: full match tab content.
+	matchContent := a.matchTab.Widget()
+
 	// ── Content stack: court area (for editor modes) or full-page content ──
 	// Sequence bar (shown only in Edition/Animation modes).
 	seqBar := a.seqTimeline.Widget()
@@ -368,11 +393,10 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	timelinePanel := container.NewStack(timelineBg, container.NewPadded(timelineWidget))
 	timelinePanel.Hide()
 
-	// View tools panel (left of court).
+	// View tools panel (integrated into seq bar, right side).
 	viewToolsPanel := a.viewTools.Widget()
-
-	// Court area with seq bar above, view tools on left, action timeline on right.
-	courtWithSeq := container.NewBorder(seqBar, nil, viewToolsPanel, timelinePanel, container.NewStack(a.court, a.emptyState))
+	seqBarWithTools := container.NewBorder(nil, nil, nil, viewToolsPanel, seqBar)
+	courtWithSeq := container.NewBorder(seqBarWithTools, nil, nil, timelinePanel, container.NewStack(a.court, a.emptyState))
 
 	// Bottom area: swapped between edition shelf and animation controls.
 	bottomStack := container.NewStack(editionBottom)
@@ -383,7 +407,9 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 	trainingContent.Hide()
 	sessionContent.Hide()
 	myFilesContent.Hide()
-	mainStack := container.NewStack(courtSection, notesContent, trainingContent, sessionContent, myFilesContent)
+	teamContent.Hide()
+	matchContent.Hide()
+	mainStack := container.NewStack(courtSection, notesContent, trainingContent, sessionContent, myFilesContent, teamContent, matchContent)
 
 	// ── Mode switching logic ──
 	var switchMode func(EditorMode)
@@ -396,6 +422,8 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 		trainingContent.Hide()
 		sessionContent.Hide()
 		myFilesContent.Hide()
+		teamContent.Hide()
+		matchContent.Hide()
 
 		switch mode {
 		case ModeEdition:
@@ -437,6 +465,14 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 			trainingContent.Objects = []fyne.CanvasObject{a.buildTrainingPicker()}
 			trainingContent.Show()
 			a.modeLabel.Text = i18n.T(i18n.KeyModeTraining)
+		case ModeTeam:
+			teamContent.Show()
+			a.teamTab.RefreshTeamList()
+			a.modeLabel.Text = i18n.T(i18n.KeyModeTeam)
+		case ModeMatch:
+			matchContent.Show()
+			a.matchTab.RefreshMatchList()
+			a.modeLabel.Text = i18n.T(i18n.KeyModeMatch)
 		}
 		a.modeLabel.Refresh()
 		mainStack.Refresh()
@@ -453,6 +489,8 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 		ModeSession:   fynetheme.FolderIcon(),
 		ModeMyFiles:   fynetheme.StorageIcon(),
 		ModeTraining:  fynetheme.MediaPlayIcon(),
+		ModeTeam:      fynetheme.AccountIcon(),
+		ModeMatch:     fynetheme.MediaRecordIcon(),
 	}
 	modeIcon := canvas.NewImageFromResource(modeIcons[ModeEdition])
 	modeIcon.FillMode = canvas.ImageFillContain
@@ -476,6 +514,8 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 		ModeSession:   {R: 0x22, G: 0x44, B: 0x66, A: 0xff}, // blue — organization
 		ModeMyFiles:   {R: 0x22, G: 0x44, B: 0x66, A: 0xff}, // blue — organization
 		ModeTraining:  {R: 0x22, G: 0x44, B: 0x66, A: 0xff}, // blue — organization
+		ModeTeam:      {R: 0x22, G: 0x44, B: 0x66, A: 0xff}, // blue — organization
+		ModeMatch:     {R: 0x66, G: 0x22, B: 0x22, A: 0xff}, // red — live match
 	}
 
 	// Update mode icon + color when switching.
@@ -508,11 +548,15 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 			myFilesItem.Icon = fynetheme.StorageIcon()
 			trainingItem := fyne.NewMenuItem(i18n.T(i18n.KeyModeTraining), func() { switchMode(ModeTraining) })
 			trainingItem.Icon = fynetheme.MediaPlayIcon()
+			teamItem := fyne.NewMenuItem(i18n.T(i18n.KeyModeTeam), func() { switchMode(ModeTeam) })
+			teamItem.Icon = fynetheme.AccountIcon()
+			matchItem := fyne.NewMenuItem(i18n.T(i18n.KeyModeMatch), func() { switchMode(ModeMatch) })
+			matchItem.Icon = fynetheme.MediaRecordIcon()
 
 			menu := widget.NewPopUpMenu(fyne.NewMenu("",
 				editionItem, animItem, notesItem,
 				fyne.NewMenuItemSeparator(),
-				sessionItem, trainingItem, myFilesItem,
+				sessionItem, trainingItem, myFilesItem, teamItem, matchItem,
 			), a.window.Canvas())
 			pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(a.modeLabel)
 			menu.ShowAtPosition(fyne.NewPos(pos.X, pos.Y+a.modeLabel.Size().Height+4))
@@ -598,6 +642,8 @@ func (a *App) switchLang(lang string) {
 	a.instrPanel.RefreshLanguage()
 	a.sessionTab.RefreshLanguage()
 	a.myFilesTab.RefreshLanguage()
+	a.teamTab.RefreshLanguage()
+	a.matchTab.RefreshLanguage()
 	// Update shelf labels before refreshEditor so props rebuild picks up new language.
 	if a.editorShelf != nil {
 		a.editorShelf.RefreshLanguage()
@@ -631,6 +677,8 @@ func (a *App) switchLang(lang string) {
 			ModeSession:   "mode.session",
 			ModeMyFiles:   "mode.myfiles",
 			ModeTraining:  "mode.training",
+			ModeTeam:      "mode.team",
+			ModeMatch:     "mode.match",
 		}
 		if key, ok := modeKeys[a.editorMode]; ok {
 			a.modeLabel.Text = i18n.T(key)
@@ -649,6 +697,10 @@ func (a *App) switchLang(lang string) {
 			a.modeSwitchFunc(ModeSession)
 		case ModeMyFiles:
 			a.modeSwitchFunc(ModeMyFiles)
+		case ModeTeam:
+			a.modeSwitchFunc(ModeTeam)
+		case ModeMatch:
+			a.modeSwitchFunc(ModeMatch)
 		}
 	}
 	a.statusBar.SetStatus("", 0)
@@ -1029,7 +1081,14 @@ func (a *App) handleFileAction(action FileAction) {
 	case FileActionOpen:
 		a.showOpenDialog()
 	case FileActionSave:
-		a.saveExercise()
+		switch a.editorMode {
+		case ModeTeam:
+			if a.teamTab != nil {
+				a.teamTab.Save()
+			}
+		default:
+			a.saveExercise()
+		}
 	case FileActionSaveAs:
 		a.saveAsExercise()
 	case FileActionImport:
@@ -2211,6 +2270,59 @@ func (a *App) exitTrainingMode() {
 	if a.modeSwitchFunc != nil {
 		a.modeSwitchFunc(ModeTraining)
 	}
+}
+
+// --- Match live mode ---
+
+func (a *App) enterMatchLive(match *model.Match, team *model.Team) {
+	if match == nil {
+		return
+	}
+
+	// Store normal content for restoration.
+	a.normalContent = a.window.Content()
+
+	a.matchLive = NewMatchLive(a.window, match, team, a.store, func() {
+		a.exitMatchLive()
+	})
+
+	a.window.SetContent(a.matchLive.Widget())
+}
+
+func (a *App) exitMatchLive() {
+	if a.matchLive != nil {
+		a.matchLive.Stop()
+		a.matchLive = nil
+	}
+	if a.normalContent != nil {
+		a.window.SetContent(a.normalContent)
+		a.normalContent = nil
+	}
+	// Return to match list.
+	if a.modeSwitchFunc != nil {
+		a.modeSwitchFunc(ModeMatch)
+	}
+}
+
+func (a *App) showMatchSummary(match *model.Match) {
+	if match == nil {
+		return
+	}
+
+	// Store normal content for restoration.
+	a.normalContent = a.window.Content()
+
+	summary := NewMatchSummary(match, func() {
+		if a.normalContent != nil {
+			a.window.SetContent(a.normalContent)
+			a.normalContent = nil
+		}
+		if a.modeSwitchFunc != nil {
+			a.modeSwitchFunc(ModeMatch)
+		}
+	})
+
+	a.window.SetContent(summary.Widget())
 }
 
 // --- Build managed exercises list ---

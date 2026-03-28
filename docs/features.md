@@ -399,9 +399,44 @@ Tools run independently from the exercise timer.
 - Desktop: court left (60%), instructions + tools right
 - Mobile: 3 bottom tabs — Court, Instructions, Tools
 
+## Match Mode
+
+Live game management for tracking substitutions, playing time, fouls, and score during matches.
+
+### Match Tab
+
+Accessible via the mode selector (ModeMatch). Two-view content stack:
+- **Match list**: all matches from `~/.courtdraw/matches/` with opponent, date, home/away, status badge. Tap to open (live/planned) or view summary (finished). Delete with confirmation.
+- **Match creation form**: team selector (from store), opponent, date/time/location/competition, home/away radio, period format (4x8, 4x10, 2x20), player selection with starting five checkboxes.
+
+### Live Match View
+
+Full-screen takeover (same pattern as Training Mode):
+- **Scoreboard header**: home/away names, large score numbers, period indicator, countdown clock
+- **Period clock**: countdown timer with 100ms ticker, auto-detects period end
+- **On-court lineup**: 5 player cards with jersey number, name, foul dots, playing time
+- **Bench**: scrollable list of bench players
+- **Score buttons**: +1/+2/+3 for home and away
+- **Substitution**: select bench player then tap on-court player to swap
+- **Foul tracking**: per-player foul button, dots display (5 max), warning at 4, fouled-out at 5
+- **Timeout**: pauses clock, records event
+- **Period management**: start/stop clock, advance periods, halftime summary
+- **Auto-save**: every event persisted to store immediately
+
+### Match Summary
+
+Post-game screen with final score, playing time bars (proportional), and foul counts per player.
+
+### Data Model
+
+- `Match` entity in `internal/model/match.go`: roster, events, score, period format, status
+- Events: `sub_in`, `sub_out`, `foul`, `score`, `period_start`, `period_end`, `timeout`
+- Playing time computed from event intervals (sub_in/sub_out pairs)
+- Stored as YAML in `~/.courtdraw/matches/` with index file
+
 ## Session Sharing
 
-Transfer sessions between devices (PC → mobile or between coaches).
+Transfer sessions between devices (PC -> mobile or between coaches).
 
 ### Bundle Format
 

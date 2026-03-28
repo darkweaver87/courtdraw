@@ -358,18 +358,18 @@ Deliverable: coaches have a digital roster with contact info, availability track
 
 Goal: live game management with substitution tracking and playing time — an e-Marque-like experience focused on the coach's needs.
 
-106. Match model — `Match` entity: date, opponent, location, competition, home/away, roster (subset of team), quarters/periods config (4×8min, 4×10min, 2×20min — configurable), score, result — stored in `~/.courtdraw/matches/`
-107. Match creation — select team, pick opponent (free text or from past opponents), set date/time/location, select available players from roster, configure period format
-108. Live match view — full-screen interface optimized for quick taps during a game:
-    - **Scoreboard header**: Home score | Period clock | Away score — large font, always visible
-    - **On-court lineup**: 5 player slots showing jersey number + first name, large tap targets (64dp+)
-    - **Bench**: horizontal scrollable row of bench players with jersey numbers
-    - **Sub button**: tap bench player → tap on-court player to swap — records timestamp, highlights 5-foul players in red
-109. Playing time tracking — automatic timer per player: starts when subbed in, pauses when subbed out. Real-time display of each player's cumulative time in the current game. Visual indicator when a player hasn't played yet or has significantly less time than others
-110. Period management — start/stop period clock, advance to next period, handle overtime. Period transitions auto-pause all player timers. Halftime summary popup showing playing time per player
-111. Quick score — +2 / +3 / +1 buttons for each team (no need to track who scored — keep it simple, this isn't e-Marque). Running score displayed prominently
-112. Foul tracking — tap player circle to increment foul count (displayed as dots on player card), visual warning at 4 fouls, auto-highlight at 5 fouls with "fouled out" status
-113. Match summary — end-of-game screen: final score, playing time per player (bar chart), fouls per player, substitution timeline (horizontal swim-lane chart showing when each player was on/off court)
+106. ~~Match model — `Match` entity: date, opponent, location, competition, home/away, roster (subset of team), quarters/periods config (4x8min, 4x10min, 2x20min — configurable), score, result — stored in `~/.courtdraw/matches/`~~
+107. ~~Match creation — select team, pick opponent (free text or from past opponents), set date/time/location, select available players from roster, configure period format~~
+108. ~~Live match view — full-screen interface optimized for quick taps during a game:~~
+    - ~~**Scoreboard header**: Home score | Period clock | Away score — large font, always visible~~
+    - ~~**On-court lineup**: 5 player slots showing jersey number + first name, foul dots, playing time~~
+    - ~~**Bench**: scrollable row of bench players with jersey numbers~~
+    - ~~**Sub button**: tap bench player → tap on-court player to swap — records timestamp, highlights 5-foul players in red~~
+109. ~~Playing time tracking — automatic timer per player: computed from sub_in/sub_out events. Real-time display of each player's cumulative time. Yellow indicator for bench players who haven't played yet~~
+110. ~~Period management — start/stop period clock (countdown), advance to next period, handle overtime. Period transitions auto-pause clock. Halftime summary popup showing score~~
+111. ~~Quick score — +1 / +2 / +3 buttons for each team. Running score displayed prominently in scoreboard header~~
+112. ~~Foul tracking — tap foul button on player card to increment foul count (displayed as dots), visual warning at 4 fouls (orange), auto-highlight at 5 fouls (red) with "fouled out" dialog~~
+113. ~~Match summary — end-of-game screen: final score, playing time per player (proportional bars), fouls per player~~
 
 Deliverable: coaches manage substitutions and playing time live during games, with automatic time tracking.
 

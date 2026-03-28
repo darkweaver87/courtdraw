@@ -21,8 +21,12 @@ import (
 type YAMLStore struct {
 	exercisesDir  string
 	sessionsDir   string
+	teamsDir      string
+	matchesDir    string
 	exerciseIndex *ExerciseIndex
 	sessionIndex  *SessionIndex
+	teamIndex     *TeamIndex
+	matchIndex    *MatchIndex
 }
 
 // NewYAMLStore creates a YAMLStore rooted at baseDir.
@@ -30,14 +34,23 @@ type YAMLStore struct {
 func NewYAMLStore(baseDir string) (*YAMLStore, error) {
 	exDir := filepath.Join(baseDir, "exercises")
 	sesDir := filepath.Join(baseDir, "sessions")
-	for _, d := range []string{exDir, sesDir} {
+	teamsDir := filepath.Join(baseDir, "teams")
+	matchesDir := filepath.Join(baseDir, "matches")
+	for _, d := range []string{exDir, sesDir, teamsDir, matchesDir} {
 		if err := os.MkdirAll(d, 0755); err != nil {
 			return nil, fmt.Errorf("create dir %s: %w", d, err)
 		}
 	}
-	ys := &YAMLStore{exercisesDir: exDir, sessionsDir: sesDir}
+	ys := &YAMLStore{
+		exercisesDir: exDir,
+		sessionsDir:  sesDir,
+		teamsDir:     teamsDir,
+		matchesDir:   matchesDir,
+	}
 	ys.ensureExerciseIndex()
 	ys.ensureSessionIndex()
+	ys.ensureTeamIndex()
+	ys.ensureMatchIndex()
 	ys.migrateRecentFiles()
 	return ys, nil
 }
@@ -462,4 +475,106 @@ func (s *YAMLStore) removeSessionEntry(file string) {
 			return
 		}
 	}
+}
+
+// --- Team CRUD ---
+
+func (s *YAMLStore) ListTeams() ([]TeamIndexEntry, error) {
+	out := make([]TeamIndexEntry, len(s.teamIndex.Entries))
+	copy(out, s.teamIndex.Entries)
+	return out, nil
+}
+
+func (s *YAMLStore) LoadTeam(name string) (*model.Team, error) {
+	path := filepath.Join(s.teamsDir, name+".yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("load team %s: %w", name, err)
+	}
+	var team model.Team
+	if err := yaml.Unmarshal(data, &team); err != nil {
+		return nil, fmt.Errorf("parse team %s: %w", name, err)
+	}
+	return &team, nil
+}
+
+func (s *YAMLStore) SaveTeam(team *model.Team) error {
+	name := TeamFileName(team)
+	if name == "" {
+		return errors.New("team name is empty")
+	}
+	path := filepath.Join(s.teamsDir, name+".yaml")
+	data, err := yaml.Marshal(team)
+	if err != nil {
+		return fmt.Errorf("marshal team: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return err
+	}
+	now := time.Now()
+	entry := teamEntryFromTeam(name, team, now)
+	s.upsertTeamEntry(entry)
+	_ = saveTeamIndex(s.teamsDir, s.teamIndex)
+	return nil
+}
+
+func (s *YAMLStore) DeleteTeam(name string) error {
+	path := filepath.Join(s.teamsDir, name+".yaml")
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("delete team %s: %w", name, err)
+	}
+	s.removeTeamEntry(name)
+	_ = saveTeamIndex(s.teamsDir, s.teamIndex)
+	return nil
+}
+
+// --- Match CRUD ---
+
+func (s *YAMLStore) ListMatches() ([]MatchIndexEntry, error) {
+	out := make([]MatchIndexEntry, len(s.matchIndex.Entries))
+	copy(out, s.matchIndex.Entries)
+	return out, nil
+}
+
+func (s *YAMLStore) LoadMatch(name string) (*model.Match, error) {
+	path := filepath.Join(s.matchesDir, name+".yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("load match %s: %w", name, err)
+	}
+	var match model.Match
+	if err := yaml.Unmarshal(data, &match); err != nil {
+		return nil, fmt.Errorf("parse match %s: %w", name, err)
+	}
+	return &match, nil
+}
+
+func (s *YAMLStore) SaveMatch(match *model.Match) error {
+	name := MatchFileName(match)
+	if name == "" {
+		return errors.New("match opponent is empty")
+	}
+	path := filepath.Join(s.matchesDir, name+".yaml")
+	data, err := yaml.Marshal(match)
+	if err != nil {
+		return fmt.Errorf("marshal match: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return err
+	}
+	now := time.Now()
+	entry := matchEntryFromMatch(name, match, now)
+	s.upsertMatchEntry(entry)
+	_ = saveMatchIndex(s.matchesDir, s.matchIndex)
+	return nil
+}
+
+func (s *YAMLStore) DeleteMatch(name string) error {
+	path := filepath.Join(s.matchesDir, name+".yaml")
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("delete match %s: %w", name, err)
+	}
+	s.removeMatchEntry(name)
+	_ = saveMatchIndex(s.matchesDir, s.matchIndex)
+	return nil
 }

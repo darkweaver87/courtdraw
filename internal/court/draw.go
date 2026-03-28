@@ -350,6 +350,8 @@ func DrawZigzag(img *image.RGBA, p1, p2 Point, width, amplitude float32, segment
 	px := -dy / totalLen
 	py := dx / totalLen
 
+	joinR := width / 2 // fill gaps at zigzag joints
+
 	prev := p1
 	for i := 1; i <= segments; i++ {
 		t := float32(i) / float32(segments)
@@ -360,6 +362,7 @@ func DrawZigzag(img *image.RGBA, p1, p2 Point, width, amplitude float32, segment
 		}
 		pt := Pt(mid.X+px*amplitude*sign, mid.Y+py*amplitude*sign)
 		DrawLine(img, prev, pt, width, col)
+		DrawCircleFill(img, pt, joinR, col) // smooth joint
 		prev = pt
 	}
 	DrawLine(img, prev, p2, width, col)
@@ -592,6 +595,38 @@ func PolylineLength(pts []Point) float64 {
 	return total
 }
 
+// ShortenPolyline returns a copy of pts with the last `amount` pixels removed.
+// The last point is moved back along the path. Returns original if too short.
+func ShortenPolyline(pts []Point, amount float32) []Point {
+	if len(pts) < 2 || amount <= 0 {
+		return pts
+	}
+	total := float32(PolylineLength(pts))
+	if amount >= total {
+		return pts
+	}
+	frac := float64(1.0 - amount/total)
+	newEnd := PolylinePointAt(pts, frac)
+	// Find the segment where newEnd falls and truncate.
+	result := make([]Point, 0, len(pts))
+	cumLen := float64(0)
+	targetLen := float64(frac) * float64(total)
+	result = append(result, pts[0])
+	for i := 1; i < len(pts); i++ {
+		dx := float64(pts[i].X - pts[i-1].X)
+		dy := float64(pts[i].Y - pts[i-1].Y)
+		segLen := math.Sqrt(dx*dx + dy*dy)
+		if cumLen+segLen >= targetLen {
+			result = append(result, newEnd)
+			return result
+		}
+		cumLen += segLen
+		result = append(result, pts[i])
+	}
+	result[len(result)-1] = newEnd
+	return result
+}
+
 // PolylinePointAt returns the point at a given fraction (0–1) along the polyline.
 func PolylinePointAt(pts []Point, frac float64) Point {
 	if len(pts) < 2 || frac <= 0 {
@@ -699,6 +734,7 @@ func DrawZigzagPolyline(img *image.RGBA, pts []Point, width, amplitude float32, 
 		}
 		pt := Pt(mid.X+nx*amplitude*sign, mid.Y+ny*amplitude*sign)
 		DrawLine(img, prev, pt, width, col)
+		DrawCircleFill(img, pt, width/2, col) // smooth joint
 		prev = pt
 	}
 	DrawLine(img, prev, pts[len(pts)-1], width, col)

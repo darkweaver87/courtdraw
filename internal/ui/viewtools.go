@@ -1,21 +1,16 @@
 package ui
 
 import (
-	"image/color"
-
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/i18n"
 	"github.com/darkweaver87/courtdraw/internal/ui/editor"
 	"github.com/darkweaver87/courtdraw/internal/ui/icon"
 )
 
-// ViewTools is a collapsible vertical panel with court view controls
-// (apron toggle, rotate, zoom). Placed on the right side of the court.
+// ViewTools is a collapsible vertical panel with court view controls.
 type ViewTools struct {
 	box       *fyne.Container
 	btnsBox   *fyne.Container
@@ -25,7 +20,7 @@ type ViewTools struct {
 	apronBtn  *TipButton
 	collapsed bool
 
-	ActiveTool    *editor.ToolType // pointer to EditorState.ActiveTool for highlight sync
+	ActiveTool    *editor.ToolType
 	OnSelect      func()
 	OnEraser      func()
 	OnToggleApron func()
@@ -38,6 +33,16 @@ type ViewTools struct {
 // NewViewTools creates a new view tools panel.
 func NewViewTools() *ViewTools {
 	vt := &ViewTools{}
+
+	btnSize := fyne.NewSize(32, 32)
+	chevronSize := fyne.NewSize(24, 24)
+	if isMobile {
+		btnSize = fyne.NewSize(48, 48)
+		chevronSize = fyne.NewSize(40, 40)
+	}
+	wrap := func(b *TipButton) fyne.CanvasObject {
+		return container.NewGridWrap(btnSize, b)
+	}
 
 	vt.selectBtn = NewTipButton(icon.ToolSelect, i18n.T(i18n.KeyToolSelect), func() {
 		if vt.OnSelect != nil {
@@ -77,37 +82,36 @@ func NewViewTools() *ViewTools {
 		}
 	})
 
-	vt.btnsBox = container.NewVBox(vt.selectBtn, vt.eraserBtn, widget.NewSeparator(), vt.apronBtn, rotateBtn, widget.NewSeparator(), zoomInBtn, zoomResetBtn, zoomOutBtn)
+	vt.btnsBox = container.NewHBox(
+		wrap(vt.selectBtn), wrap(vt.eraserBtn),
+		wrap(vt.apronBtn), wrap(rotateBtn),
+		wrap(zoomInBtn), wrap(zoomResetBtn), wrap(zoomOutBtn),
+	)
 
-	vt.chevron = NewTipButton(icon.ChevronRight, "", func() {
+	vt.chevron = NewTipButton(icon.ChevronLeft, "", func() {
 		if vt.collapsed {
 			vt.collapsed = false
 			vt.btnsBox.Show()
-			vt.chevron.Icon = icon.ChevronRight
+			vt.chevron.Icon = icon.ChevronLeft
 		} else {
 			vt.collapsed = true
 			vt.btnsBox.Hide()
-			vt.chevron.Icon = icon.ChevronLeft
+			vt.chevron.Icon = icon.ChevronRight
 		}
 		vt.chevron.Refresh()
-		vt.box.Refresh()
 	})
 
 	// Collapsed by default on mobile.
 	if isMobile {
 		vt.collapsed = true
 		vt.btnsBox.Hide()
-		vt.chevron.Icon = icon.ChevronLeft
+		vt.chevron.Icon = icon.ChevronRight
 	}
 
-	chevronSize := fyne.NewSize(24, 24)
-	if isMobile {
-		chevronSize = fyne.NewSize(40, 40)
-	}
-
-	bg := canvas.NewRectangle(color.NRGBA{R: 0x28, G: 0x28, B: 0x28, A: 0xff})
-	inner := container.NewBorder(container.NewGridWrap(chevronSize, vt.chevron), nil, nil, nil, vt.btnsBox)
-	vt.box = container.NewStack(bg, inner)
+	vt.box = container.NewHBox(
+		vt.btnsBox,
+		container.NewGridWrap(chevronSize, vt.chevron),
+	)
 	return vt
 }
 

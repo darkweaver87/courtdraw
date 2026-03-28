@@ -64,7 +64,7 @@ func drawActionImpl(img *image.RGBA, vp *Viewport, action *model.Action, players
 	to := ResolveRef(vp, action.To, players)
 	lw := vp.S(ArrowLineWidth)
 	ah := max(vp.S(ArrowHeadSize), lw*ArrowHeadRatio)
-	pr := vp.S(PlayerRadius) // offset to keep arrowhead outside player body
+	pr := vp.S(PlayerRadius+8) + ah*1.2 // offset: player body + generous margin + arrowhead
 	dotR := lw * 1.5         // endpoint dot radius
 
 	// Shorten endpoints to avoid arrowhead under players.
@@ -89,28 +89,34 @@ func drawActionImpl(img *image.RGBA, vp *Viewport, action *model.Action, players
 	dl := vp.S(DashLen)
 	gl := vp.S(GapLen)
 
+	// Shorten line end by arrowhead size so dashes/zigzags don't overlap the arrowhead.
+	lineEnd := ShortenLine(drawFrom, drawTo, ah)
+	// For zigzag: extra straight tail so it ends cleanly before the arrowhead.
+	zigzagEnd := ShortenLine(drawFrom, drawTo, ah*2.5)
+
 	switch model.NormalizeActionType(action.Type) {
 	case model.ActionPass:
-		DrawDashedLine(img, drawFrom, drawTo, lw, dl, gl, col)
+		DrawDashedLine(img, drawFrom, lineEnd, lw, dl, gl, col)
 		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	case model.ActionDribble:
-		DrawZigzag(img, drawFrom, drawTo, lw, za, vp.S(ZigzagSegmentLen), col)
+		DrawZigzag(img, drawFrom, zigzagEnd, lw, za, vp.S(ZigzagSegmentLen), col)
+		DrawLine(img, zigzagEnd, lineEnd, lw, col) // straight tail into arrowhead
 		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	case model.ActionCut:
-		DrawLine(img, drawFrom, drawTo, lw, col)
+		DrawLine(img, drawFrom, lineEnd, lw, col)
 		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	case model.ActionScreen:
 		DrawLine(img, drawFrom, drawTo, lw, col)
 		DrawScreenBar(img, drawTo, drawFrom, vp.S(PlayerRadius*0.8), lw*1.5, col)
 	case model.ActionShot:
-		DrawDashedLine(img, drawFrom, drawTo, lw, dl, gl, col)
+		DrawDashedLine(img, drawFrom, lineEnd, lw, dl, gl, col)
 		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	case model.ActionHandoff:
-		DrawLine(img, drawFrom, drawTo, lw, col)
+		DrawLine(img, drawFrom, lineEnd, lw, col)
 		DrawHandoffBars(img, drawFrom, drawTo, lw, vp.S(6), col)
 		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	default:
-		DrawLine(img, drawFrom, drawTo, lw, col)
+		DrawLine(img, drawFrom, lineEnd, lw, col)
 		DrawArrowhead(img, drawFrom, drawTo, ah, col)
 	}
 	// Endpoint dots.
@@ -124,12 +130,20 @@ func drawActionPath(img *image.RGBA, vp *Viewport, actionType model.ActionType, 
 	gl := vp.S(GapLen)
 	zsl := vp.S(12) // zigzag segment length
 
+	// Shorten the line path so dashes/zigzags don't overlap the arrowhead.
+	linePts := ShortenPolyline(pts, ah)
+	zigzagPts := ShortenPolyline(pts, ah*2.5) // extra space for straight tail
+
 	switch model.NormalizeActionType(actionType) {
 	case model.ActionPass, model.ActionShot:
-		DrawDashedPolyline(img, pts, lw, dl, gl, col)
+		DrawDashedPolyline(img, linePts, lw, dl, gl, col)
 		DrawArrowheadAtEnd(img, pts, ah, col)
 	case model.ActionDribble:
-		DrawZigzagPolyline(img, pts, lw, za, zsl, col)
+		DrawZigzagPolyline(img, zigzagPts, lw, za, zsl, col)
+		// Straight tail from zigzag end to arrowhead base.
+		if len(zigzagPts) > 0 && len(linePts) > 0 {
+			DrawLine(img, zigzagPts[len(zigzagPts)-1], linePts[len(linePts)-1], lw, col)
+		}
 		DrawArrowheadAtEnd(img, pts, ah, col)
 	case model.ActionScreen:
 		DrawPolyline(img, pts, lw, col)
@@ -137,7 +151,7 @@ func drawActionPath(img *image.RGBA, vp *Viewport, actionType model.ActionType, 
 			DrawScreenBar(img, pts[len(pts)-1], pts[len(pts)-2], lw*4, lw*1.5, col)
 		}
 	default:
-		DrawPolyline(img, pts, lw, col)
+		DrawPolyline(img, linePts, lw, col)
 		DrawArrowheadAtEnd(img, pts, ah, col)
 	}
 }

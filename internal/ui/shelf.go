@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"log"
 	"slices"
 
 	"fyne.io/fyne/v2"
@@ -32,6 +33,8 @@ const (
 	ModeSession                     // Session composer
 	ModeMyFiles                     // File manager
 	ModeTraining                    // Training mode (run session on the court)
+	ModeTeam                        // Team roster management
+	ModeMatch                       // Match mode (live scoring)
 )
 
 // ---------------------------------------------------------------------------
@@ -388,23 +391,32 @@ func (ms *EditorShelf) collapse() {
 }
 
 func (ms *EditorShelf) expand() {
+	log.Println("[SHELF] expand()")
 	ms.collapsed = false
 	ms.shelfOuter.Show()
+	log.Println("[SHELF] shelfOuter.Show() done")
 	ms.chevronBtn.Icon = icon.ChevronDown
 	ms.chevronBtn.Refresh()
+	log.Println("[SHELF] expand() done")
 }
 
 func (ms *EditorShelf) selectCategory(cat shelfCategory) {
+	log.Printf("[SHELF] selectCategory(%d) active=%d collapsed=%v", cat, ms.active, ms.collapsed)
 	if cat == ms.active && !ms.collapsed {
+		log.Println("[SHELF] collapsing")
 		ms.collapse()
 		return
 	}
 	ms.active = cat
+	log.Println("[SHELF] expanding")
 	ms.expand()
 	// Cancel active action creation (clear ActionFrom) when switching tabs.
 	ms.state.ActionFrom = nil
+	log.Println("[SHELF] refreshShelfContent")
 	ms.refreshShelfContent()
+	log.Println("[SHELF] updateTabIndicators")
 	ms.updateTabIndicators()
+	log.Println("[SHELF] selectCategory done")
 }
 
 func (ms *EditorShelf) updateTabIndicators() {
@@ -442,11 +454,6 @@ func (ms *EditorShelf) Widget() fyne.CanvasObject {
 	chevronCol := container.NewVBox(chevronWrap)
 	shelfInner := container.NewBorder(nil, nil, nil, chevronCol, ms.shelfStack)
 	ms.shelfOuter = container.NewStack(shelfBg, container.NewPadded(shelfInner))
-
-	// Start collapsed — maximize court space on launch.
-	ms.collapsed = true
-	ms.shelfOuter.Hide()
-	ms.chevronBtn.Icon = icon.ChevronUp
 
 	// Tab bar.
 	tabs := []struct {
@@ -489,7 +496,15 @@ func (ms *EditorShelf) Widget() fyne.CanvasObject {
 	tabGrid := container.NewGridWithColumns(len(tabItems), tabItems...)
 	tabBar := container.NewStack(tabBg, container.NewPadded(tabGrid))
 
-	return container.NewVBox(ms.shelfOuter, tabBar)
+	root := container.NewVBox(ms.shelfOuter, tabBar)
+
+	// Start collapsed — maximize court space on launch.
+	// Defer Hide to after the container tree is built.
+	ms.collapsed = true
+	ms.shelfOuter.Hide()
+	ms.chevronBtn.Icon = icon.ChevronUp
+
+	return root
 }
 
 // SetZoomController sets the zoom controller (court widget).
@@ -530,6 +545,7 @@ func (ms *EditorShelf) RefreshLanguage() {
 
 // refreshShelfContent updates the shelf content based on active category and selection.
 func (ms *EditorShelf) refreshShelfContent() {
+	log.Printf("[SHELF] refreshShelfContent active=%d propsSynced=%v", ms.active, ms.propsSyncedSel)
 	var content fyne.CanvasObject
 	switch ms.active {
 	case shelfPlayers:
@@ -673,6 +689,14 @@ func (ms *EditorShelf) UpdateElementProps(exercise *model.Exercise, state *edito
 		return
 	}
 
+	// During drag/rotation, only sync values — don't rebuild or re-parent widgets.
+	if state.IsDragging || state.IsRotating {
+		if sel != nil && exercise != nil && seqIdx < len(exercise.Sequences) {
+			ms.syncPropsValues(&exercise.Sequences[seqIdx], sel)
+		}
+		return
+	}
+
 	// Auto-switch to the relevant tab when selecting an element.
 	// Exception: stay in Actions tab when selecting a player (shows player's action list).
 	isSelecting := ms.state.ActiveTool == editor.ToolSelect || ms.state.ActiveTool == editor.ToolNone
@@ -771,9 +795,8 @@ func (ms *EditorShelf) buildPropsLayout(_ *model.Exercise, state *editor.EditorS
 			}
 			seq.Players[sel.Index].Rotation = v
 			state.MarkModified()
-			if ms.OnToolChanged != nil {
-				ms.OnToolChanged()
-			}
+			// Don't call OnToolChanged — it causes a full rebuild that
+			// re-parents the RotKnob and interrupts the drag gesture.
 		}
 
 		// Set initial values (including label entry text for first build).
@@ -823,9 +846,6 @@ func (ms *EditorShelf) buildPropsLayout(_ *model.Exercise, state *editor.EditorS
 			}
 			seq.Accessories[sel.Index].Rotation = v
 			state.MarkModified()
-			if ms.OnToolChanged != nil {
-				ms.OnToolChanged()
-			}
 		}
 		posW := fyne.NewSize(60, ms.propsPosXEntry.MinSize().Height)
 		posXWrap := container.NewGridWrap(posW, ms.propsPosXEntry)
@@ -936,12 +956,16 @@ func (ms *EditorShelf) syncPropsValues(seq *model.Sequence, sel *editor.Selectio
 			ms.syncPlayerValues(seq, p)
 			ms.propsPosXEntry.SetText(fmt.Sprintf("%.0f", p.Position.X()*100))
 			ms.propsPosYEntry.SetText(fmt.Sprintf("%.0f", p.Position.Y()*100))
+			ms.propsRotKnob.Value = p.Rotation
+			ms.propsRotKnob.Refresh()
 		}
 	case editor.SelectAccessory:
 		if sel.Index < len(seq.Accessories) {
 			a := &seq.Accessories[sel.Index]
 			ms.propsPosXEntry.SetText(fmt.Sprintf("%.0f", a.Position.X()*100))
 			ms.propsPosYEntry.SetText(fmt.Sprintf("%.0f", a.Position.Y()*100))
+			ms.propsRotKnob.Value = a.Rotation
+			ms.propsRotKnob.Refresh()
 		}
 	}
 }

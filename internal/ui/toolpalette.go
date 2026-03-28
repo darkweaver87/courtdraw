@@ -206,20 +206,30 @@ func (tp *ToolPalette) makeHeader(key string) fyne.CanvasObject {
 	return container.NewPadded(lbl)
 }
 
-// ForceUpdateActive triggers an active tool highlight refresh (used by FAB).
+// ForceUpdateActive triggers an active tool highlight refresh (used by shelf).
+// Does NOT call OnToolChanged since the shelf already handles notification.
 func (tp *ToolPalette) ForceUpdateActive() {
-	tp.updateActive()
+	tp.updateHighlightsOnly()
+}
+
+func (tp *ToolPalette) updateHighlightsOnly() {
+	tp.applyHighlights()
 }
 
 func (tp *ToolPalette) updateActive() {
+	tp.applyHighlights()
+	if tp.OnToolChanged != nil {
+		tp.OnToolChanged()
+	}
+}
+
+func (tp *ToolPalette) applyHighlights() {
 	// Determine which button index is active based on editor state.
+	// Index map: 0..7=players, 8=queue, 9..14=actions, 15..17=accessories
 	activeIdx := -1
 	state := tp.state
 	switch state.ActiveTool {
-	case editor.ToolSelect:
-		activeIdx = 0 // select button is first
 	case editor.ToolPlayer:
-		// Player buttons start at index 1.
 		roles := []model.PlayerRole{
 			model.RoleAttacker, model.RoleDefender, model.RoleCoach,
 			model.RolePointGuard, model.RoleShootingGuard, model.RoleSmallForward,
@@ -227,22 +237,21 @@ func (tp *ToolPalette) updateActive() {
 		}
 		for i, r := range roles {
 			if state.ToolRole == r && !state.ToolQueue {
-				activeIdx = 1 + i
+				activeIdx = i
 				break
 			}
 		}
 		if state.ToolQueue {
-			activeIdx = 9 // queue button
+			activeIdx = 8
 		}
 	case editor.ToolAction:
 		actions := []model.ActionType{
-			model.ActionPass, model.ActionDribble, model.ActionSprint,
-			model.ActionShotLayup, model.ActionScreen, model.ActionCut,
-			model.ActionCloseOut, model.ActionContest, model.ActionReverse,
+			model.ActionDribble, model.ActionPass, model.ActionCut,
+			model.ActionScreen, model.ActionShot, model.ActionHandoff,
 		}
 		for i, a := range actions {
 			if state.ToolActionType == a {
-				activeIdx = 10 + i
+				activeIdx = 9 + i
 				break
 			}
 		}
@@ -252,12 +261,10 @@ func (tp *ToolPalette) updateActive() {
 		}
 		for i, a := range accTypes {
 			if state.ToolAccessoryType == a {
-				activeIdx = 19 + i
+				activeIdx = 15 + i
 				break
 			}
 		}
-	case editor.ToolDelete:
-		activeIdx = 22
 	}
 
 	// Update all button highlights.
@@ -268,9 +275,5 @@ func (tp *ToolPalette) updateActive() {
 			btn.OverrideColor = nil
 		}
 		btn.Refresh()
-	}
-
-	if tp.OnToolChanged != nil {
-		tp.OnToolChanged()
 	}
 }
