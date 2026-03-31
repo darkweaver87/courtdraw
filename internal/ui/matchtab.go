@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"strconv"
 	"strings"
 	"time"
 
@@ -50,6 +51,7 @@ type MatchTab struct {
 	periodSelect    *widget.Select
 	playerChecks    []*widget.Check
 	startingChecks  []*widget.Check
+	numberEntries   []*widget.Entry
 	playerMembers   []model.Member
 
 	// Resolved teams for the dropdown.
@@ -287,6 +289,7 @@ func (mt *MatchTab) showCreationForm() {
 		playerBox.RemoveAll()
 		mt.playerChecks = nil
 		mt.startingChecks = nil
+		mt.numberEntries = nil
 		mt.playerMembers = nil
 
 		if selected == "" {
@@ -311,10 +314,21 @@ func (mt *MatchTab) showCreationForm() {
 					rosterCheck.SetChecked(true)
 					startCheck := widget.NewCheck(i18n.T(i18n.KeyMatchStartingFive), nil)
 
-					row := container.NewBorder(nil, nil, rosterCheck, startCheck, nil)
+					numEntry := widget.NewEntry()
+					numEntry.PlaceHolder = "#"
+					numEntry.SetText(fmt.Sprintf("%d", player.Number))
+					numEntry.Validator = nil
+					numEntry.Resize(fyne.NewSize(50, numEntry.MinSize().Height))
+
+					row := container.NewBorder(nil, nil,
+						container.NewHBox(rosterCheck, numEntry),
+						startCheck,
+						nil,
+					)
 					playerBox.Add(row)
 					mt.playerChecks = append(mt.playerChecks, rosterCheck)
 					mt.startingChecks = append(mt.startingChecks, startCheck)
+					mt.numberEntries = append(mt.numberEntries, numEntry)
 				}
 				// Auto-select first 5 as starters.
 				for i := range mt.startingChecks {
@@ -400,13 +414,19 @@ func (mt *MatchTab) createMatch() {
 		periodFormat = model.PeriodFormat2x20
 	}
 
-	// Build roster.
+	// Build roster with jersey numbers from entries.
 	var roster []model.RosterEntry
 	for i, m := range mt.playerMembers {
 		if i < len(mt.playerChecks) && mt.playerChecks[i].Checked {
+			num := m.Number
+			if i < len(mt.numberEntries) {
+				if parsed, err := strconv.Atoi(strings.TrimSpace(mt.numberEntries[i].Text)); err == nil && parsed >= 0 {
+					num = parsed
+				}
+			}
 			entry := model.RosterEntry{
 				MemberID:  m.ID,
-				Number:    m.Number,
+				Number:    num,
 				FirstName: m.FirstName,
 				LastName:  m.LastName,
 			}
@@ -441,6 +461,10 @@ func (mt *MatchTab) createMatch() {
 	}
 
 	if err := match.Validate(); err != nil {
+		mt.emitStatus(fmt.Sprintf("Error: %v", err), 1)
+		return
+	}
+	if err := match.ValidateRosterNumbers(); err != nil {
 		mt.emitStatus(fmt.Sprintf("Error: %v", err), 1)
 		return
 	}

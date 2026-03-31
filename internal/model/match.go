@@ -2,6 +2,8 @@ package model
 
 import (
 	"errors"
+	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -67,11 +69,12 @@ type Match struct {
 
 // Validation errors for Match.
 var (
-	ErrMatchNoTeam     = errors.New("team name is required")
-	ErrMatchNoOpponent = errors.New("opponent is required")
-	ErrMatchNoDate     = errors.New("date is required")
-	ErrMatchNoFormat   = errors.New("period format is required")
-	ErrMatchNoHomeAway = errors.New("home/away is required")
+	ErrMatchNoTeam          = errors.New("team name is required")
+	ErrMatchNoOpponent      = errors.New("opponent is required")
+	ErrMatchNoDate          = errors.New("date is required")
+	ErrMatchNoFormat        = errors.New("period format is required")
+	ErrMatchNoHomeAway      = errors.New("home/away is required")
+	ErrMatchDuplicateNumber = errors.New("duplicate jersey number in roster")
 )
 
 // Validate checks match data integrity.
@@ -225,4 +228,91 @@ func (m *Match) Substitute(playerInID, playerOutID string, timestamp, period int
 		MatchEvent{Type: EventSubOut, Timestamp: timestamp, Period: period, PlayerID: playerOutID},
 		MatchEvent{Type: EventSubIn, Timestamp: timestamp, Period: period, PlayerID: playerInID},
 	)
+}
+
+// PlayerScorePoints returns the total points scored by a player across all events.
+func (m *Match) PlayerScorePoints(memberID string) int {
+	total := 0
+	for _, e := range m.Events {
+		if e.Type == EventScore && e.PlayerID == memberID {
+			total += e.Points
+		}
+	}
+	return total
+}
+
+// PeriodScores returns the score breakdown per period as a map: period → [home, away].
+func (m *Match) PeriodScores() map[int][2]int {
+	scores := make(map[int][2]int)
+	for _, e := range m.Events {
+		if e.Type != EventScore {
+			continue
+		}
+		s := scores[e.Period]
+		if e.IsHome {
+			s[0] += e.Points
+		} else {
+			s[1] += e.Points
+		}
+		scores[e.Period] = s
+	}
+	return scores
+}
+
+// PeriodScoresText returns a formatted string of scores per period: "P1 12-45 | P2 8-42".
+func (m *Match) PeriodScoresText() string {
+	ps := m.PeriodScores()
+	if len(ps) == 0 {
+		return ""
+	}
+	// Find max period.
+	maxP := 0
+	for p := range ps {
+		if p > maxP {
+			maxP = p
+		}
+	}
+	var parts []string
+	for p := 1; p <= maxP; p++ {
+		s := ps[p]
+		parts = append(parts, fmt.Sprintf("P%d %d-%d", p, s[0], s[1]))
+	}
+	return strings.Join(parts, " | ")
+}
+
+// ValidateRosterNumbers checks for duplicate jersey numbers in the roster.
+// Returns an error with the duplicated number if found.
+func (m *Match) ValidateRosterNumbers() error {
+	seen := make(map[int]string, len(m.Roster))
+	for _, r := range m.Roster {
+		if r.Number == 0 {
+			continue // unnumbered players are allowed
+		}
+		if prev, ok := seen[r.Number]; ok {
+			return fmt.Errorf("%w: #%d (%s and %s)", ErrMatchDuplicateNumber, r.Number, prev, r.FirstName+" "+r.LastName)
+		}
+		seen[r.Number] = r.FirstName + " " + r.LastName
+	}
+	return nil
+}
+
+// SortRoster sorts roster entries by number first, then alphabetically by last name.
+// Players with number 0 are sorted after numbered players.
+func (m *Match) SortRoster() {
+	sort.Slice(m.Roster, func(i, j int) bool {
+		ri, rj := m.Roster[i], m.Roster[j]
+		// Both have numbers — sort by number.
+		if ri.Number != 0 && rj.Number != 0 {
+			if ri.Number != rj.Number {
+				return ri.Number < rj.Number
+			}
+			return ri.LastName < rj.LastName
+		}
+		// One has number, the other doesn't — numbered first.
+		if ri.Number != rj.Number {
+			return ri.Number != 0
+		}
+		// Neither has number — sort by last name.
+		return ri.LastName < rj.LastName
+	})
 }

@@ -161,7 +161,13 @@ func (r *tipBtnRenderer) Layout(size fyne.Size) {
 		r.ico.Resize(fyne.NewSize(is, is))
 		r.ico.Move(fyne.NewPos((size.Width-is)/2, (size.Height-is)/2))
 		r.txt.Move(fyne.NewPos(-100, -100)) // offscreen
+	} else if r.tb.Icon == nil {
+		// Text only — center it.
+		r.ico.Move(fyne.NewPos(-100, -100)) // offscreen
+		ts := r.txt.MinSize()
+		r.txt.Move(fyne.NewPos((size.Width-ts.Width)/2, (size.Height-ts.Height)/2))
 	} else {
+		// Icon + text side by side.
 		is := tipIconSize
 		r.ico.Resize(fyne.NewSize(is, is))
 		r.ico.Move(fyne.NewPos(p, (size.Height-is)/2))

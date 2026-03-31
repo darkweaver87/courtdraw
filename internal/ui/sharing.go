@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"io"
 	"image/draw"
 	_ "image/jpeg"
 	_ "image/png"
@@ -459,6 +460,259 @@ func (a *App) importSessionAndExercises(s *model.Session, exercises map[string]*
 	a.myFilesNeedsRefresh = true
 	a.refreshMyFilesTab()
 	a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportSuccess), s.Title), 2)
+}
+
+// shareGenericData encrypts arbitrary data and shares via QR code (upload to tmpfiles.org)
+// or saves to file. Same UX as session sharing.
+func (a *App) shareGenericData(data []byte, fileName string) {
+	dialog.ShowCustomConfirm(
+		i18n.T(i18n.KeyShareTitle),
+		i18n.T(i18n.KeyShareViaQr),
+		i18n.T(i18n.KeyShareSaveFile),
+		widget.NewLabel(fileName),
+		func(qr bool) {
+			if qr {
+				a.uploadAndShowQR(data, fileName)
+			} else {
+				a.saveDataToFile(data, fileName)
+			}
+		},
+		a.window,
+	)
+}
+
+func (a *App) uploadAndShowQR(data []byte, fileName string) {
+	a.statusBar.SetStatus(i18n.T(i18n.KeyShareExporting), 0)
+
+	go func() {
+		key, err := share.GenerateKey()
+		if err != nil {
+			fyne.Do(func() {
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
+			})
+			return
+		}
+		encrypted, err := share.Encrypt(key, data)
+		if err != nil {
+			fyne.Do(func() {
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
+			})
+			return
+		}
+
+		fyne.Do(func() {
+			a.statusBar.SetStatus(i18n.T(i18n.KeyShareUploading), 0)
+		})
+		result, err := share.Upload(context.Background(), encrypted, fileName+".enc")
+		if err != nil {
+			fyne.Do(func() {
+				dialog.ShowConfirm(
+					i18n.T(i18n.KeyShareTitle),
+					i18n.T(i18n.KeyShareUploadFailed),
+					func(ok bool) {
+						if ok {
+							a.saveDataToFile(data, fileName)
+						}
+					},
+					a.window,
+				)
+			})
+			return
+		}
+
+		shareURL := result.URL + "#k=" + hex.EncodeToString(key)
+
+		qrImg, err := generateQR(shareURL)
+		if err != nil {
+			fyne.Do(func() {
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
+			})
+			return
+		}
+
+		fyne.Do(func() {
+			a.showQRDialog(qrImg, shareURL)
+		})
+	}()
+}
+
+func (a *App) saveDataToFile(data []byte, fileName string) {
+	d := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+		if err != nil || writer == nil {
+			return
+		}
+		path := writer.URI().Path()
+		writer.Close()
+		if !strings.HasSuffix(strings.ToLower(path), ".yaml") {
+			path += ".yaml"
+		}
+		if writeErr := os.WriteFile(path, data, 0o644); writeErr != nil {
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), writeErr), 1)
+			return
+		}
+		a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareSaveFile)+": %s", fileName), 2)
+	}, a.window)
+	d.SetFileName(fileName + ".yaml")
+	dir, _ := os.UserHomeDir()
+	if dir != "" {
+		if listable, err := storage.ListerForURI(storage.NewFileURI(dir)); err == nil {
+			d.SetLocation(listable)
+		}
+	}
+	d.Show()
+}
+
+// showGenericImportDialog offers clipboard check, QR scan, or file import.
+// The importer callback receives the raw decrypted/loaded bytes.
+func (a *App) showGenericImportDialog(importer func([]byte) error) {
+	// Check clipboard first.
+	clip := a.window.Clipboard().Content()
+	if isShareURL(clip) {
+		dialog.ShowConfirm(
+			i18n.T(i18n.KeyImportTitle),
+			i18n.T(i18n.KeyImportFoundInClipboard),
+			func(ok bool) {
+				if ok {
+					a.importGenericFromLink(clip, importer)
+				}
+			},
+			a.window,
+		)
+		return
+	}
+
+	var d dialog.Dialog
+
+	scanBtn := widget.NewButton(i18n.T(i18n.KeyImportScanQr), func() {
+		d.Hide()
+		a.startGenericQRScanImport(importer)
+	})
+	scanBtn.Importance = widget.HighImportance
+
+	fileBtn := widget.NewButton(i18n.T(i18n.KeyImportFromFile), func() {
+		d.Hide()
+		a.importYAMLFile("import", importer)
+	})
+
+	content := container.NewVBox(
+		scanBtn,
+		widget.NewSeparator(),
+		fileBtn,
+	)
+
+	d = dialog.NewCustom(i18n.T(i18n.KeyImportTitle), i18n.T(i18n.KeyDialogCancel), content, a.window)
+	d.Show()
+}
+
+// importGenericFromLink downloads encrypted data from a share URL and passes it to the importer.
+func (a *App) importGenericFromLink(link string, importer func([]byte) error) {
+	u, err := url.Parse(link)
+	if err != nil {
+		a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), err), 1)
+		return
+	}
+
+	keyHex := strings.TrimPrefix(u.Fragment, "k=")
+	key, err := hex.DecodeString(keyHex)
+	if err != nil || len(key) != 32 {
+		a.statusBar.SetStatus(i18n.T(i18n.KeyImportInvalidLink), 1)
+		return
+	}
+
+	u.Fragment = ""
+	downloadURL := u.String()
+
+	a.statusBar.SetStatus(i18n.T(i18n.KeyImportDownloading), 0)
+
+	go func() {
+		data, dlErr := share.Download(context.Background(), downloadURL)
+		if dlErr != nil {
+			fyne.Do(func() {
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), dlErr), 1)
+			})
+			return
+		}
+
+		plaintext, decErr := share.Decrypt(key, data)
+		if decErr != nil {
+			fyne.Do(func() {
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), decErr), 1)
+			})
+			return
+		}
+
+		fyne.Do(func() {
+			if importErr := importer(plaintext); importErr != nil {
+				a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), importErr), 1)
+				return
+			}
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportSuccess), "OK"), 2)
+			a.myFilesNeedsRefresh = true
+			a.refreshMyFilesTab()
+		})
+	}()
+}
+
+// startGenericQRScanImport opens the camera, then imports via QR link.
+func (a *App) startGenericQRScanImport(importer func([]byte) error) {
+	if !openCameraForQR() {
+		a.statusBar.SetStatus(i18n.T(i18n.KeyImportCameraError), 1)
+		return
+	}
+
+	a.scanPending = true
+	lc := fyne.CurrentApp().Lifecycle()
+	lc.SetOnEnteredForeground(func() {
+		if !a.scanPending {
+			return
+		}
+		a.scanPending = false
+		lc.SetOnEnteredForeground(nil)
+
+		data := readCapturedPhoto()
+		if len(data) == 0 {
+			cleanupPhotoURI()
+			a.statusBar.SetStatus(i18n.T(i18n.KeyImportScanCancelled), 1)
+			return
+		}
+
+		link, qrErr := decodeQRFromImageBytes(data)
+		if qrErr != nil {
+			a.statusBar.SetStatus(i18n.T(i18n.KeyImportQrNotFound), 1)
+			return
+		}
+
+		if !isShareURL(link) {
+			a.statusBar.SetStatus(i18n.T(i18n.KeyImportInvalidLink), 1)
+			return
+		}
+
+		a.importGenericFromLink(link, importer)
+	})
+}
+
+// importYAMLFile opens a file picker for YAML files and passes the content to the importer.
+func (a *App) importYAMLFile(entityType string, importer func([]byte) error) {
+	d := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil || reader == nil {
+			return
+		}
+		defer reader.Close()
+		data, readErr := io.ReadAll(reader)
+		if readErr != nil {
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), readErr), 1)
+			return
+		}
+		if importErr := importer(data); importErr != nil {
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportError), importErr), 1)
+			return
+		}
+		a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyImportSuccess), entityType), 2)
+		a.myFilesNeedsRefresh = true
+		a.refreshMyFilesTab()
+	}, a.window)
+	d.SetFilter(storage.NewExtensionFileFilter([]string{".yaml", ".yml"}))
+	d.Show()
 }
 
 func generateQR(data string) (image.Image, error) {

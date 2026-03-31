@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
+	fynetheme "fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/darkweaver87/courtdraw/internal/i18n"
@@ -21,6 +22,9 @@ import (
 )
 
 // MatchLive is the full-screen live match scoring view.
+// Layout: top header bar + two side-by-side columns (on-court | bench).
+// Each player row: [#] [Name] [foul dots] [time] [F+] [+1] [+2] [+3].
+// Substitution via tap-tap: tap bench player (highlights) then tap on-court player (swap).
 type MatchLive struct {
 	window fyne.Window
 	match  *model.Match
@@ -38,49 +42,57 @@ type MatchLive struct {
 	matchSeconds  int           // cumulative match seconds for event timestamps
 	matchSubSecs  time.Duration // sub-second accumulator for matchSeconds
 
-	// Substitution state.
-	selectedBenchID string // member ID of bench player selected for sub
+	// Substitution state (tap-tap, bidirectional).
+	selectedSubID    string // member ID selected for sub (can be on-court or bench)
+	selectedSubOnCourt bool  // true if selected player is on court
 
-	// UI elements.
-	homeNameText  *canvas.Text
-	awayNameText  *canvas.Text
-	homeScoreText *canvas.Text
-	awayScoreText *canvas.Text
-	periodText    *canvas.Text
-	clockText     *canvas.Text
+	// UI header elements.
+	homeNameText     *canvas.Text
+	awayNameText     *canvas.Text
+	homeScoreText    *canvas.Text
+	awayScoreText    *canvas.Text
+	periodScoresText *canvas.Text // "P1 12-45 | P2 8-42"
+	periodText       *canvas.Text
+	clockText        *canvas.Text
+	playPauseBtn     *widget.Button
 
-	// On-court player cards.
-	oncourtBox  *fyne.Container
-	benchBox    *fyne.Container
-	benchScroll *container.Scroll
+	// On-court and bench columns.
+	oncourtBox    *fyne.Container
+	benchBox      *fyne.Container
 
-	// Controls.
-	startPeriodBtn *widget.Button
-	endMatchBtn    *widget.Button
+	// Cached time labels for lightweight tick updates (no rebuild).
+	playerTimeTexts map[string]*canvas.Text // memberID → time label
 
-	// Responsive layout.
-	responsive *ResponsiveContainer
+	// Root widget.
+	root fyne.CanvasObject
 }
 
 // NewMatchLive creates the live match view.
 func NewMatchLive(w fyne.Window, match *model.Match, team *model.Team, s store.Store, onExit func()) *MatchLive {
 	ml := &MatchLive{
-		window:        w,
-		match:         match,
-		team:          team,
-		store:         s,
-		OnExit:        onExit,
-		currentPeriod: 1,
+		window:          w,
+		match:           match,
+		team:            team,
+		store:           s,
+		OnExit:          onExit,
+		currentPeriod:   1,
+		playerTimeTexts: make(map[string]*canvas.Text),
 	}
 
-	// Determine current period from events.
+	// Sort roster once for consistent ordering everywhere.
+	match.SortRoster()
+
+	// Restore state from existing events (resuming a saved match).
 	for _, e := range match.Events {
 		if e.Type == model.EventPeriodStart && e.Period > ml.currentPeriod {
 			ml.currentPeriod = e.Period
 		}
+		if e.Timestamp > ml.matchSeconds {
+			ml.matchSeconds = e.Timestamp
+		}
 	}
 
-	// Scoreboard header.
+	// Scoreboard names.
 	homeName := match.TeamName
 	awayName := match.Opponent
 	if match.HomeAway == "away" {
@@ -88,89 +100,79 @@ func NewMatchLive(w fyne.Window, match *model.Match, team *model.Team, s store.S
 		awayName = match.TeamName
 	}
 
-	ml.homeNameText = canvas.NewText(homeName, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
-	ml.homeNameText.TextSize = 18
+	white := color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+
+	ml.homeNameText = canvas.NewText(homeName, white)
+	ml.homeNameText.TextSize = 16
 	ml.homeNameText.TextStyle.Bold = true
-	ml.homeNameText.Alignment = fyne.TextAlignCenter
+	ml.homeNameText.Alignment = fyne.TextAlignTrailing
 
-	ml.awayNameText = canvas.NewText(awayName, color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
-	ml.awayNameText.TextSize = 18
+	ml.awayNameText = canvas.NewText(awayName, white)
+	ml.awayNameText.TextSize = 16
 	ml.awayNameText.TextStyle.Bold = true
-	ml.awayNameText.Alignment = fyne.TextAlignCenter
+	ml.awayNameText.Alignment = fyne.TextAlignLeading
 
-	ml.homeScoreText = canvas.NewText(fmt.Sprintf("%d", match.HomeScore), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
-	ml.homeScoreText.TextSize = 48
+	ml.homeScoreText = canvas.NewText(fmt.Sprintf("%d", match.HomeScore), white)
+	ml.homeScoreText.TextSize = 36
 	ml.homeScoreText.TextStyle.Bold = true
 	ml.homeScoreText.Alignment = fyne.TextAlignCenter
 
-	ml.awayScoreText = canvas.NewText(fmt.Sprintf("%d", match.AwayScore), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
-	ml.awayScoreText.TextSize = 48
+	ml.awayScoreText = canvas.NewText(fmt.Sprintf("%d", match.AwayScore), white)
+	ml.awayScoreText.TextSize = 36
 	ml.awayScoreText.TextStyle.Bold = true
 	ml.awayScoreText.Alignment = fyne.TextAlignCenter
+
+	ml.periodScoresText = canvas.NewText(match.PeriodScoresText(), color.NRGBA{R: 0x88, G: 0x88, B: 0x88, A: 0xff})
+	ml.periodScoresText.TextSize = 10
+	ml.periodScoresText.Alignment = fyne.TextAlignCenter
 
 	ml.periodText = canvas.NewText(
 		fmt.Sprintf(i18n.T(i18n.KeyMatchLivePeriod), ml.currentPeriod),
 		color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff},
 	)
-	ml.periodText.TextSize = 14
+	ml.periodText.TextSize = 13
 	ml.periodText.Alignment = fyne.TextAlignCenter
 
 	periodDuration := time.Duration(match.PeriodDurationMinutes()) * time.Minute
-	ml.clockRemain = periodDuration
+	// Compute elapsed time in current period to restore clock on resume.
+	periodStartSecs := 0
+	for _, e := range match.Events {
+		if e.Type == model.EventPeriodStart && e.Period == ml.currentPeriod {
+			periodStartSecs = e.Timestamp
+		}
+	}
+	elapsedInPeriod := time.Duration(ml.matchSeconds-periodStartSecs) * time.Second
+	ml.clockRemain = periodDuration - elapsedInPeriod
+	if ml.clockRemain < 0 {
+		ml.clockRemain = 0
+	}
 
-	ml.clockText = canvas.NewText(ml.formatDuration(periodDuration), theme.ColorTimerOK)
-	ml.clockText.TextSize = 32
+	ml.clockText = canvas.NewText(ml.formatDuration(ml.clockRemain), theme.ColorTimerOK)
+	ml.clockText.TextSize = 28
 	ml.clockText.TextStyle.Bold = true
 	ml.clockText.Alignment = fyne.TextAlignCenter
+
+	// Play/Pause toggle button.
+	ml.playPauseBtn = widget.NewButtonWithIcon("", icon.Play(), func() {
+		ml.toggleClock()
+	})
+	ml.playPauseBtn.Importance = widget.HighImportance
+
+	// Next period button.
+	nextPeriodBtn := widget.NewButtonWithIcon("", icon.Next(), func() {
+		ml.confirmNextPeriod()
+	})
+	nextPeriodBtn.Importance = widget.MediumImportance
+
+	// Quit button.
+	quitBtn := widget.NewButtonWithIcon(i18n.T(i18n.KeyMatchLiveQuit), icon.Back(), func() {
+		ml.confirmQuit()
+	})
+	quitBtn.Importance = widget.DangerImportance
 
 	// On-court and bench containers.
 	ml.oncourtBox = container.NewVBox()
 	ml.benchBox = container.NewVBox()
-	ml.benchScroll = container.NewVScroll(ml.benchBox)
-	ml.benchScroll.SetMinSize(fyne.NewSize(0, 80))
-
-	// Controls.
-	ml.startPeriodBtn = widget.NewButton(i18n.T(i18n.KeyMatchLiveStartPeriod), func() {
-		ml.toggleClock()
-	})
-	ml.startPeriodBtn.Importance = widget.HighImportance
-
-	ml.endMatchBtn = widget.NewButton(i18n.T(i18n.KeyMatchLiveEndMatch), func() {
-		ml.confirmEndMatch()
-	})
-	ml.endMatchBtn.Importance = widget.DangerImportance
-
-	// Score buttons.
-	// Home score.
-	homePlus1 := widget.NewButton(i18n.T(i18n.KeyMatchScorePlus1), func() { ml.addScore(true, 1) })
-	homePlus1.Importance = widget.HighImportance
-	homePlus2 := widget.NewButton(i18n.T(i18n.KeyMatchScorePlus2), func() { ml.addScore(true, 2) })
-	homePlus2.Importance = widget.HighImportance
-	homePlus3 := widget.NewButton(i18n.T(i18n.KeyMatchScorePlus3), func() { ml.addScore(true, 3) })
-	homePlus3.Importance = widget.HighImportance
-
-	// Away score.
-	awayPlus1 := widget.NewButton(i18n.T(i18n.KeyMatchScorePlus1), func() { ml.addScore(false, 1) })
-	awayPlus1.Importance = widget.MediumImportance
-	awayPlus2 := widget.NewButton(i18n.T(i18n.KeyMatchScorePlus2), func() { ml.addScore(false, 2) })
-	awayPlus2.Importance = widget.MediumImportance
-	awayPlus3 := widget.NewButton(i18n.T(i18n.KeyMatchScorePlus3), func() { ml.addScore(false, 3) })
-	awayPlus3.Importance = widget.MediumImportance
-
-	homeScoreBtns := container.NewGridWithColumns(3, homePlus1, homePlus2, homePlus3)
-	awayScoreBtns := container.NewGridWithColumns(3, awayPlus1, awayPlus2, awayPlus3)
-
-	// Timeout button.
-	timeoutBtn := widget.NewButton(i18n.T(i18n.KeyMatchLiveTimeout), func() {
-		ml.addTimeout()
-	})
-	timeoutBtn.Importance = widget.LowImportance
-
-	// Quit button.
-	quitBtn := widget.NewButtonWithIcon(i18n.T(i18n.KeyMatchLiveEndMatch), icon.Back(), func() {
-		ml.confirmQuit()
-	})
-	quitBtn.Importance = widget.DangerImportance
 
 	// Set match status to live.
 	if match.Status == "planned" {
@@ -178,15 +180,8 @@ func NewMatchLive(w fyne.Window, match *model.Match, team *model.Team, s store.S
 		ml.autoSave()
 	}
 
-	// Build responsive layout.
-	ml.responsive = NewResponsiveContainer(
-		func() fyne.CanvasObject {
-			return ml.buildLayout(homeScoreBtns, awayScoreBtns, timeoutBtn, quitBtn)
-		},
-		func() fyne.CanvasObject {
-			return ml.buildLayout(homeScoreBtns, awayScoreBtns, timeoutBtn, quitBtn)
-		},
-	)
+	// Build the layout.
+	ml.root = ml.buildLayout(quitBtn, nextPeriodBtn)
 
 	// Initial UI refresh.
 	ml.refreshLineup()
@@ -194,68 +189,96 @@ func NewMatchLive(w fyne.Window, match *model.Match, team *model.Team, s store.S
 	return ml
 }
 
-func (ml *MatchLive) buildLayout(homeScoreBtns, awayScoreBtns fyne.CanvasObject, timeoutBtn, quitBtn *widget.Button) fyne.CanvasObject {
-	// Scoreboard.
+func (ml *MatchLive) buildLayout(quitBtn, nextPeriodBtn *widget.Button) fyne.CanvasObject {
+	// --- Header bar ---
+	// [Quit] [HomeName  SCORE : SCORE  AwayName] [Play/Pause] [NextPeriod] [Period X  MM:SS]
 	scoreBg := canvas.NewRectangle(color.NRGBA{R: 0x1a, G: 0x1a, B: 0x2e, A: 0xff})
 	scoreBg.CornerRadius = 8
 
-	homeCol := container.NewVBox(ml.homeNameText, ml.homeScoreText)
-	awayCol := container.NewVBox(ml.awayNameText, ml.awayScoreText)
-	centerCol := container.NewVBox(ml.periodText, ml.clockText)
+	colonText := canvas.NewText(":", color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
+	colonText.TextSize = 36
+	colonText.TextStyle.Bold = true
+	colonText.Alignment = fyne.TextAlignCenter
 
-	scoreBoard := container.NewStack(scoreBg, container.NewPadded(
-		container.NewHBox(
-			layout.NewSpacer(),
-			homeCol,
-			layout.NewSpacer(),
-			centerCol,
-			layout.NewSpacer(),
-			awayCol,
-			layout.NewSpacer(),
-		),
-	))
+	// Team-level score buttons.
+	homeP1 := widget.NewButton("+1", func() { ml.addTeamScore(true, 1) })
+	homeP2 := widget.NewButton("+2", func() { ml.addTeamScore(true, 2) })
+	homeP3 := widget.NewButton("+3", func() { ml.addTeamScore(true, 3) })
+	homeP1.Importance = widget.LowImportance
+	homeP2.Importance = widget.LowImportance
+	homeP3.Importance = widget.LowImportance
+	homeScoreBtns := container.NewHBox(homeP1, homeP2, homeP3)
 
-	// Score buttons row.
-	scoreRow := container.NewGridWithColumns(2, homeScoreBtns, awayScoreBtns)
+	awayP1 := widget.NewButton("+1", func() { ml.addTeamScore(false, 1) })
+	awayP2 := widget.NewButton("+2", func() { ml.addTeamScore(false, 2) })
+	awayP3 := widget.NewButton("+3", func() { ml.addTeamScore(false, 3) })
+	awayP1.Importance = widget.LowImportance
+	awayP2.Importance = widget.LowImportance
+	awayP3.Importance = widget.LowImportance
+	awayScoreBtns := container.NewHBox(awayP1, awayP2, awayP3)
 
-	// On-court header.
+	scoreCenter := container.NewHBox(
+		ml.homeScoreText,
+		colonText,
+		ml.awayScoreText,
+	)
+
+	// Header layout — stacked for mobile, horizontal for desktop.
+	var headerContent *fyne.Container
+	if isMobile {
+		// Line 1: HomeTeam  SCORE : SCORE  AwayTeam
+		scoreLine := container.NewHBox(
+			ml.homeNameText, layout.NewSpacer(),
+			scoreCenter,
+			layout.NewSpacer(), ml.awayNameText,
+		)
+		// Line 2: [Quit] [▶] [⏭] [Période X] [MM:SS]
+		controlsLine := container.NewHBox(
+			quitBtn, ml.playPauseBtn, nextPeriodBtn,
+			layout.NewSpacer(),
+			ml.periodText, ml.clockText,
+		)
+		// Line 3: [home +1+2+3]  [away +1+2+3]
+		scoreBtnsLine := container.NewHBox(
+			homeScoreBtns, layout.NewSpacer(), awayScoreBtns,
+		)
+		headerContent = container.NewVBox(scoreLine, ml.periodScoresText, controlsLine, scoreBtnsLine)
+	} else {
+		scoreLine := container.NewHBox(
+			ml.homeNameText, layout.NewSpacer(),
+			scoreCenter,
+			layout.NewSpacer(), ml.awayNameText,
+		)
+		clockInfo := container.NewHBox(ml.periodText, ml.clockText)
+		controlsLine := container.NewHBox(
+			quitBtn, homeScoreBtns,
+			layout.NewSpacer(),
+			ml.playPauseBtn, nextPeriodBtn, clockInfo,
+			layout.NewSpacer(),
+			awayScoreBtns,
+		)
+		headerContent = container.NewVBox(scoreLine, ml.periodScoresText, controlsLine)
+	}
+	header := container.NewStack(scoreBg, container.NewPadded(headerContent))
+
+	// --- Two-column body ---
 	oncourtHeader := newSectionHeader(i18n.T(i18n.KeyMatchLiveOncourt))
 	benchHeader := newSectionHeader(i18n.T(i18n.KeyMatchLiveBench))
 
-	// Clock + period controls.
-	clockControls := container.NewHBox(
-		ml.startPeriodBtn,
-		timeoutBtn,
-	)
+	oncourtCol := container.NewVBox(oncourtHeader, ml.oncourtBox)
+	benchCol := container.NewVBox(benchHeader, ml.benchBox)
 
-	// Main content.
-	oncourtSection := container.NewVBox(oncourtHeader, ml.oncourtBox)
-	benchSection := container.NewVBox(benchHeader, ml.benchScroll)
+	oncourtScroll := container.NewVScroll(oncourtCol)
+	benchScroll := container.NewVScroll(benchCol)
 
-	rightPanel := container.NewVBox(
-		scoreRow,
-		widget.NewSeparator(),
-		clockControls,
-		widget.NewSeparator(),
-		oncourtSection,
-		widget.NewSeparator(),
-		benchSection,
-	)
-	rightScroll := container.NewVScroll(rightPanel)
+	columns := container.NewGridWithColumns(2, oncourtScroll, benchScroll)
 
-	bottom := container.NewHBox(layout.NewSpacer(), quitBtn, ml.endMatchBtn)
-
-	return container.NewBorder(
-		scoreBoard,
-		container.NewPadded(bottom),
-		nil, nil,
-		rightScroll,
-	)
+	return container.NewBorder(header, nil, nil, nil, columns)
 }
 
 // Widget returns the match live root layout.
 func (ml *MatchLive) Widget() fyne.CanvasObject {
-	return ml.responsive
+	return ml.root
 }
 
 // Stop halts the clock and cleans up.
@@ -272,10 +295,10 @@ func (ml *MatchLive) toggleClock() {
 
 	if running {
 		ml.stopClock()
-		ml.startPeriodBtn.SetText(i18n.T(i18n.KeyMatchLiveStartPeriod))
+		ml.playPauseBtn.SetIcon(icon.Play())
 	} else {
 		ml.startClock()
-		ml.startPeriodBtn.SetText(i18n.T(i18n.KeyMatchLiveEndPeriod))
+		ml.playPauseBtn.SetIcon(icon.Pause())
 	}
 }
 
@@ -287,7 +310,7 @@ func (ml *MatchLive) startClock() {
 	}
 	ml.clockRunning = true
 	ml.clockDone = make(chan struct{})
-	ml.clockTicker = time.NewTicker(100 * time.Millisecond)
+	ml.clockTicker = time.NewTicker(1 * time.Second)
 	ml.clockMu.Unlock()
 
 	// Add period start event if this is a new period.
@@ -344,6 +367,7 @@ func (ml *MatchLive) startClock() {
 				if periodEnded {
 					ml.stopClock()
 					fyne.Do(func() {
+						ml.playPauseBtn.SetIcon(icon.Play())
 						ml.onPeriodEnd()
 					})
 					return
@@ -375,7 +399,6 @@ func (ml *MatchLive) onPeriodEnd() {
 	totalPeriods := ml.match.TotalPeriods()
 	if ml.currentPeriod >= totalPeriods {
 		// Match can end or go to overtime.
-		ml.startPeriodBtn.SetText(i18n.T(i18n.KeyMatchLiveStartPeriod))
 		ml.showPeriodSummary(true)
 		return
 	}
@@ -384,26 +407,44 @@ func (ml *MatchLive) onPeriodEnd() {
 }
 
 func (ml *MatchLive) showPeriodSummary(isFinal bool) {
-	title := fmt.Sprintf(i18n.T(i18n.KeyMatchHalftimeTitle), ml.currentPeriod)
-	msg := fmt.Sprintf(i18n.T(i18n.KeyMatchHalftimeSummary),
-		ml.match.HomeScore, ml.match.AwayScore)
-
 	if isFinal {
+		title := fmt.Sprintf(i18n.T(i18n.KeyMatchHalftimeTitle), ml.currentPeriod)
+		msg := fmt.Sprintf(i18n.T(i18n.KeyMatchHalftimeSummary),
+			ml.match.HomeScore, ml.match.AwayScore)
 		dialog.ShowConfirm(title, msg+"\n\n"+i18n.T(i18n.KeyMatchLiveEndMatch)+"?", func(end bool) {
 			if end {
 				ml.finishMatch()
 			} else {
-				// Overtime.
-				ml.nextPeriod()
+				ml.advancePeriod()
 			}
 		}, ml.window)
 	} else {
-		dialog.ShowInformation(title, msg, ml.window)
-		ml.nextPeriod()
+		ml.advancePeriod()
 	}
 }
 
-func (ml *MatchLive) nextPeriod() {
+func (ml *MatchLive) confirmNextPeriod() {
+	ml.stopClock()
+	ml.playPauseBtn.SetIcon(icon.Play())
+
+	// End current period if clock was running.
+	ml.match.AddEvent(model.MatchEvent{
+		Type:      model.EventPeriodEnd,
+		Timestamp: ml.matchSeconds,
+		Period:    ml.currentPeriod,
+	})
+	ml.autoSave()
+
+	totalPeriods := ml.match.TotalPeriods()
+	if ml.currentPeriod >= totalPeriods {
+		ml.showPeriodSummary(true)
+		return
+	}
+
+	ml.showPeriodSummary(false)
+}
+
+func (ml *MatchLive) advancePeriod() {
 	ml.currentPeriod++
 	periodDuration := time.Duration(ml.match.PeriodDurationMinutes()) * time.Minute
 	ml.clockMu.Lock()
@@ -415,12 +456,14 @@ func (ml *MatchLive) nextPeriod() {
 	ml.clockText.Text = ml.formatDuration(periodDuration)
 	ml.clockText.Color = theme.ColorTimerOK
 	ml.clockText.Refresh()
-	ml.startPeriodBtn.SetText(i18n.T(i18n.KeyMatchLiveStartPeriod))
 }
 
 // --- Scoring ---
 
-func (ml *MatchLive) addScore(isHome bool, points int) {
+func (ml *MatchLive) addPlayerScore(memberID string, points int) {
+	// Determine if the player's team is home.
+	isHome := ml.match.HomeAway == "home"
+
 	if isHome {
 		ml.match.HomeScore += points
 		ml.homeScoreText.Text = fmt.Sprintf("%d", ml.match.HomeScore)
@@ -437,8 +480,37 @@ func (ml *MatchLive) addScore(isHome bool, points int) {
 		Period:    ml.currentPeriod,
 		Points:    points,
 		IsHome:    isHome,
+		PlayerID:  memberID,
 	})
+	ml.refreshPeriodScores()
 	ml.autoSave()
+	ml.refreshLineup()
+}
+
+func (ml *MatchLive) addTeamScore(isHome bool, points int) {
+	if isHome {
+		ml.match.HomeScore += points
+		ml.homeScoreText.Text = fmt.Sprintf("%d", ml.match.HomeScore)
+		ml.homeScoreText.Refresh()
+	} else {
+		ml.match.AwayScore += points
+		ml.awayScoreText.Text = fmt.Sprintf("%d", ml.match.AwayScore)
+		ml.awayScoreText.Refresh()
+	}
+	ml.match.AddEvent(model.MatchEvent{
+		Type:      model.EventScore,
+		Timestamp: ml.matchSeconds,
+		Period:    ml.currentPeriod,
+		Points:    points,
+		IsHome:    isHome,
+	})
+	ml.refreshPeriodScores()
+	ml.autoSave()
+}
+
+func (ml *MatchLive) refreshPeriodScores() {
+	ml.periodScoresText.Text = ml.match.PeriodScoresText()
+	ml.periodScoresText.Refresh()
 }
 
 // --- Fouls ---
@@ -470,39 +542,36 @@ func (ml *MatchLive) addFoul(memberID string) {
 	}
 }
 
-// --- Timeout ---
+// --- Substitution (tap-tap, bidirectional) ---
 
-func (ml *MatchLive) addTimeout() {
-	ml.stopClock()
-	ml.match.AddEvent(model.MatchEvent{
-		Type:      model.EventTimeout,
-		Timestamp: ml.matchSeconds,
-		Period:    ml.currentPeriod,
-	})
-	ml.autoSave()
-	ml.startPeriodBtn.SetText(i18n.T(i18n.KeyMatchLiveStartPeriod))
-}
-
-// --- Substitution ---
-
-func (ml *MatchLive) selectBenchPlayer(memberID string) {
-	if ml.selectedBenchID == memberID {
-		// Deselect.
-		ml.selectedBenchID = ""
+func (ml *MatchLive) toggleSubSelection(memberID string, isOnCourt bool) {
+	// Tap same player → deselect.
+	if ml.selectedSubID == memberID {
+		ml.selectedSubID = ""
 		ml.refreshLineup()
 		return
 	}
-	ml.selectedBenchID = memberID
-	ml.refreshLineup()
-}
 
-func (ml *MatchLive) substitutePlayer(oncourtID string) {
-	if ml.selectedBenchID == "" {
+	// If a player from the OTHER column is already selected → perform swap.
+	if ml.selectedSubID != "" && ml.selectedSubOnCourt != isOnCourt {
+		var benchID, oncourtID string
+		if isOnCourt {
+			oncourtID = memberID
+			benchID = ml.selectedSubID
+		} else {
+			benchID = memberID
+			oncourtID = ml.selectedSubID
+		}
+		ml.match.Substitute(benchID, oncourtID, ml.matchSeconds, ml.currentPeriod)
+		ml.selectedSubID = ""
+		ml.autoSave()
+		ml.refreshLineup()
 		return
 	}
-	ml.match.Substitute(ml.selectedBenchID, oncourtID, ml.matchSeconds, ml.currentPeriod)
-	ml.selectedBenchID = ""
-	ml.autoSave()
+
+	// Select this player.
+	ml.selectedSubID = memberID
+	ml.selectedSubOnCourt = isOnCourt
 	ml.refreshLineup()
 }
 
@@ -511,6 +580,7 @@ func (ml *MatchLive) substitutePlayer(oncourtID string) {
 func (ml *MatchLive) refreshLineup() {
 	ml.oncourtBox.RemoveAll()
 	ml.benchBox.RemoveAll()
+	ml.playerTimeTexts = make(map[string]*canvas.Text)
 
 	lineupIDs := ml.match.CurrentLineup()
 	onCourtSet := make(map[string]bool, len(lineupIDs))
@@ -518,98 +588,152 @@ func (ml *MatchLive) refreshLineup() {
 		onCourtSet[id] = true
 	}
 
-	// On-court players.
+	// Compute average playing time for fairness coloring.
+	totalTime := 0
+	playerCount := 0
 	for _, r := range ml.match.Roster {
-		if !onCourtSet[r.MemberID] {
-			continue
-		}
-		card := ml.buildPlayerCard(r, true)
-		ml.oncourtBox.Add(card)
+		pt := ml.match.PlayerPlayingSeconds(r.MemberID, ml.matchSeconds)
+		totalTime += pt
+		playerCount++
+	}
+	avgTime := 0
+	if playerCount > 0 {
+		avgTime = totalTime / playerCount
 	}
 
-	// Bench players.
+	// Roster is pre-sorted by SortRoster() — iterate in order.
 	for _, r := range ml.match.Roster {
 		if onCourtSet[r.MemberID] {
-			continue
+			card := ml.buildPlayerRow(r, true, avgTime)
+			ml.oncourtBox.Add(card)
 		}
-		card := ml.buildPlayerCard(r, false)
-		ml.benchBox.Add(card)
+	}
+	for _, r := range ml.match.Roster {
+		if !onCourtSet[r.MemberID] {
+			card := ml.buildPlayerRow(r, false, avgTime)
+			ml.benchBox.Add(card)
+		}
 	}
 
 	ml.oncourtBox.Refresh()
 	ml.benchBox.Refresh()
 }
 
-func (ml *MatchLive) buildPlayerCard(r model.RosterEntry, onCourt bool) fyne.CanvasObject {
+func (ml *MatchLive) buildPlayerRow(r model.RosterEntry, onCourt bool, avgTime int) fyne.CanvasObject {
 	fouls := ml.match.PlayerFouls(r.MemberID)
 	playingSecs := ml.match.PlayerPlayingSeconds(r.MemberID, ml.matchSeconds)
+	playerPts := ml.match.PlayerScorePoints(r.MemberID)
 	playingTime := fmt.Sprintf("%d:%02d", playingSecs/60, playingSecs%60)
 
-	// Jersey number (large).
-	numText := canvas.NewText(fmt.Sprintf("#%d", r.Number), color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff})
-	numText.TextSize = 20
+	// Jersey number — color reflects foul state.
+	numColor := color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+	if fouls >= 5 {
+		numColor = color.NRGBA{R: 0xff, G: 0x33, B: 0x33, A: 0xff} // red
+	} else if fouls == 4 {
+		numColor = color.NRGBA{R: 0xff, G: 0xaa, B: 0x33, A: 0xff} // orange
+	}
+	numText := canvas.NewText(fmt.Sprintf("#%d", r.Number), numColor)
+	numText.TextSize = 18
 	numText.TextStyle.Bold = true
 
 	// Name.
-	nameText := canvas.NewText(r.FirstName, color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff})
-	nameText.TextSize = 14
+	nameColor := color.NRGBA{R: 0xcc, G: 0xcc, B: 0xcc, A: 0xff}
+	if r.MemberID == ml.selectedSubID {
+		nameColor = color.NRGBA{R: 0x44, G: 0x88, B: 0xff, A: 0xff} // blue — selected for sub
+	} else if !onCourt && playingSecs == 0 && !r.Starting {
+		nameColor = color.NRGBA{R: 0xff, G: 0xd7, B: 0x00, A: 0xff} // yellow — hasn't played
+	}
+	nameText := canvas.NewText(r.FirstName+" "+r.LastName, nameColor)
+	nameText.TextSize = 13
 
 	// Foul dots.
 	foulDots := ml.buildFoulDots(fouls)
 
-	// Playing time.
-	timeText := canvas.NewText(playingTime, color.NRGBA{R: 0x99, G: 0x99, B: 0x99, A: 0xff})
-	timeText.TextSize = 12
-
-	// Card background color based on fouls.
-	bgColor := color.NRGBA{R: 0x2a, G: 0x2a, B: 0x2a, A: 0xff}
-	if fouls >= 5 {
-		bgColor = color.NRGBA{R: 0x88, G: 0x22, B: 0x22, A: 0xff} // red
-	} else if fouls == 4 {
-		bgColor = color.NRGBA{R: 0x88, G: 0x66, B: 0x22, A: 0xff} // orange
+	// Playing time — colored by fairness relative to average.
+	timeColor := color.NRGBA{R: 0x99, G: 0x99, B: 0x99, A: 0xff} // default gray
+	if avgTime > 0 && ml.matchSeconds > 30 {
+		ratio := float64(playingSecs) / float64(avgTime)
+		if ratio < 0.5 {
+			timeColor = color.NRGBA{R: 0xff, G: 0x44, B: 0x44, A: 0xff} // red — way below average
+		} else if ratio < 0.75 {
+			timeColor = color.NRGBA{R: 0xff, G: 0xaa, B: 0x33, A: 0xff} // orange — below average
+		} else if ratio > 1.25 {
+			timeColor = color.NRGBA{R: 0x44, G: 0xbb, B: 0x44, A: 0xff} // green — above average
+		}
 	}
+	timeText := canvas.NewText(playingTime, timeColor)
+	timeText.TextSize = 11
+	timeText.TextStyle.Bold = true
+	ml.playerTimeTexts[r.MemberID] = timeText
 
-	// Selected bench player highlight.
-	if !onCourt && r.MemberID == ml.selectedBenchID {
-		bgColor = color.NRGBA{R: 0x22, G: 0x44, B: 0x88, A: 0xff} // blue
-	}
-
-	// Hasn't played indicator for bench.
-	if !onCourt && playingSecs == 0 && !r.Starting {
-		nameText.Color = color.NRGBA{R: 0xff, G: 0xd7, B: 0x00, A: 0xff} // yellow
-	}
-
-	bg := canvas.NewRectangle(bgColor)
-	bg.CornerRadius = 6
-
-	info := container.NewVBox(
-		container.NewHBox(numText, nameText),
-		container.NewHBox(foulDots, layout.NewSpacer(), timeText),
-	)
-
-	var buttons fyne.CanvasObject
-	if onCourt {
-		foulBtn := widget.NewButton(i18n.T(i18n.KeyMatchFoulAdd), func() {
-			ml.addFoul(r.MemberID)
-		})
-		foulBtn.Importance = widget.LowImportance
-
-		subBtn := widget.NewButton(i18n.T(i18n.KeyMatchLiveSub), func() {
-			ml.substitutePlayer(r.MemberID)
-		})
-		subBtn.Importance = widget.LowImportance
-
-		buttons = container.NewHBox(foulBtn, subBtn)
+	// Points label (shown only if > 0).
+	var ptsObj fyne.CanvasObject
+	if playerPts > 0 {
+		ptsLabel := canvas.NewText(fmt.Sprintf("%dpts", playerPts), color.NRGBA{R: 0x4c, G: 0xaf, B: 0x50, A: 0xff})
+		ptsLabel.TextSize = 12
+		ptsLabel.TextStyle.Bold = true
+		ptsObj = ptsLabel
 	} else {
-		tapBtn := widget.NewButton(i18n.T(i18n.KeyMatchLiveSelectPlayerIn), func() {
-			ml.selectBenchPlayer(r.MemberID)
-		})
-		tapBtn.Importance = widget.LowImportance
-		buttons = tapBtn
+		ptsObj = layout.NewSpacer()
 	}
 
+	// Info column: number + name on one line, foul dots + time + points on next.
+	infoTop := container.NewHBox(numText, nameText)
+	infoBottom := container.NewHBox(foulDots, layout.NewSpacer(), ptsObj, timeText)
+	info := container.NewVBox(infoTop, infoBottom)
+
+	// Action buttons — compact icons.
+	btnSize := fyne.NewSize(36, 36)
+
+	foulBtn := NewTipButton(icon.FoulIcon, i18n.T(i18n.KeyMatchFoulAdd), func() {
+		ml.addFoul(r.MemberID)
+	})
+
+	plus1 := NewTipButton(icon.ScorePlus1, "+1", func() { ml.addPlayerScore(r.MemberID, 1) })
+	plus2 := NewTipButton(icon.ScorePlus2, "+2", func() { ml.addPlayerScore(r.MemberID, 2) })
+	plus3 := NewTipButton(icon.ScorePlus3, "+3", func() { ml.addPlayerScore(r.MemberID, 3) })
+
+	// Sub button — swapin for bench (enter court), swapout for on-court (leave court).
+	var subRes fyne.Resource
+	if onCourt {
+		subRes = icon.SwapOut
+	} else {
+		subRes = icon.SwapIn
+	}
+	if r.MemberID == ml.selectedSubID {
+		subRes = fynetheme.CancelIcon()
+	}
+	subBtn := NewTipButton(subRes, i18n.T(i18n.KeyMatchLiveSub), func() {
+		ml.toggleSubSelection(r.MemberID, onCourt)
+	})
+	if r.MemberID == ml.selectedSubID {
+		subBtn.OverrideColor = toolActiveColor
+	} else if ml.selectedSubID != "" && ml.selectedSubOnCourt != onCourt {
+		// Opposite column — highlight as valid swap target.
+		subBtn.OverrideColor = &color.NRGBA{R: 0x4c, G: 0xaf, B: 0x50, A: 0xff} // green
+	}
+
+	var buttons *fyne.Container
+	if isMobile {
+		buttons = container.NewHBox(
+			container.NewGridWrap(btnSize, foulBtn),
+			container.NewGridWrap(btnSize, plus1),
+			container.NewGridWrap(btnSize, plus2),
+			container.NewGridWrap(btnSize, plus3),
+			container.NewGridWrap(btnSize, subBtn),
+		)
+		// Mobile: stack info + buttons vertically to avoid overflow.
+		return container.NewVBox(info, buttons, widget.NewSeparator())
+	}
+	buttons = container.NewHBox(
+		container.NewGridWrap(btnSize, foulBtn),
+		container.NewGridWrap(btnSize, plus1),
+		container.NewGridWrap(btnSize, plus2),
+		container.NewGridWrap(btnSize, plus3),
+		container.NewGridWrap(btnSize, subBtn),
+	)
 	content := container.NewBorder(nil, nil, nil, buttons, info)
-	return container.NewStack(bg, container.NewPadded(content))
+	return container.NewVBox(content, widget.NewSeparator())
 }
 
 func (ml *MatchLive) buildFoulDots(fouls int) fyne.CanvasObject {
@@ -631,30 +755,25 @@ func (ml *MatchLive) buildFoulDots(fouls int) fyne.CanvasObject {
 }
 
 func (ml *MatchLive) refreshPlayerTimes() {
-	// Refresh lineup to update playing times.
-	ml.refreshLineup()
+	// Lightweight update: only change time text values, don't rebuild buttons.
+	for _, r := range ml.match.Roster {
+		if txt, ok := ml.playerTimeTexts[r.MemberID]; ok {
+			secs := ml.match.PlayerPlayingSeconds(r.MemberID, ml.matchSeconds)
+			newTime := fmt.Sprintf("%d:%02d", secs/60, secs%60)
+			if txt.Text != newTime {
+				txt.Text = newTime
+				txt.Refresh()
+			}
+		}
+	}
 }
 
 // --- End match ---
 
-func (ml *MatchLive) confirmEndMatch() {
-	dialog.ShowConfirm(
-		i18n.T(i18n.KeyMatchLiveEndMatch),
-		fmt.Sprintf("%d - %d", ml.match.HomeScore, ml.match.AwayScore),
-		func(ok bool) {
-			if !ok {
-				return
-			}
-			ml.finishMatch()
-		},
-		ml.window,
-	)
-}
-
 func (ml *MatchLive) confirmQuit() {
 	dialog.ShowConfirm(
-		i18n.T(i18n.KeyMatchLiveEndMatch),
-		i18n.T(i18n.KeyMatchLiveEndMatch),
+		i18n.T(i18n.KeyMatchLiveQuit),
+		i18n.T(i18n.KeyMatchLiveQuitConfirm),
 		func(ok bool) {
 			if !ok {
 				return

@@ -78,6 +78,13 @@ var (
 	ChevronUp    = LoadPngResource("chevron-up")
 	ChevronRight = LoadPngResource("chevron-right")
 	ChevronLeft  = LoadPngResource("chevron-left")
+
+	ScorePlus1 = LoadPngResource("plus1")
+	ScorePlus2 = LoadPngResource("plus2")
+	ScorePlus3 = LoadPngResource("plus3")
+	FoulIcon   = LoadPngResource("foul")
+	SwapIn     = LoadPngResource("swapin")
+	SwapOut    = LoadPngResource("swapout")
 )
 
 // ActionHandoff returns the handoff icon.

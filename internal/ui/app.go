@@ -1834,6 +1834,8 @@ func (a *App) refreshMyFilesTab() {
 	sessions, exercises := a.buildMyFilesData()
 	a.myFilesTab.SetSessions(sessions)
 	a.myFilesTab.SetExercises(exercises)
+	a.myFilesTab.SetTeams(a.buildMyFilesTeams())
+	a.myFilesTab.SetMatches(a.buildMyFilesMatches())
 	a.myFilesNeedsRefresh = false
 }
 
@@ -1885,6 +1887,52 @@ func (a *App) buildMyFilesData() ([]SessionFileItem, []ExerciseFileItem) {
 	return sessionItems, exerciseItems
 }
 
+func (a *App) buildMyFilesTeams() []TeamFileItem {
+	entries, err := a.store.ListTeams()
+	if err != nil {
+		return nil
+	}
+	items := make([]TeamFileItem, 0, len(entries))
+	for _, e := range entries {
+		name := strings.TrimSuffix(e.File, ".yaml")
+		items = append(items, TeamFileItem{
+			Name:        name,
+			DisplayName: e.Name,
+			Club:        e.Club,
+			Season:      e.Season,
+			MemberCount: e.Members,
+		})
+	}
+	return items
+}
+
+func (a *App) buildMyFilesMatches() []MatchFileItem {
+	entries, err := a.store.ListMatches()
+	if err != nil {
+		return nil
+	}
+	items := make([]MatchFileItem, 0, len(entries))
+	for _, e := range entries {
+		name := strings.TrimSuffix(e.File, ".yaml")
+		item := MatchFileItem{
+			Name:     name,
+			TeamName: e.TeamName,
+			Opponent: e.Opponent,
+			Date:     e.Date,
+			Status:   e.Status,
+		}
+		// Load full match to get scores if finished.
+		if e.Status == "finished" {
+			if m, loadErr := a.store.LoadMatch(name); loadErr == nil {
+				item.HomeScore = m.HomeScore
+				item.AwayScore = m.AwayScore
+			}
+		}
+		items = append(items, item)
+	}
+	return items
+}
+
 func (a *App) handleMyFilesAction(ev MyFilesEvent) {
 	switch ev.Action {
 	case MyFilesActionOpenSession:
@@ -1919,7 +1967,142 @@ func (a *App) handleMyFilesAction(ev MyFilesEvent) {
 					a.refreshMyFilesTab()
 				}
 			}, a.window)
+	case MyFilesActionShareExercise:
+		ex, err := a.store.LoadExercise(ev.Name)
+		if err != nil {
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
+			return
+		}
+		data, _ := yaml.Marshal(ex)
+		a.shareGenericData(data, ev.Name)
+	case MyFilesActionOpenTeam:
+		if a.modeSwitchFunc != nil {
+			a.modeSwitchFunc(ModeTeam)
+		}
+		a.teamTab.loadTeam(ev.Name + ".yaml")
+	case MyFilesActionDeleteTeam:
+		dialog.ShowConfirm(
+			i18n.T(i18n.KeyTeamConfirmDelete),
+			fmt.Sprintf(i18n.T(i18n.KeyMyfilesConfirmDeleteTeam), ev.Name),
+			func(ok bool) {
+				if ok {
+					if err := a.store.DeleteTeam(ev.Name); err != nil {
+						a.statusBar.SetStatus(fmt.Sprintf("Error: %v", err), 1)
+						return
+					}
+					a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyStatusTeamDeleted), ev.Name), 2)
+					a.myFilesNeedsRefresh = true
+					a.refreshMyFilesTab()
+				}
+			}, a.window)
+	case MyFilesActionShareTeam:
+		team, err := a.store.LoadTeam(ev.Name)
+		if err != nil {
+			a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
+			return
+		}
+		data, _ := yaml.Marshal(team)
+		a.shareGenericData(data, ev.Name)
+	case MyFilesActionOpenMatch:
+		if a.modeSwitchFunc != nil {
+			a.modeSwitchFunc(ModeMatch)
+		}
+		entries, _ := a.store.ListMatches()
+		for _, e := range entries {
+			name := strings.TrimSuffix(e.File, ".yaml")
+			if name == ev.Name {
+				a.matchTab.openMatch(e)
+				break
+			}
+		}
+	case MyFilesActionDeleteMatch:
+		dialog.ShowConfirm(
+			i18n.T(i18n.KeyMatchConfirmDelete),
+			fmt.Sprintf(i18n.T(i18n.KeyMyfilesConfirmDeleteMatch), ev.Name),
+			func(ok bool) {
+				if ok {
+					if err := a.store.DeleteMatch(ev.Name); err != nil {
+						a.statusBar.SetStatus(fmt.Sprintf("Error: %v", err), 1)
+						return
+					}
+					a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyStatusMatchDeleted), ev.Name), 2)
+					a.myFilesNeedsRefresh = true
+					a.refreshMyFilesTab()
+				}
+			}, a.window)
+	case MyFilesActionShareMatch:
+		a.shareMatchWithTeamQR(ev.Name)
+	case MyFilesActionImportExercise:
+		a.showGenericImportDialog(func(data []byte) error {
+			var ex model.Exercise
+			if err := yaml.Unmarshal(data, &ex); err != nil {
+				return err
+			}
+			return a.store.SaveExercise(&ex)
+		})
+	case MyFilesActionImportTeam:
+		a.showGenericImportDialog(func(data []byte) error {
+			var team model.Team
+			if err := yaml.Unmarshal(data, &team); err != nil {
+				return err
+			}
+			return a.store.SaveTeam(&team)
+		})
+	case MyFilesActionImportMatch:
+		a.showGenericImportDialog(func(data []byte) error {
+			docs := splitYAMLDocs(data)
+			if len(docs) == 0 {
+				return fmt.Errorf("empty file")
+			}
+			var match model.Match
+			if err := yaml.Unmarshal(docs[0], &match); err != nil {
+				return err
+			}
+			if len(docs) > 1 {
+				var team model.Team
+				if err := yaml.Unmarshal(docs[1], &team); err == nil && team.Name != "" {
+					_ = a.store.SaveTeam(&team)
+				}
+			}
+			return a.store.SaveMatch(&match)
+		})
 	}
+}
+
+
+func (a *App) shareMatchWithTeamQR(name string) {
+	match, err := a.store.LoadMatch(name)
+	if err != nil {
+		a.statusBar.SetStatus(fmt.Sprintf(i18n.T(i18n.KeyShareError), err), 1)
+		return
+	}
+	teamFile := strings.TrimSuffix(match.TeamFile, ".yaml")
+	if teamFile == "" {
+		teamFile = store.TeamFileName(&model.Team{Name: match.TeamName})
+	}
+	team, _ := a.store.LoadTeam(teamFile)
+
+	matchData, _ := yaml.Marshal(match)
+	var buf []byte
+	buf = append(buf, matchData...)
+	if team != nil {
+		buf = append(buf, []byte("\n---\n")...)
+		teamData, _ := yaml.Marshal(team)
+		buf = append(buf, teamData...)
+	}
+	a.shareGenericData(buf, name)
+}
+
+func splitYAMLDocs(data []byte) [][]byte {
+	parts := strings.Split(string(data), "\n---\n")
+	var docs [][]byte
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			docs = append(docs, []byte(trimmed))
+		}
+	}
+	return docs
 }
 
 func (a *App) deleteSessionWithOrphanCleanup(name string) {
