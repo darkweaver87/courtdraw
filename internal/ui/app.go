@@ -21,6 +21,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/storage"
 	fynetheme "fyne.io/fyne/v2/theme"
@@ -91,6 +92,10 @@ type App struct {
 	// Match live mode.
 	matchLive *MatchLive
 
+	// Undo/redo history.
+	history     *editor.History
+	undoRedoing bool // guard to prevent pushing snapshots during undo/redo restore
+
 	// QR scan import.
 	scanPending bool
 
@@ -113,6 +118,7 @@ func NewApp(st store.Store, settings *store.Settings, lib *store.Library, w fyne
 		editLang: string(i18n.CurrentLang()),
 	}
 	a.editorState.ActiveTool = editor.ToolSelect
+	a.history = editor.NewHistory()
 	return a
 }
 
@@ -123,7 +129,11 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	a.court.ShowApron = a.settings.ApronVisible()
 	a.court.SetEditorState(&a.editorState)
 	a.court.OnChanged = func() {
+		a.pushSnapshot()
 		a.refreshEditor()
+	}
+	a.court.OnDragEnd = func() {
+		a.pushSnapshot() // just push snapshot, no refreshEditor (avoids layout issues)
 	}
 
 	a.fileToolbar = NewFileToolbar()
@@ -144,6 +154,7 @@ func (a *App) BuildUI() fyne.CanvasObject {
 	a.propsPanel = NewPropertiesPanel()
 	a.propsPanel.Window = a.window
 	a.propsPanel.OnModified = func() {
+		a.pushSnapshot()
 		a.court.Refresh()
 		a.updateWindowTitle()
 	}
@@ -166,6 +177,7 @@ func (a *App) BuildUI() fyne.CanvasObject {
 		if a.exercise == nil || idx >= len(a.exercise.Sequences) {
 			return
 		}
+		a.pushSnapshot()
 		if a.editLang != "" && a.editLang != "en" {
 			// Update the translated label.
 			tr := a.exercise.EnsureI18n(a.editLang)
@@ -206,6 +218,7 @@ func (a *App) BuildUI() fyne.CanvasObject {
 
 	a.instrPanel = NewInstructionsPanel()
 	a.instrPanel.OnModified = func() {
+		a.pushSnapshot()
 		a.updateWindowTitle()
 	}
 
@@ -216,6 +229,7 @@ func (a *App) BuildUI() fyne.CanvasObject {
 
 	a.actionTimeline = NewActionTimeline()
 	a.actionTimeline.OnModified = func() {
+		a.pushSnapshot()
 		a.court.Refresh()
 		a.refreshEditor()
 	}
@@ -260,6 +274,35 @@ func (a *App) BuildUI() fyne.CanvasObject {
 
 	// Init language buttons.
 	a.initLangButtons()
+
+	// Undo/redo keyboard shortcuts.
+	a.window.Canvas().AddShortcut(&desktop.CustomShortcut{
+		KeyName:  fyne.KeyZ,
+		Modifier: fyne.KeyModifierControl,
+	}, func(_ fyne.Shortcut) { a.Undo() })
+	a.window.Canvas().AddShortcut(&desktop.CustomShortcut{
+		KeyName:  fyne.KeyZ,
+		Modifier: fyne.KeyModifierControl | fyne.KeyModifierShift,
+	}, func(_ fyne.Shortcut) { a.Redo() })
+	a.window.Canvas().AddShortcut(&desktop.CustomShortcut{
+		KeyName:  fyne.KeyY,
+		Modifier: fyne.KeyModifierControl,
+	}, func(_ fyne.Shortcut) { a.Redo() })
+	// Also register built-in undo shortcut (Fyne sends this to focused widgets first).
+	a.window.Canvas().AddShortcut(&fyne.ShortcutUndo{}, func(_ fyne.Shortcut) { a.Undo() })
+
+	// Delete key shortcut (was in court's TypedKey, moved here since court is no longer Focusable).
+	a.window.Canvas().SetOnTypedKey(func(e *fyne.KeyEvent) {
+		if e.Name == fyne.KeyDelete || e.Name == fyne.KeyBackspace {
+			if a.editorMode == ModeEdition {
+				a.court.DeleteSelected()
+			}
+		}
+	})
+
+	// Wire undo/redo callbacks from seq timeline.
+	a.seqTimeline.OnUndo = func() { a.Undo() }
+	a.seqTimeline.OnRedo = func() { a.Redo() }
 
 	// Unified layout: mode selector replaces tabs on all platforms.
 	root := a.buildUnifiedRoot()
@@ -332,6 +375,7 @@ func (a *App) buildUnifiedRoot() fyne.CanvasObject {
 			a.editorState.DeleteRequested = false
 			a.court.DeleteSelected()
 		}
+		a.pushSnapshot()
 		a.viewTools.SyncToolHighlight()
 		a.court.Refresh()
 		a.refreshEditor()
@@ -775,6 +819,70 @@ func (a *App) refreshEditor() {
 		a.statusBar.SetStatus(a.editorState.StatusMsg, a.editorState.StatusLevel)
 		a.editorState.StatusMsg = ""
 	}
+
+	// Update undo/redo button state.
+	a.seqTimeline.UpdateUndoRedo(a.history.CanUndo(), a.history.CanRedo())
+}
+
+// pushSnapshot records the current exercise state in the undo history.
+// Guarded by undoRedoing to prevent recursion during Undo/Redo.
+func (a *App) pushSnapshot() {
+	if a.undoRedoing || a.exercise == nil {
+		return
+	}
+	if !a.editorState.JustMutated {
+		return
+	}
+	a.editorState.JustMutated = false
+	a.history.SaveState(a.exercise)
+	a.seqTimeline.UpdateUndoRedo(a.history.CanUndo(), a.history.CanRedo())
+}
+
+// Undo restores the exercise to the previous state in the history.
+func (a *App) Undo() {
+	if a.exercise == nil {
+		return
+	}
+	ex := a.history.Undo(a.exercise)
+	if ex == nil {
+		return
+	}
+	a.restoreFromHistory(ex)
+}
+
+// Redo restores the state that was undone.
+func (a *App) Redo() {
+	if a.exercise == nil {
+		return
+	}
+	ex := a.history.Redo(a.exercise)
+	if ex == nil {
+		return
+	}
+	a.restoreFromHistory(ex)
+}
+
+// restoreFromHistory replaces the current exercise with a history snapshot.
+func (a *App) restoreFromHistory(ex *model.Exercise) {
+	a.undoRedoing = true
+	defer func() {
+		a.undoRedoing = false
+		a.editorState.JustMutated = false // prevent phantom snapshot after undo
+	}()
+
+	a.exercise = ex
+	seqIdx := a.court.SeqIndex()
+	if seqIdx >= len(ex.Sequences) {
+		seqIdx = len(ex.Sequences) - 1
+	}
+	if seqIdx < 0 {
+		seqIdx = 0
+	}
+	a.court.SetExercise(ex)
+	a.court.SetSequence(seqIdx)
+	a.editorState.Deselect()
+	a.editorState.Modified = true
+	a.refreshEditor()
 }
 
 func (a *App) syncAnimState() {
@@ -891,6 +999,11 @@ func (a *App) SetExercise(ex *model.Exercise) {
 		a.playback = nil
 	}
 	a.court.SetPlayback(a.playback)
+	// Reset undo/redo history and save initial state.
+	a.history.Clear()
+	if ex != nil {
+		a.history.SaveState(ex)
+	}
 	// Snapshot SHA before refreshEditor to avoid false mismatch during Update callbacks.
 	a.snapshotExerciseSHA()
 	a.refreshEditor()
@@ -1026,6 +1139,7 @@ func (a *App) addSequence() {
 	if a.exercise == nil {
 		return
 	}
+	a.pushSnapshot()
 	var newSeq model.Sequence
 	currentIdx := a.court.SeqIndex()
 	if currentIdx < len(a.exercise.Sequences) {
@@ -1058,6 +1172,7 @@ func (a *App) deleteSequence(idx int) {
 	if idx < 0 || idx >= len(a.exercise.Sequences) {
 		return
 	}
+	a.pushSnapshot()
 	a.exercise.Sequences = append(a.exercise.Sequences[:idx], a.exercise.Sequences[idx+1:]...)
 	// Adjust current index.
 	newIdx := idx
@@ -1077,7 +1192,6 @@ func (a *App) handleFileAction(action FileAction) {
 	switch action {
 	case FileActionNew:
 		a.NewExercise()
-		a.editorState.MarkModified()
 	case FileActionOpen:
 		a.showOpenDialog()
 	case FileActionSave:
@@ -1464,6 +1578,7 @@ func (a *App) showExerciseSettingsDialog() {
 			if !ok {
 				return
 			}
+			a.pushSnapshot()
 			if a.editLang != "" && a.editLang != "en" {
 				tr := ex.EnsureI18n(a.editLang)
 				tr.Name = nameEntry.Text
@@ -1516,6 +1631,7 @@ func (a *App) toggleOrientation() {
 	if a.exercise == nil {
 		return
 	}
+	a.pushSnapshot()
 	a.exercise.Orientation = model.NextRotationCW(a.exercise.Orientation)
 	a.editorState.Modified = true
 	a.court.Refresh()

@@ -22,6 +22,7 @@ type TipButton struct {
 	importance    widget.ButtonImportance
 	text          string
 	hovered       bool
+	disabled      bool
 	OverrideColor color.Color  // if non-nil, used instead of importance-based color
 	TooltipAbove  bool         // show tooltip above the button instead of below
 	MaxSize       *fyne.Size   // if set, caps MinSize to this value (for compact layouts)
@@ -97,8 +98,28 @@ func (tb *TipButton) InnerButton() *TipButton {
 	return tb
 }
 
+// Enable enables the button.
+func (tb *TipButton) Enable() {
+	tb.disabled = false
+	tb.Refresh()
+}
+
+// Disable disables the button.
+func (tb *TipButton) Disable() {
+	tb.disabled = true
+	tb.Refresh()
+}
+
+// Disabled returns whether the button is disabled.
+func (tb *TipButton) Disabled() bool {
+	return tb.disabled
+}
+
 // Tapped handles tap/click.
 func (tb *TipButton) Tapped(*fyne.PointEvent) {
+	if tb.disabled {
+		return
+	}
 	if tb.onTapped != nil {
 		tb.onTapped()
 	}
@@ -201,6 +222,13 @@ func (r *tipBtnRenderer) Refresh() {
 		r.ico.Resource = r.tb.Icon
 		r.ico.Refresh()
 	}
+	// Dim icon when disabled.
+	if r.tb.disabled {
+		r.ico.Translucency = 0.7
+	} else {
+		r.ico.Translucency = 0
+	}
+	r.ico.Refresh()
 	if r.tb.OverrideColor != nil {
 		r.bg.FillColor = r.tb.OverrideColor
 		r.bg.Refresh()

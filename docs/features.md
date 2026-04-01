@@ -113,6 +113,16 @@ Validation errors are displayed in the **status bar** below the court.
 
 - Displays temporary messages (errors, info, success, warning) below the court canvas
 - Auto-dismisses after 3 seconds
+
+## Undo / Redo
+
+- Snapshot-based: the entire exercise is deep-copied (YAML marshal/unmarshal) after each mutation
+- History stored in `internal/ui/editor/history.go` with an index pointer, max 50 entries
+- Duplicate consecutive snapshots are deduplicated via byte comparison
+- **Desktop shortcuts**: Ctrl+Z (undo), Ctrl+Shift+Z / Ctrl+Y (redo)
+- **UI buttons**: undo/redo icons in the sequence timeline bar (all platforms)
+- History is cleared on exercise load/new; initial state is recorded as the first snapshot
+- Covered mutations: court interactions (place/move/delete elements), property changes (shelf, props panel, instructions), sequence add/delete/rename, exercise settings, orientation toggle
 - Message levels with color coding:
   - **Error** (level 1): dark red background
   - **Success** (level 2): green background

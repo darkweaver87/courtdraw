@@ -75,6 +75,10 @@ type EditorState struct {
 	// an element is selected. The court widget consumes this flag.
 	DeleteRequested bool
 
+	// JustMutated is set to true by MarkModified and cleared after each push.
+	// Used to avoid creating undo snapshots on selection-only changes.
+	JustMutated bool
+
 	// Status bar fields.
 	StatusMsg   string
 	StatusLevel int // 0=info, 1=error
@@ -141,6 +145,7 @@ func (s *EditorState) SetStatus(msg string, level int) {
 // MarkModified flags the exercise as having unsaved changes.
 func (s *EditorState) MarkModified() {
 	s.Modified = true
+	s.JustMutated = true
 }
 
 // ClearModified clears the modified flag (after save).

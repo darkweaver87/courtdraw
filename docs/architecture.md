@@ -92,7 +92,8 @@ courtdraw/
 │   │   ├── statusbar.go             # Status bar with auto-dismiss
 │   │   ├── browser.go               # URL opener utility
 │   │   ├── editor/
-│   │   │   └── state.go             # Editor state (tool, selection, drag, modified)
+│   │   │   ├── state.go             # Editor state (tool, selection, drag, modified)
+│   │   │   └── history.go           # Undo/redo history (YAML snapshot stack, max 50)
 │   │   ├── fynecourt/
 │   │   │   └── court.go             # Court widget (canvas.Raster + mouse/touch/hover)
 │   │   ├── theme/

@@ -3,7 +3,6 @@ package ui
 import (
 	"fmt"
 	"image/color"
-	"log"
 	"slices"
 
 	"fyne.io/fyne/v2"
@@ -391,32 +390,23 @@ func (ms *EditorShelf) collapse() {
 }
 
 func (ms *EditorShelf) expand() {
-	log.Println("[SHELF] expand()")
 	ms.collapsed = false
 	ms.shelfOuter.Show()
-	log.Println("[SHELF] shelfOuter.Show() done")
 	ms.chevronBtn.Icon = icon.ChevronDown
 	ms.chevronBtn.Refresh()
-	log.Println("[SHELF] expand() done")
 }
 
 func (ms *EditorShelf) selectCategory(cat shelfCategory) {
-	log.Printf("[SHELF] selectCategory(%d) active=%d collapsed=%v", cat, ms.active, ms.collapsed)
 	if cat == ms.active && !ms.collapsed {
-		log.Println("[SHELF] collapsing")
 		ms.collapse()
 		return
 	}
 	ms.active = cat
-	log.Println("[SHELF] expanding")
 	ms.expand()
 	// Cancel active action creation (clear ActionFrom) when switching tabs.
 	ms.state.ActionFrom = nil
-	log.Println("[SHELF] refreshShelfContent")
 	ms.refreshShelfContent()
-	log.Println("[SHELF] updateTabIndicators")
 	ms.updateTabIndicators()
-	log.Println("[SHELF] selectCategory done")
 }
 
 func (ms *EditorShelf) updateTabIndicators() {
@@ -545,7 +535,6 @@ func (ms *EditorShelf) RefreshLanguage() {
 
 // refreshShelfContent updates the shelf content based on active category and selection.
 func (ms *EditorShelf) refreshShelfContent() {
-	log.Printf("[SHELF] refreshShelfContent active=%d propsSynced=%v", ms.active, ms.propsSyncedSel)
 	var content fyne.CanvasObject
 	switch ms.active {
 	case shelfPlayers:

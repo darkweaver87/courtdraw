@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"log"
 	"math"
 	"slices"
 	"sync"
@@ -123,6 +122,7 @@ type CourtWidget struct {
 	pulseMu   sync.Mutex
 
 	OnChanged func()
+	OnDragEnd func() // called after drag completes (push undo without full refresh)
 }
 
 // Ensure interface compliance.
@@ -131,7 +131,9 @@ var _ fyne.Draggable = (*CourtWidget)(nil)
 var _ fyne.Scrollable = (*CourtWidget)(nil)
 var _ desktop.Mouseable = (*CourtWidget)(nil)
 var _ desktop.Hoverable = (*CourtWidget)(nil)
-var _ fyne.Focusable = (*CourtWidget)(nil)
+// Note: CourtWidget intentionally does NOT implement fyne.Focusable.
+// Focusable widgets intercept keyboard shortcuts (Ctrl+Z) before they reach
+// the canvas-level handlers. Delete key is handled via canvas shortcut instead.
 
 // NewCourtWidget creates a new court widget.
 func NewCourtWidget() *CourtWidget {
@@ -287,13 +289,9 @@ func (w *CourtWidget) currentSequence() *model.Sequence {
 
 // draw is the raster generator function.
 func (w *CourtWidget) draw(pixW, pixH int) image.Image {
-	drawStart := time.Now()
-	orientLog := ""
 	if w.exercise != nil {
-		orientLog = string(w.exercise.Orientation)
 	}
 	defer func() {
-		log.Printf("[COURT] draw(%d, %d) orient=%s took %v", pixW, pixH, orientLog, time.Since(drawStart))
 	}()
 	w.pixelW = pixW
 	w.pixelH = pixH
@@ -924,15 +922,7 @@ func (w *CourtWidget) MouseUp(e *desktop.MouseEvent) {
 	}
 }
 
-// FocusGained implements fyne.Focusable for keyboard event support.
-func (w *CourtWidget) FocusGained()   {}
-func (w *CourtWidget) FocusLost()     {}
-func (w *CourtWidget) TypedRune(r rune) {}
-func (w *CourtWidget) TypedKey(e *fyne.KeyEvent) {
-	if e.Name == fyne.KeyDelete || e.Name == fyne.KeyBackspace {
-		w.DeleteSelected()
-	}
-}
+
 
 // --- Hover (desktop only) ---
 
@@ -1772,6 +1762,7 @@ func (w *CourtWidget) dragActionEndpoint(seq *model.Sequence, pos court.Point, r
 }
 
 func (w *CourtWidget) handleRelease() {
+	hadDrag := w.dragActive && (w.dragPlayerIdx >= 0 || w.dragAccIdx >= 0 || w.dragActionEndIdx >= 0 || w.dragRotating)
 	if w.editorState != nil {
 		w.editorState.IsDragging = false
 		w.editorState.IsRotating = false
@@ -1783,6 +1774,12 @@ func (w *CourtWidget) handleRelease() {
 	w.dragRotating = false
 	w.dragPanning = false
 	w.Refresh()
+	// After a real drag (not just click), mark as mutated so undo captures the move.
+	// Don't call notifyChanged (causes layout issues). Use OnDragEnd instead.
+	if hadDrag && w.editorState != nil && w.editorState.Modified && w.OnDragEnd != nil {
+		w.editorState.JustMutated = true
+		w.OnDragEnd()
+	}
 }
 
 // DeleteSelected removes the currently selected element from the sequence.

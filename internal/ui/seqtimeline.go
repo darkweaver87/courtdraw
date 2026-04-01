@@ -24,6 +24,8 @@ type SeqTimeline struct {
 	seqBtn    *widget.Button // current sequence label (tap to rename)
 	addBtn    *widget.Button
 	deleteBtn *widget.Button
+	undoBtn   *TipButton
+	redoBtn   *TipButton
 	settingsBtn *TipButton
 	activeIdx int
 	numSeqs   int
@@ -37,6 +39,8 @@ type SeqTimeline struct {
 	OnDeleteSeq  func(int)
 	OnSeqRenamed func(idx int, newLabel string)
 	OnSettings   func() // opens exercise settings dialog
+	OnUndo       func()
+	OnRedo       func()
 	window       fyne.Window
 }
 
@@ -78,6 +82,17 @@ func NewSeqTimeline() *SeqTimeline {
 	})
 	st.deleteBtn.Importance = widget.DangerImportance
 
+	st.undoBtn = NewTipButton(theme.ContentUndoIcon(), i18n.T(i18n.KeyTooltipUndo), func() {
+		if st.OnUndo != nil {
+			st.OnUndo()
+		}
+	})
+	st.redoBtn = NewTipButton(theme.ContentRedoIcon(), i18n.T(i18n.KeyTooltipRedo), func() {
+		if st.OnRedo != nil {
+			st.OnRedo()
+		}
+	})
+
 	st.settingsBtn = NewTipButton(theme.SettingsIcon(), i18n.T(i18n.KeySettingsExerciseTitle), func() {
 		if st.OnSettings != nil {
 			st.OnSettings()
@@ -85,7 +100,7 @@ func NewSeqTimeline() *SeqTimeline {
 	})
 
 	bg := canvas.NewRectangle(color.NRGBA{R: 0x2a, G: 0x2a, B: 0x2a, A: 0xff})
-	bar := container.NewHBox(st.prevBtn, st.seqBtn, st.nextBtn, st.addBtn, st.deleteBtn, layout.NewSpacer(), st.settingsBtn)
+	bar := container.NewHBox(st.prevBtn, st.seqBtn, st.nextBtn, st.addBtn, st.deleteBtn, layout.NewSpacer(), st.undoBtn, st.redoBtn, st.settingsBtn)
 	st.box = container.NewStack(bg, bar)
 	return st
 }
@@ -184,6 +199,20 @@ func (st *SeqTimeline) showRenameDialog(idx int, exercise *model.Exercise) {
 	dlg.Show()
 }
 
+
+// UpdateUndoRedo enables or disables the undo/redo buttons.
+func (st *SeqTimeline) UpdateUndoRedo(canUndo, canRedo bool) {
+	if canUndo {
+		st.undoBtn.Enable()
+	} else {
+		st.undoBtn.Disable()
+	}
+	if canRedo {
+		st.redoBtn.Enable()
+	} else {
+		st.redoBtn.Disable()
+	}
+}
 
 // unused but needed for theme import
 var _ = cdtheme.ColorTabText

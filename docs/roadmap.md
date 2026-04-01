@@ -305,13 +305,13 @@ Goal: streamline the editing interface — fewer tabs, contextual properties, la
 
 Deliverable: simpler shelf with 3 tabs, contextual properties, and always-accessible view tools on the side.
 
-## Phase 16b — Undo/Redo ⚡ P1
+## Phase 16b — Undo/Redo ⚡ P1 (done)
 
 Goal: coaches can undo mistakes without losing work.
 
-103. Undo/redo engine — command pattern in `internal/ui/editor/`: each mutation (move player, add action, change property, add/remove element) is wrapped in a `Command` with `Do()` and `Undo()` methods, stored in a history stack (max 50 entries)
-104. Keyboard shortcuts — Ctrl+Z / Ctrl+Shift+Z (desktop), undo/redo icons in top bar (mobile) and toolbar (desktop)
-105. Scope — undo/redo operates per exercise, history cleared on exercise load/new
+103. Undo/redo engine — snapshot-based approach in `internal/ui/editor/history.go`: YAML marshal/unmarshal deep-copies the entire exercise, stored in a history stack with index pointer (max 50 entries), duplicate snapshots deduplicated via byte comparison
+104. Keyboard shortcuts — Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y (desktop), undo/redo buttons in sequence timeline bar (all platforms)
+105. Scope — undo/redo operates per exercise, history cleared on exercise load/new, initial state pushed as first snapshot
 
 Deliverable: Ctrl+Z works, coaches can experiment freely.
 
