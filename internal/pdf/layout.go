@@ -137,7 +137,7 @@ func layoutExerciseBlock(pdf *fpdf.Fpdf, tr func(string) string, y float64, bloc
 	gap := columnGap * 0.6
 	cellW := (colW - gap*float64(seqCols-1)) / float64(seqCols)
 
-	seqDiagramH := courtDiagramSize * 0.45
+	seqDiagramH := courtDiagramSize * 0.75
 	courtActualW := seqDiagramH * aspectR
 	if courtActualW > cellW {
 		courtActualW = cellW

@@ -105,6 +105,7 @@ courtdraw/
 │   │   ├── draw_players.go          # Player rendering (circle, label, ball, queue, selection pulse)
 │   │   ├── draw_accessories.go      # Accessory rendering (cone, ladder, chair)
 │   │   ├── draw_arrows.go           # Action arrow rendering (solid, dashed, zigzag) + DrawActionPreview()
+│   │   ├── render.go                # RenderSequence() — single source of truth for static court+elements rendering (used by PDF, future GIF/MP4)
 │   │   ├── fiba.go                  # FIBA court markings
 │   │   ├── nba.go                   # NBA court markings
 │   │   ├── geometry.go              # Coordinate mapping (relative ↔ pixel), apron, element scaling; ComputeViewportOriented() applies landscape rotation; RelToPixel/PixelToRel handle the axis swap
@@ -114,7 +115,7 @@ courtdraw/
 │   │   └── playback.go              # Play/pause/seek/speed controller
 │   ├── pdf/                         # PDF generation
 │   │   ├── generator.go             # Session → PDF orchestrator
-│   │   ├── court_render.go          # Render court diagram to PDF
+│   │   ├── court_render.go          # Insert court diagram image into PDF (uses court.RenderSequence)
 │   │   ├── layout.go                # Page layout (header, columns, overflow)
 │   │   └── styles.go                # PDF colors, fonts, spacing
 │   └── share/                       # Session sharing (bundle, crypto, upload)
@@ -146,7 +147,9 @@ cmd/courtdraw  →  internal/ui  →  internal/model
 
 - `model` has **zero** external dependencies — pure data structures and enums
 - `store` depends on `model` and a YAML library
-- `court`, `anim`, `pdf` depend on `model` only
+- `court` depends on `model` and `i18n`
+- `anim` depends on `model` and `court`
+- `pdf` depends on `model`, `court`, `anim`, and `i18n`
 - `share` depends on `model` only (stdlib crypto + archive + net/http)
 - `store` also uses `go-github` for community library sync (incremental fetch from GitHub)
 - `ui` orchestrates everything and uses `go-github` for contribution PRs, `go-qrcode` for QR display

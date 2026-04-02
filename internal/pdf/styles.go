@@ -8,18 +8,11 @@ import (
 
 // PDF colors (R, G, B values 0–255).
 var (
-	colorAttack    = [3]int{230, 57, 70}   // #e63946
-	colorDefense   = [3]int{29, 53, 87}    // #1d3557
-	colorCoach     = [3]int{244, 162, 97}   // #f4a261
-	colorCloseOut  = [3]int{42, 111, 219}   // #2a6fdb
-	colorNeutral   = [3]int{136, 136, 136}  // #888888
-	colorCourtBg   = [3]int{200, 150, 100}   // #c89664 parquet
-	colorCourtLine = [3]int{255, 255, 255}  // #ffffff
-	colorWhite     = [3]int{255, 255, 255}
-	colorBlack     = [3]int{0, 0, 0}
-	colorLightBg   = [3]int{241, 250, 238}  // #f1faee
-	colorHeaderBg  = [3]int{29, 53, 87}     // navy
-	colorScreen    = [3]int{255, 183, 3}    // #ffb703
+	colorNeutral  = [3]int{136, 136, 136} // #888888
+	colorWhite    = [3]int{255, 255, 255}
+	colorBlack    = [3]int{0, 0, 0}
+	colorLightBg  = [3]int{241, 250, 238} // #f1faee
+	colorHeaderBg = [3]int{29, 53, 87}    // navy
 
 	// Intensity dot colors: green, yellow, red.
 	colorIntGreen  = [3]int{76, 175, 80}   // #4caf50
@@ -59,7 +52,7 @@ const (
 	a5ContentW     = a5PageW - 2*a5Margin // 134.5mm
 
 	headerHeight     = 18.0
-	courtDiagramSize = 60.0  // height for court diagram
+	courtDiagramSize = 120.0 // height for court diagram
 	exerciseBlockGap = 6.0
 	columnGap        = 6.0
 
@@ -68,9 +61,6 @@ const (
 	fontSizeHeader    = 10.0
 	fontSizeBody      = 8.0
 	fontSizeSmall     = 7.0
-
-	lineWidthThin  = 0.3
-	lineWidthThick = 0.6
 
 	intensityDotR      = 1.3 // intensity dot radius (portrait)
 	intensityDotRA5   = 1.3 // intensity dot radius (landscape A5)

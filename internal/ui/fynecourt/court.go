@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/gofont/goregular"
-	"golang.org/x/image/font/opentype"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -25,37 +23,9 @@ import (
 	"github.com/darkweaver87/courtdraw/internal/ui/editor"
 )
 
-var (
-	parsedFont     *opentype.Font
-	parsedFontOnce sync.Once
-	faceCacheMu    sync.Mutex
-	faceCache      = map[float64]font.Face{}
-)
-
-// baseFontSize is chosen so that a 1–2 character label fills the player
-// head circle (HeadRadius = 14px → 28px diameter).
-const baseFontSize = 18
-
+// getScaledFace delegates to the shared court.ScaledFace function.
 func getScaledFace(zoom float64) font.Face {
-	parsedFontOnce.Do(func() {
-		parsedFont, _ = opentype.Parse(goregular.TTF)
-	})
-	if parsedFont == nil {
-		return nil
-	}
-	size := baseFontSize * zoom
-	faceCacheMu.Lock()
-	defer faceCacheMu.Unlock()
-	if f, ok := faceCache[size]; ok {
-		return f
-	}
-	f, _ := opentype.NewFace(parsedFont, &opentype.FaceOptions{
-		Size:    size,
-		DPI:     72,
-		Hinting: font.HintingFull,
-	})
-	faceCache[size] = f
-	return f
+	return court.ScaledFace(zoom)
 }
 
 // CourtWidget renders a basketball court with exercise elements.

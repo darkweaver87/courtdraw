@@ -57,7 +57,7 @@ internal/ui/editor/      Editor state machine (tool, selection, drag)
 internal/ui/fynecourt/   Court widget (canvas.Raster + interaction)
 internal/ui/theme/       Fyne theme (dark palette)
 internal/ui/icon/        Embedded PNG icons as fyne.Resource
-internal/court/          Court rendering into image.RGBA (FIBA, NBA)
+internal/court/          Court rendering into image.RGBA (FIBA, NBA); RenderSequence() is the shared renderer for PDF and future exports
 internal/anim/           Animation engine (interpolation, playback)
 internal/pdf/            PDF session sheet generation
 internal/share/          Session sharing (bundle, crypto, upload)
